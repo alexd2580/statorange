@@ -1,0 +1,6 @@
+release
+debug
+*.d
+*.o
+*.log
+other
