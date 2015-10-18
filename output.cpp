@@ -172,7 +172,7 @@ void echoWorkspaceButtons(I3State& i3, Output* disp)
  * Prints the input to lemonbar for the main monitor
  * TODO specify main monitor in config -> fix main, not this method 
  */
-void echoPrimaryLemon(I3State& i3, SystemState& sys, Output* disp, uint8_t pos)
+void echoPrimaryLemon(I3State& i3, SystemState& sys, Output& disp, uint8_t pos)
 {
   cout << "%%{S" << pos << "}";
   cout << "%%{l}";
@@ -269,7 +269,7 @@ void echoPrimaryLemon(I3State& i3, SystemState& sys, Output* disp, uint8_t pos)
 /**
  * Prints the input to lemonbar for a secondary monitor
  */
-void echoSecondaryLemon(I3State& i3, SystemState& sys, Output* disp, uint8_t pos)
+void echoSecondaryLemon(I3State& i3, SystemState& sys, Output& disp, uint8_t pos)
 {
   (void)sys;
   cout << "%%{S" << pos << "}";

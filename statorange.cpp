@@ -119,15 +119,12 @@ void handleWorkspaceEvent(I3State& i3State, char* response)
 
 void handleWindowEvent(I3State& i3State, char* response)
 {
-  JSONObject* windowEvent = (JSONObject*)parseJSON(response);
+  JSONObject& windowEvent = JSON::parse(response).object();
+  JSONString& changeString = windowEvent.get("change").string();
+  string change = changeString.get();
   
-  JSONString* changeString = (JSONString*)getField(windowEvent, "change");
-  size_t cLen;
-  char* cStr = getString(changeString, &cLen);
-  
-  JSONObject* container = (JSONObject*)getField(windowEvent, "container");
-  JSONNumber* appId = (JSONNumber*)getField(container, "id");
-  double appIdD = getNumber(appId);
+  JSONObject& container = windowEvent.get("container").object();
+  double appIdD = container.get("id").number().get();
   long appIdL = (long)appIdD;
   
   /** New events are also accompanied by focus events if necessary */
@@ -136,64 +133,55 @@ void handleWindowEvent(I3State& i3State, char* response)
   /**
    * On a title update check if the application is focused 
    * on any visible workspace. If yes -> update (id does not change)
-   */
-  if(cLen == 5 && strncmp(cStr, "title", 5) == 0)
+   */  
+  if(change.compare("title") == 0)
   {
-    for(uint8_t i=0; i<i3State.wsCount; i++)
+    for(auto i=i3State.workspaces.begin(); i!=i3State.workspaces.end(); i++)
     {
-      if(i3State.workspaces[i].focusedAppID == appIdL)
+      if(i->focusedAppID == appIdL)
       {
-        JSONString* name = (JSONString*)getField(container, "name");
-        size_t strLen;
-        char* strPtr = getString(name, &strLen);
-        i3State.workspaces[i].focusedApp.assign(strPtr, strLen); // TODO length
+        JSONString& name = container.get("name").string();
+        i->focusedApp = name.get(); // TODO length
         break;
       }
     }
   }
   /** Copy the title/id of the currently focused window to it's WS. */  
-  else if(cLen == 5 && strncmp(cStr, "focus", 5) == 0)
+  else if(change.compare("focus") == 0)
   {
-    Workspace* fw = i3State.focusedWorkspace;
-    JSONString* name = (JSONString*)getField(container, "name");
-    size_t strLen;
-    char* strPtr = getString(name, &strLen);
-    fw->focusedApp.assign(strPtr, strLen); //TODO length
-    fw->focusedAppID = appIdL;
+    Workspace& fw = i3State.workspaces[i3State.focusedWorkspace];
+    JSONString& name = container.get("name").string();
+    fw.focusedApp = name.get(); //TODO length
+    fw.focusedAppID = appIdL;
   }
   /** 
    * usually after a close event a focus event is issued, 
    * if there is a focused window. therefore delete the focus here.
    * I don't know on which workspace the application closed.
    */
-  else if(cLen == 5 && strncmp(cStr, "close", 5) == 0)
+  else if(change.compare("close") == 0)
   {
-    for(uint8_t i=0; i<i3State.wsCount; i++)
+    for(auto i=i3State.workspaces.begin(); i!=i3State.workspaces.end(); i++)
     {
-      if(i3State.workspaces[i].focusedAppID == appIdL)
+      if(i->focusedAppID == appIdL)
       {
-        i3State.workspaces[i].focusedAppID = -1;
-        i3State.workspaces[i].focusedApp[0] = '\0';
+        i->focusedAppID = -1;
+        i->focusedApp = "";
         break;
       }
     }
   }
-  else if(cLen == 15 && strncmp(cStr, "fullscreen_mode", 15) == 0)
+  else if(change.compare("fullscreen_mode") == 0)
   {
     cerr << "Fullscreen mode TODO if anything at all..." << endl;
   }
-  else if(cLen == 4 && strncmp(cStr, "move", 4) == 0)
+  else if(change.compare("move") == 0)
   {
     cerr << "Move event TODO update titles" << endl;
   }
   else
-  {
-    cerr << "Unhandled window event type: ";
-    cerr.write(cStr, (int)cLen);
-    cerr << endl;
-  }
+    cerr << "Unhandled window event type: " << change << endl;
   
-  freeJSON((JSONSomething*)windowEvent);
   return;
 }
 
@@ -213,12 +201,9 @@ void handleEvent(I3State& i3State, uint32_t type, char* response)
   case I3_IPC_EVENT_MODE:
     {
       pthread_mutex_lock(&i3State.mutex);
-      JSONObject* modeEvent = (JSONObject*)parseJSON(response);
-      JSONString* modeString = (JSONString*)getField(modeEvent, "change");
-      size_t modeLen = 0;
-      char* mode = getString(modeString, &modeLen);
-      i3State.mode.assign(mode, modeLen);
-      freeJSON((JSONSomething*)modeEvent);
+      JSONObject& modeEvent = JSON::parse(response).object();
+      JSONString& modeString = modeEvent.get("change").string();
+      i3State.mode = modeString.get();
       pthread_mutex_unlock(&i3State.mutex);
     }
     break;
@@ -242,9 +227,7 @@ void handleEvent(I3State& i3State, uint32_t type, char* response)
   {
     cerr << "Invalid change after event " << type << " occured" << endl;
     if(response != NULL)
-    {
       cerr << response << endl;
-    }
     die = 1;
   }
   
@@ -262,7 +245,7 @@ void* event_listener(void* data)
 {
   struct event_listener_data* eldp = (struct event_listener_data*)data;
   int push_socket = eldp->push_socket;
-  I3State& i3State =eldp->i3StateRef;
+  I3State& i3State = eldp->i3StateRef;
   char abonnements[] = "[\"workspace\",\"mode\",\"output\",\"window\"]";
   sendMessage(push_socket, I3_IPC_MESSAGE_TYPE_SUBSCRIBE, abonnements);
   uint32_t type;
@@ -356,9 +339,9 @@ int main(void)
       die = 1;
     else
     {
-      echoPrimaryLemon(i3State, sysState, i3State.outputs, 0);
-      for(uint8_t i=1; i<i3State.outputCount; i++)
-        echoSecondaryLemon(i3State, sysState, i3State.outputs+i, i);
+      echoPrimaryLemon(i3State, sysState, i3State.outputs[0], 0);
+      for(uint8_t i=1; i<i3State.outputs.size(); i++)
+        echoSecondaryLemon(i3State, sysState, i3State.outputs[i], i);
       cout << endl;
       cout.flush();
     }

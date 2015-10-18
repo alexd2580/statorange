@@ -13,313 +13,251 @@
 /******************************************************************************/
 /******************************************************************************/
 
-void freeOutputs(I3State* i3)
-{
-  if(i3->outputs == nullptr)
-    return;
-  free(i3->outputs);
-  i3->outputs = nullptr;
-}
-
 /** Returns 1 iff a is at a "smaller" position */
 #define POS_LESS(a, b) \
-  (a->posX < b->posX || (a->posX == b->posX && a->posY < b->posY))
+  (a.posX < b.posX || (a.posX == b.posX && a.posY < b.posY))
 
 /**
  * Returns NULL on error
  */
-void parseOutputs(I3State* i3)
+void I3State::parseOutputs(void)
 {
-  i3->valid = 0;
+  valid = false;
   //Send query
-  if(sendMessage(i3->fd, I3_IPC_MESSAGE_TYPE_GET_OUTPUTS, nullptr) != 0)
+  if(sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_OUTPUTS, nullptr) != 0)
     return;
 
   uint32_t type;
-  char* buffer = readMessage(i3->fd, &type);
+  char* buffer = readMessage(fd, &type);
   if(type == I3_INVALID_TYPE)
     return;
   
-  JSONArray* array = (JSONArray*)parseJSON(buffer);
-  uint8_t totalDisplays = (uint8_t)getArrayLength(array);  
-  uint8_t activeDisplays = 0;
+  JSONArray& array = JSON::parse(buffer).array();
+  uint8_t totalDisplays = (uint8_t)array.length();  
   
-  freeOutputs(i3);
-  i3->outputs = (Output*)malloc(totalDisplays*sizeof(Output));
+  outputs.clear();
   
-  JSONObject* disp = nullptr;
-  JSONBool* active = nullptr;
-  JSONString* name = nullptr;
-  JSONObject* rect = nullptr;
-  
-  char* nameString;
-  size_t nameLength;
   double x, y;
   for(uint8_t i=0; i<totalDisplays; i++)
   {
-    disp = (JSONObject*)getElem(array, i);
-    active = (JSONBool*)getField(disp, "active");
-    if(getBool(active))
+    JSONObject& disp = array.get(i).object();
+    bool active = disp.get("active").boolean().get();
+    if(active)
     {
-      name = (JSONString*)getField(disp, "name");
-      nameString = getString(name, &nameLength);
-      strncpy(i3->outputs[activeDisplays].name, nameString, nameLength);
-      i3->outputs[activeDisplays].name[nameLength] = '\0';
-      //i3->outputs[activeDisplays].pos = -1; <- unused (given by ordering)
-      rect = (JSONObject*)getField(disp, "rect");
-      x = getNumber((JSONNumber*)getField(rect, "x"));
-      y = getNumber((JSONNumber*)getField(rect, "y"));
-      i3->outputs[activeDisplays].posX = (int)x;
-      i3->outputs[activeDisplays].posY = (int)y;
-      activeDisplays++;
+      string name = disp.get("name").string().get();
+      JSONObject& rect = disp.get("rect").object();
+      x = rect.get("x").number().get();
+      y = rect.get("y").number().get();
+
+      outputs.push_back(Output { .name=name, .posX=(int)x, .posY=(int)y } );
     }
   }
-  i3->outputCount = activeDisplays;
 
-  Output* other = nullptr;
-  Output* minOut = nullptr;
+  
   Output tmp;
-  int minOutPos = -1;
-  for(int fPos=0; fPos<activeDisplays-1; fPos++)
+  size_t minOutPos;
+  
+  for(size_t fPos=0; fPos<outputs.size()-1; fPos++)
   {
-    minOut = i3->outputs+fPos;
     minOutPos = fPos;
-    for(int oPos=fPos+1; oPos<activeDisplays; oPos++)
+    for(size_t oPos=fPos+1; oPos<outputs.size(); oPos++)
     {
-      other = i3->outputs+oPos;
-      if(POS_LESS(other, minOut))
-      {
-        minOut = other;
+      if(POS_LESS(outputs[oPos], outputs[fPos]))
         minOutPos = oPos;
-      }
     }
     
     if(minOutPos != fPos)
     {
-      memcpy(&tmp, i3->outputs+fPos, sizeof(Output));
-      memcpy(i3->outputs+fPos, minOut, sizeof(Output));
-      memcpy(minOut, &tmp, sizeof(Output));
+      tmp = outputs[fPos];
+      outputs[fPos] = outputs[minOutPos];
+      outputs[minOutPos] = tmp;
     }
-    //minOut->pos = fPos;
   }
   
-  freeJSON((JSONSomething*)array);
   free(buffer);
-  
-  i3->valid = 1;
+  valid = true;
   return;
 }
 
 /******************************************************************************/
 /******************************************************************************/
-
-void freeWorkspaces(I3State* i3)
-{
-  if(i3->workspaces == nullptr)
-    return;
-  free(i3->workspaces);
-  i3->workspaces = nullptr;
-}
 
 /**
  * Returns NULL on error
  * Requires valid output configuration
  */
-void parseWorkspaces(I3State* i3)
+void I3State::parseWorkspaces(void)
 {
-  i3->valid = 0;
+  valid = false;
 
   //Send query
-  if(sendMessage(i3->fd, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, nullptr) != 0)
+  if(sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, nullptr) != 0)
     return;
     
   uint32_t type;
-  char* buffer = readMessage(i3->fd, &type);
+  char* buffer = readMessage(fd, &type);
   if(type == I3_INVALID_TYPE)
     return;
   
-  i3->focusedWorkspace = nullptr;
-  freeWorkspaces(i3);
+  focusedWorkspace = 0;
+  workspaces.clear();
 
-  JSONArray* array = (JSONArray*)parseJSON(buffer);
-  if(array == nullptr)
-    goto abort_parse_workspaces2;
-  i3->wsCount = (uint8_t)getArrayLength(array);
-  
-  Workspace* ws = i3->workspaces = (Workspace*)malloc(i3->wsCount*sizeof(Workspace));
-  Workspace* wsPtr = nullptr;
+  JSONArray& array = JSON::parse(buffer).array();
+  size_t wsCount = array.length();
   
   double numD;
-  JSONObject* workspace = nullptr;
-  JSONString* string = nullptr;
-  char* strData;
-  size_t strLen;
 
-  for(uint8_t i=0; i<i3->wsCount; i++)
+  for(uint8_t i=0; i<wsCount; i++)
   {
-    workspace = (JSONObject*)getElem(array, i);
-    wsPtr = ws+i;
+    Workspace ws;
+    JSONObject& workspace = array.get(i).object();
     
-    numD = getNumber((JSONNumber*)getField(workspace, "num"));
-    wsPtr->num = (uint8_t)numD;
+    numD = workspace.get("num").number().get();
+    ws.num = (uint8_t)numD;
     
-    string = (JSONString*)getField(workspace, "name");
-    strData = getString(string, &strLen);
-    storeString(wsPtr->name, MAX_NAME_LEN, strData, strLen);
+    JSONString& name = workspace.get("name").string();
+    ws.name = name.get(); // TODO LEN
     
-    wsPtr->visible = getBool((JSONBool*)getField(workspace, "visible"));
-    wsPtr->focused = getBool((JSONBool*)getField(workspace, "focused"));
-    if(wsPtr->focused) i3->focusedWorkspace = wsPtr;
-    wsPtr->urgent = getBool((JSONBool*)getField(workspace, "urgent"));
+    ws.visible = workspace.get("visible").boolean().get();
+    ws.focused = workspace.get("focused").boolean().get();
+    ws.urgent = workspace.get("urgent").boolean().get();
     
-    string = (JSONString*)getField(workspace, "output");
-    strData = getString(string, &strLen);
-    
-    for(uint8_t d=0; d<i3->outputCount; d++)
-      if(strncmp(i3->outputs[d].name, strData, strLen) == 0)
-        wsPtr->output = i3->outputs+d;
+    string output = workspace.get("output").string().get();
+    for(uint8_t d=0; d<outputs.size(); d++)
+      if(compare(outputs[d].name, output) == 0)
+        ws.output = &outputs[d];
         
-    wsPtr->focusedApp[0] = '\0';
-    wsPtr->focusedAppID = -1;
+    ws.focusedApp = "";
+    ws.focusedAppID = -1;
+    
+    workspaces.push_back(ws);
+    if(ws.focused) 
+      focusedWorkspace = workspaces.size()-1;
   }
 
-  i3->valid = 1;
-
-  freeJSON((JSONSomething*)array);
-abort_parse_workspaces2:
-  free(buffer);
-  
+  valid = true;
   return;
 }
 
 /******************************************************************************/
 /******************************************************************************/
 
-void init_i3State(I3State* i3, char* path)
+I3State::I3State(string path)
 {
-  pthread_mutex_init(&i3->mutex, nullptr);
-  pthread_mutex_lock(&i3->mutex);
+  pthread_mutex_init(&mutex, nullptr);
+  pthread_mutex_lock(&mutex);
   
-  i3->fd = init_socket(path);
-  memset(i3->mode, 0, 50);
-  i3->outputCount = 0;
-  i3->outputs = nullptr;
-  i3->wsCount = 0;
-  i3->workspaces = nullptr;
-  i3->focusedWorkspace = nullptr;
+  fd = init_socket(path);
+  outputCount = 0;
+  outputs = nullptr;
+  wsCount = 0;
+  workspaces = nullptr;
+  focusedWorkspace = nullptr;
   
-  pthread_mutex_unlock(&i3->mutex);
+  pthread_mutex_unlock(&mutex);
 }
 
-void update_i3StateOutputs(I3State* i3)
+I3State::~I3State()
 {
-  pthread_mutex_lock(&i3->mutex);
-  parseOutputs(i3);
-  if(i3->valid)
-    parseWorkspaces(i3);
-  pthread_mutex_unlock(&i3->mutex);
+  pthread_mutex_lock(&mutex);
+  
+  shutdown(fd, SHUT_RDWR);
+  
+  pthread_mutex_unlock(&mutex);
+  pthread_mutex_destroy(&mutex);
 }
 
-void update_i3StateWorkspaceInit(I3State* i3, uint8_t num)
+
+void I3State::updateOutputs(void)
 {
-  pthread_mutex_lock(&i3->mutex);
-  i3->valid = 0;
+  pthread_mutex_lock(&mutex);
+  parseOutputs();
+  if(valid)
+    parseWorkspaces();
+  pthread_mutex_unlock(&mutex);
+}
+
+void I3State::workspaceInit(uint8_t num)
+{
+  pthread_mutex_lock(&mutex);
+  valid = false;
 
   //Send query
-  if(sendMessage(i3->fd, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, nullptr) != 0)
+  if(sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, nullptr) != 0)
     goto abort_init_update3;
     
   uint32_t type;
-  char* buffer = readMessage(i3->fd, &type);
+  char* buffer = readMessage(fd, &type);
   if(type == I3_INVALID_TYPE)
     goto abort_init_update3;
   
-  JSONArray* array = (JSONArray*)parseJSON(buffer);
-  if(array == nullptr)
-    goto abort_init_update2;
+  JSONArray& array = JSON::parse(buffer).array();
+    goto abort_init_update2; //TODO
   
-  Workspace* oldWsArray = i3->workspaces;
-  Workspace* newWsArray = (Workspace*)malloc((uint8_t)(i3->wsCount+1)*sizeof(Workspace));
-  uint8_t wsBefore = 0;
-  while(oldWsArray[wsBefore].num < num && wsBefore < i3->wsCount)
-    wsBefore++;
-  
-  memmove(newWsArray, oldWsArray, wsBefore*sizeof(Workspace));
-  memmove(newWsArray+wsBefore+1, oldWsArray+wsBefore, (uint8_t)(i3->wsCount-wsBefore)*sizeof(Workspace));
-  
-  i3->focusedWorkspace += newWsArray - oldWsArray;
-  if(i3->focusedWorkspace == newWsArray+wsBefore)
-    i3->focusedWorkspace++;
-  free(i3->workspaces);
-  i3->workspaces = newWsArray;
-  
-  Workspace* ws = i3->workspaces + wsBefore;
-  ws->num = num;
-  i3->wsCount++;
-  
-  double numD;
-  JSONObject* wsJSON = nullptr;
-
-  for(uint8_t i=0; i<i3->wsCount; i++)
+  uint8_t index = 0;
+  auto iter = workspaces.begin();
+  while(iter->num < num && iter != workspaces.end())
   {
-    wsJSON = (JSONObject*)getElem(array, i);
-    
-    numD = getNumber((JSONNumber*)getField(wsJSON, "num"));
-    if((uint8_t)numD == num)
-      break;
+    iter++;
+    index++;
   }
-  if(wsJSON == nullptr)
-    goto abort_init_update1;
+    
+  if(workspaces[focusedWorkspace].num > num)
+    focusedWorkspace++;
   
-  JSONString* string = nullptr;
-  char* strData;
-  size_t strLen;
-  string = (JSONString*)getField(wsJSON, "name");
-  strData = getString(string, &strLen);
-  storeString(ws->name, MAX_NAME_LEN, strData, strLen);
-
-  ws->visible = getBool((JSONBool*)getField(wsJSON, "visible"));
-  ws->focused = getBool((JSONBool*)getField(wsJSON, "focused"));
-  if(ws->focused) i3->focusedWorkspace = ws;
-  ws->urgent = getBool((JSONBool*)getField(wsJSON, "urgent"));
-  
-  string = (JSONString*)getField(wsJSON, "output");
-  strData = getString(string, &strLen);
-  
-  for(uint8_t d=0; d<i3->outputCount; d++)
-    if(strncmp(i3->outputs[d].name, strData, strLen) == 0)
-      ws->output = i3->outputs+d;
+  for(uint8_t i=0; i<wsCount; i++)
+  {
+    JSONObject& wsJSON = array.get(i).object();
+    
+    double numD = wsJSON.get("num").number().get();
+    if((uint8_t)numD == num)
+    {
+      Workspace ws;
+      ws.num = num;
       
-  ws->focusedApp[0] = '\0';
-  ws->focusedAppID = -1;
+      JSONString& name = wsJSON.get("name").string();
+      ws.name = name.get(); // TODO length
+      
+      ws.visible = wsJSON.get("visible").boolean().get();
+      ws.focused = wsJSON.get("focused").boolean().get();
+      ws.urgent = wsJSON.get("urgent").boolean().get();
+      
+      ws.focusedApp = "";
+      ws.focusedAppID = -1;
   
-  i3->valid = 1;
-
-abort_init_update1:
-  freeJSON((JSONSomething*)array);
-abort_init_update2:
+      string output = wsJSON.get("output").string().get();
+      for(size_t d=0; d<outputs.size(); d++)
+        if(compare(outputs[d].name, output) == 0)
+          ws.output = &outputs[d];
+      
+      workspaces.insert(iter, ws);
+      if(ws->focused) 
+        focusedWorkspace = index;
+        
+      valid = true;
+      break;
+    }
+  }
+  
   free(buffer);
-abort_init_update3:
-  pthread_mutex_unlock(&i3->mutex);
-
-  return;
+  pthread_mutex_unlock(&mutex);
 }
 
-void update_i3StateWorkspaceStatus(I3State* i3)
+void I3State::updateWorkspaceStatus(void)
 {
-  pthread_mutex_lock(&i3->mutex);
-  i3->valid = 0;
+  pthread_mutex_lock(&mutex);
+  valid = false;
 
   //Send query
-  if(sendMessage(i3->fd, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, nullptr) != 0)
+  if(sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, nullptr) != 0)
     goto abort_status_update3;
     
   uint32_t type;
-  char* buffer = readMessage(i3->fd, &type);
+  char* buffer = readMessage(fd, &type);
   if(type == I3_INVALID_TYPE)
     goto abort_status_update3;
   
-  i3->focusedWorkspace = nullptr;
+  focusedWorkspace = nullptr;
   JSONArray* array = (JSONArray*)parseJSON(buffer);
   if(array == nullptr)
     goto abort_status_update2;
@@ -338,10 +276,10 @@ void update_i3StateWorkspaceStatus(I3State* i3)
     numI = (int)numD;
     
     ws = nullptr;
-    for(int j=0; j<i3->wsCount; j++)
-      if(i3->workspaces[j].num == numI)
+    for(int j=0; j<wsCount; j++)
+      if(workspaces[j].num == numI)
       {
-        ws = i3->workspaces+j;
+        ws = workspaces+j;
         break;
       }
     if(ws == nullptr)
@@ -349,60 +287,41 @@ void update_i3StateWorkspaceStatus(I3State* i3)
     
     ws->visible = getBool((JSONBool*)getField(workspace, "visible"));
     ws->focused = getBool((JSONBool*)getField(workspace, "focused"));
-    if(ws->focused) i3->focusedWorkspace = ws;
+    if(ws->focused) focusedWorkspace = ws;
     ws->urgent = getBool((JSONBool*)getField(workspace, "urgent"));
   }
   
-  i3->valid = 1;
+  valid = false;
 
 abort_status_update1:
   freeJSON((JSONSomething*)array);
 abort_status_update2:
   free(buffer);
 abort_status_update3:
-  pthread_mutex_unlock(&i3->mutex);
-
-  return;
+  pthread_mutex_unlock(&mutex);
 }
 
-void update_i3StateWorkspaceEmpty(I3State* i3, uint8_t num)
+void I3State::workspaceEmpty(uint8_t num)
 {
-  pthread_mutex_lock(&i3->mutex);
-  i3->valid = 0;
+  pthread_mutex_lock(&mutex);
+  valid = false;
 
-  
   uint8_t wsBefore = 0;
-  while(i3->workspaces[wsBefore].num != num && wsBefore < i3->wsCount)
+  while(workspaces[wsBefore].num != num && wsBefore < workspaces.size())
     wsBefore++;
   
-  if(wsBefore == i3->wsCount)
-    goto abort_empty_update;
+  if(wsBefore == wsCount)
+  {
+    pthread_mutex_unlock(&mutex);
+    return;
+  }
+  
+  workspaces.erase(workspaces.begin()+wsBefore);
+  if(focusedWorkspace > wsBefore)
+    focusedWorkspace--;
     
-  i3->wsCount--;
-  Workspace* ws = i3->workspaces+wsBefore;
-  memmove(ws, ws+1, (uint8_t)(i3->wsCount-wsBefore)*sizeof(Workspace));
-
-  if(i3->focusedWorkspace > ws)
-    i3->focusedWorkspace--;
-  
-  i3->valid = 1;
-
-abort_empty_update:
-  pthread_mutex_unlock(&i3->mutex);
-
-  return;
-}
-
-void free_i3State(I3State* i3)
-{
-  pthread_mutex_lock(&i3->mutex);
-  
-  freeWorkspaces(i3);
-  freeOutputs(i3);
-  shutdown(i3->fd, SHUT_RDWR);
-  
-  pthread_mutex_unlock(&i3->mutex);
-  pthread_mutex_destroy(&i3->mutex);
+  valid = true;
+  pthread_mutex_unlock(&mutex);
 }
 
 

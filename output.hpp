@@ -8,7 +8,7 @@
 
 void init_colors(void);
 
-void echoPrimaryLemon(I3State& i3, SystemState& sys, Output* disp, uint8_t pos);
-void echoSecondaryLemon(I3State& i3, SystemState& sys, Output* disp, uint8_t pos);
+void echoPrimaryLemon(I3State& i3, SystemState& sys, Output& disp, uint8_t pos);
+void echoSecondaryLemon(I3State& i3, SystemState& sys, Output& disp, uint8_t pos);
 
 #endif

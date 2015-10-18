@@ -6,157 +6,83 @@
  */
 
 
-#include<stdlib.h>
-#include<string.h>
-#include<stdio.h>
+#include<cstdlib>
+#include<cstring>
+#include<iostream>
+
 #include"jsonParser.h"
 #include"strUtil.h"
 
-//used for indention
-char indenter = '\0';
-
-enum JSONType_
-{
-  JSONArrayType = 1,
-  JSONObjectType = 2,
-  JSONStringType = 3,
-  JSONNumberType = 4,
-  JSONBoolType = 5,
-  JSONNullType = 6
-};
-typedef enum JSONType_ JSONType;
-
-JSONSomething* parseJSONSomething(char** string);
-void printJSONSomething(JSONSomething*, int);
+using namespace std;
 
 /******************************************************************************/
 
-struct JSONArray_
+JSONArray::JSONArray(char const*& string)
 {
-  JSONType type;
-  int elem_count;
-  JSONSomething** elems;
-};
-
-JSONArray* parseJSONArray(char** string)
-{
-  if(**string != '[')
-  {
-    fprintf(stderr, "Array not starting at the given position\n");
-    return NULL;
-  }
+  if(*string != '[')
+    throw JSONException("Array not starting at the given position");
   
-  JSONArray* array = (JSONArray*)malloc(sizeof(JSONArray));
-  array->type = JSONArrayType;
-  
-  int elem_count = 0;
-  //assuming less than 100 elems
-  JSONSomething** elems = (JSONSomething**)malloc(100*sizeof(JSONSomething*));
-  JSONSomething* elem = NULL;
-
   char c = '\0';
-  while(1)
+  while(true)
   {
-    c = **string;
-    if(elem_count == 0 && c== '[')
+    c = *string;
+    if(elems.size() == 0 && c== '[')
     {
-      *string = *string+1;
+      string++;
       skipWhitespaces(string);
-      if(**string == ']')
+      if(*string == ']')
         break;
-      elem = parseJSONSomething(string);
-      if(elem == NULL) goto abort_init_array;
-      elems[elem_count] = elem;
-      elem_count++;
+      elems.push_pack(JSON::parse(string));
       skipWhitespaces(string);
     }
-    else if(elem_count > 0 && c == ',')
+    else if(elems.size() > 0 && c == ',')
     {
-      *string = *string+1; //skip komma
+      string++; //skip komma
       skipWhitespaces(string);
-      elem = parseJSONSomething(string);
-      if(elem == NULL) goto abort_init_array;
-      elems[elem_count] = elem;
-      elem_count++;
+      elems.push_back(JSON::parse(string));
       skipWhitespaces(string);
     }
     else if(c == ']')
       break;
     else if(c == '\0')
-    {
-      fprintf(stderr, "Unexpected end of string\n");
-      goto abort_init_array;
-    }
+      throw JSONException("Unexpected end of string");
     else
     {
-      fprintf(stderr, "Unexpected symbol: %c\n", c);
-      goto abort_init_array;
+      fprintf(stderr, "Unexpected symbol: %c\n", c); //TODO
+      throw JSONException("Unexpected symbol");
     }
   }
   
-  *string = *string+1;
-  
-  array->elems = elems;
-  array->elem_count = elem_count;
-  return array;
-  
-abort_init_array:
-  while(elem_count > 0)
-  {
-    elem_count--;
-    freeJSON(elems[elem_count]);
-  }
-  free(elems);
-  free(array);
-  return NULL;
+  string++;
 }
 
-void freeJSONArray(JSONArray* jsonArray)
+JSONArray::~JSONArray()
 {
-  for(int i=0; i<jsonArray->elem_count; i++)
-    freeJSON(jsonArray->elems[i]);
-  free(jsonArray->elems);
-  free(jsonArray);
 }
 
-void printJSONArray(JSONArray* jsonArray, int indention)
+void JSONArray::print(size_t indention)
 {
-  printf("[\n%*s", indention+INDENT_WIDTH, &indenter);
-  if(jsonArray->elem_count > 0)
-    printJSONSomething(jsonArray->elems[0], indention+INDENT_WIDTH);
-  for(int i=1; i<jsonArray->elem_count; i++)
+  cout << '[' << endl << string(indention+INDENT_WIDTH, ' ');
+  if(elems.size() > 0)
+    elems[0].print(indention+INDENT_WIDTH);
+  for(size_t i=1; i<elems.size(); i++)
   {
-    printf(",\n%*s", indention+INDENT_WIDTH, &indenter);
-    printJSONSomething(jsonArray->elems[i], indention+INDENT_WIDTH);
+    cout << ',' << endl << string(indention+INDENT_WIDTH, ' ');
+    elems[i].print(indention+INDENT_WIDTH);
   }
-  printf("\n%*s]", indention, &indenter);
+  cout << endl << string(indention, ' ') << ']';
 }
 
-JSONSomething* getElem(JSONArray* jsonArray, int i)
+JSON& JSONArray::get(size_t i)
 {
-  if(jsonArray->type != JSONArrayType)
-  {
-    fprintf(stderr, "Invalid JSON query, getElem only possible with JSONArrays\n");
-    return NULL;
-  }
-
-  if(i > jsonArray->elem_count)
-  {
-    fprintf(stderr, "Array index out of bounds\n");
-    return NULL;
-  }
-  return jsonArray->elems[i];
+  if(i > elems.size())
+    throw JSONException("Array index out of bounds");
+  return elems[i];
 }
 
-int getArrayLength(JSONArray* jsonArray)
+size_t JSONArray::length(void)
 {
-  if(jsonArray->type != JSONArrayType)
-  {
-    fprintf(stderr, "Invalid JSON query, getArrayLength only possible with JSONArrays\n");
-    return -1;
-  }
-  
-  return jsonArray->elem_count;
+  return elems.size();
 }
 
 /******************************************************************************/
@@ -228,456 +154,301 @@ void printJSONNamed(JSONNamed* jsonNamed, int indention)
 
 /******************************************************************************/
 
-struct JSONObject_
+JSONObject::JSONObject(char const*& str)
 {
-  JSONType type;
-  JSONNamed** fields;
-  int field_count;
-};
-
-JSONObject* parseJSONObject(char** string)
-{
-  if(**string != '{')
-  {
-    fprintf(stderr, "Object not starting at the given position\n");
-    return NULL;
-  }
-  
-  JSONObject* object = (JSONObject*)malloc(sizeof(JSONObject));
-  object->type = JSONObjectType;
-  
-  int field_count = 0;
-  //assuming less than 50 fields
-  JSONNamed** fields = (JSONNamed**)malloc(50*sizeof(JSONNamed*));
-  JSONNamed* field = NULL;
+  if(*str != '{')
+    throw JSONException("Object not starting at the given position");
   
   char c = '\0';
-  while(1)
+  while(true)
   {
-    c = **string;
-    if(field_count == 0 && c ==  '{')
+    c = *str;
+    if(fields.size() == 0 && c ==  '{')
     {
-      *string = *string+1;
-      skipWhitespaces(string);
-      if(**string == '}')
+      str++;
+      skipWhitespaces(str);
+      if(*str == '}')
         break;
-      field = parseJSONNamed(string);
-      if(field == NULL) goto abort_init_object;
-      fields[field_count] = field;
-      field_count++;
-      skipWhitespaces(string);
+      parseJSONNamed(str);
+      skipWhitespaces(str);
     }
-    else if(field_count > 0 && c ==  ',')
+    else if(fields.size() > 0 && c ==  ',')
     {
-      *string = *string+1;
-      skipWhitespaces(string);
-      field = parseJSONNamed(string);
-      if(field == NULL) goto abort_init_object;
-      fields[field_count] = field;
-      field_count++;
-      skipWhitespaces(string);
+      str++;
+      skipWhitespaces(str);
+      parseJSONNamed(str);
+      skipWhitespaces(str);
     }
     else if(c == '}')
       break;
     else if(c == '\0')
-    {
-      fprintf(stderr, "Unexpected end of string\n");
-      goto abort_init_object;
-    }
+      throw JSONException("Unexpected end of string");
     else
-    {
-      fprintf(stderr, "Unexpected symbol: %c\n", c);
-      goto abort_init_object;
-    }
+      throw JSONException(string("Unexpected symbol: ") + c);
   }
   
-  *string = *string+1;
-  
-  object->fields = fields;
-  object->field_count = field_count;
-  return object;
-  
-abort_init_object:
-  while(field_count > 0)
-  {
-    field_count--;
-    freeJSONNamed(fields[field_count]);
-  }
-  free(fields);
-  free(object);
-  return NULL;
-}
-
-void freeJSONObject(JSONObject* jsonObject)
-{
-  for(int i=0; i<jsonObject->field_count; i++)
-    freeJSONNamed(jsonObject->fields[i]);
-  free(jsonObject->fields);
-  free(jsonObject);
-}
-
-void printJSONObject(JSONObject* jsonObject, int indention)
-{
-  printf("{\n%*s", indention+INDENT_WIDTH, &indenter);
-  if(jsonObject->field_count > 0)
-    printJSONNamed(jsonObject->fields[0], indention+INDENT_WIDTH);
-  for(int i=1; i<jsonObject->field_count; i++)
-  {
-    printf(",\n%*s", indention+INDENT_WIDTH, &indenter);
-    printJSONNamed(jsonObject->fields[i], indention+INDENT_WIDTH);
-  }
-  printf("\n%*s}", indention, &indenter);
-}
-
-JSONSomething* getField(JSONObject* jsonObject, char const* id)
-{
-  if(jsonObject->type != JSONObjectType)
-  {
-    fprintf(stderr, "Invalid JSON query, getField only possible with JSONObjects\n");
-    return NULL;
-  }
-  
-  for(int i=0; i<jsonObject->field_count; i++)
-  {
-    JSONNamed* n = jsonObject->fields[i];
-    if(strncmp(id, n->name, n->name_length) == 0)
-      return n->something;
-  }
-  
-  fprintf(stderr, "Element %s not found\n", id);
-  return NULL;
-}
-
-/******************************************************************************/
-
-struct JSONString_
-{
-  JSONType type;
-  char* string;
-  size_t string_length;
-};
-
-JSONString* parseJSONString(char** string)
-{
-  if(**string != '"')
-  {
-    fprintf(stderr, "String not starting at the given position\n");
-    return NULL;
-  }
-  
-  char* start = *string+1;
-  char* i = start;
-  char escaped = 0;
-  
-  while((*i != '"' || escaped) && *i != '\0')
-  {
-    escaped = !escaped && *i == '\\';
-    i++;
-  }
-  
-  if(*i == '\0')
-  {
-    fprintf(stderr, "Unexpected end of string\n");
-    return NULL;
-  }
-  //checking " not required here
-  *string = i+1; //skip closing "
-  
-  JSONString* jstring = (JSONString*)malloc(sizeof(JSONString));
-  jstring->type = JSONStringType;
-  jstring->string = start;
-  jstring->string_length = (size_t)(i - start);
-  return jstring;
-}
-
-void freeJSONString(JSONString* jsonString)
-{
-  free(jsonString);
+  str++;
   return;
 }
 
-void printJSONString(JSONString* jsonString, int UNUSED)
+JSONObject::~JSONObject()
 {
-  (void)UNUSED;
-  printf("\"%.*s\"", (int)jsonString->string_length, jsonString->string);
 }
 
-char* getString(JSONString* jsonString, size_t* length)
+void JSONObject::print(size_t indention)
 {
-  if(jsonString->type != JSONStringType)
+  cout << '{' << endl << string(indention+INDENT_WIDTH, ' ');
+
+  if(fields.size() > 0)
+    fields[0].print(indention+INDENT_WIDTH);
+  for(size_t i=1; i<fields.size(); i++)
   {
-    fprintf(stderr, "Invalid JSON query, getString only possible with JSONStrings\n");
-    *length = 0;
-    return NULL;
+    cout << ',' << endl << string(indention+INDENT_WIDTH, ' ');
+    fields[i].print(indention+INDENT_WIDTH); //TODO
   }
-  
-  *length = jsonString->string_length;
-  return jsonString->string;
+  cout << endl << string(indention, ' ') << '}';
+}
+
+JSON& JSONObject::get(char const* key)
+{
+  return get(string(key));
+}
+
+JSON& JSONObject::operator[](char const* key)
+{
+  return get(string(key));
+}
+
+JSON& JSONObject::get(string& key)
+{
+  auto it = fields.find(key);
+  if(it == fields.end())
+    throw JSONException(string("Element ") + key + " not found");
+  return *it;
+}
+
+JSON& JSONObject::operator[](string& key)
+{
+  return get(key);
 }
 
 /******************************************************************************/
 
-struct JSONNumber_
+JSONString::JSONString(char const*& str)
 {
-  JSONType type;
-  double value;
-};
+  if(*str != '"')
+    throw JSONException("String not starting at the given position");
+  
+  str++;
+  char const* const start = str;
+  char escaped = 0;
+  char c = *str;
+  
+  while((c != '"' || escaped) && c != '\0')
+  {
+    escaped = !escaped && c == '\\';
+    str++;
+    c = *str;
+  }
+  
+  if(*str == '\0')
+    throw JSONException("Unexpected end of string");
 
-JSONNumber* parseJSONNumber(char** string)
+  string.assign(start, str-start);
+  
+  //checking " not required here
+  str++;
+  
+}
+
+JSONString::~JSONString()
+{
+}
+
+void JSONString::print(size_t)
+{
+  cout << string;
+}
+
+string JSONString::get(void)
+{
+  return string;
+}
+
+/******************************************************************************/
+
+JSONNumber::JSONNumber(char const*& string)
 {
   char* endptr;
-  double val = strtod(*string, &endptr);
+  n = strtod(string, &endptr);
   
-  if(endptr == *string)
-  {
-    fprintf(stderr, "Could not convert string to number\n");
-    return NULL;
-  }
+  if(endptr == string)
+    throw JSONException("Could not convert string to number");
   
-  JSONNumber* number = (JSONNumber*)malloc(sizeof(JSONNumber));
-  number->type = JSONNumberType;
-  number->value = val;
-  *string = endptr;
-  return number;
+  string = endptr;
 }
 
-void freeJSONNumber(JSONNumber* jsonNumber)
+JSONNumber::~JSONNumber()
 {
-  free(jsonNumber);
-  return;
 }
 
-void printJSONNumber(JSONNumber* jsonNumber, int UNUSED)
+void JSONNumber::print(size_t)
 {
-  (void)UNUSED;
-  printf("%lf", jsonNumber->value);
+  cout << n;
 }
 
-double getNumber(JSONNumber* jsonNumber)
+double JSONNumber::get(void)
 {
-  if(jsonNumber->type != JSONNumberType)
-  {
-    fprintf(stderr, "Invalid JSON query, getNumber only possible with JSONNumbers\n");
-    return 0.0f/0.0f;
-  }
-  
-  return jsonNumber->value;
+  return n;
 }
 
 /******************************************************************************/
 
-struct JSONBool_
+JSONBool::JSONBool(char const*& str)
 {
-  JSONType type;
-  char value;
-};
-
-JSONBool* parseJSONBool(char** string)
-{
-  char val = -1;
-  if(strncmp(*string, "false", 5) == 0)
+  if(strncmp(str, "false", 5) == 0)
   {
-    val = 0;
-    *string = *string + 5;
+    b = false;
+    str += 5;
   }
-  else if(strncmp(*string, "true", 4) == 0)
+  else if(strncmp(str, "true", 4) == 0)
   {
-    val = 1;
-    *string = *string + 4;
+    b = true;
+    str += 4;
   }
   else
   {
-    fprintf(stderr, "Could not detect neither true nor false: %.*s", 5, *string);
-    fprintf(stderr, "\n");
-    return NULL;
+    string errmsg("Could not detect neither true nor false: ");
+    throw JSONException(errmsg + string(str, 5));
   }
-    
-  JSONBool* boolean = (JSONBool*)malloc(sizeof(JSONBool));
-  boolean->type = JSONBoolType;
-  boolean->value = val;
-  return boolean;
 }
 
-void freeJSONBool(JSONBool* jsonBool)
+JSONBool::~JSONBool()
 {
-  free(jsonBool);
-  return;
 }
 
-void printJSONBool(JSONBool* jsonBool, int UNUSED)
+void JSONBool::print(size_t)
 {
-  (void)UNUSED;
-  printf(jsonBool->value ? "true" : "false");
+  cout << b;
 }
 
-char getBool(JSONBool* jsonBool)
+char JSONBool::get(void)
 {
-  if(jsonBool->type != JSONBoolType)
-  {
-    fprintf(stderr, "Invalid JSON query, getBool only possible with JSONBools\n");
-    return -1;
-  }
-  
-  return jsonBool->value;
+  return b;
 }
 
 /******************************************************************************/
 
-struct JSONNull_
+JSONNull::JSONNull(char const*& str)
 {
-  JSONType type;
-};
-
-JSONNull* parseJSONNull(char** string)
-{
-  if(strncmp(*string, "null", 4) == 0)
-  {
-    *string = *string + 4;
-    JSONNull* null = (JSONNull*)malloc(sizeof(JSONNull));
-    null->type = JSONNullType;
-    return null;
-  }
-
-  fprintf(stderr, "Could not detect null: %.*s", 4, *string);
-  fprintf(stderr, "\n");
-  return NULL;
+  if(strncmp(str, "null", 4) == 0)
+    str += 4;
+  else
+    throw JSONException(string("Could not detect null: ") + string(str, 4));
 }
 
-void freeJSONNull(JSONNull* jsonNull)
+JSONNull::JSONNull()
 {
-  free(jsonNull);
-  return;
 }
 
-void printJSONNull(JSONNull* jsonNull, int UNUSED)
+void JSONNull::print(size_t)
 {
-  (void)UNUSED;
-  (void)jsonNull;
-  printf("null");
+  cout << "null";
 }
 
 /******************************************************************************/
-
-union JSONSomething_
-{
-  JSONType type;
-  JSONArray array;
-  JSONObject object;
-  JSONString string;
-  JSONNumber number;
-  JSONBool boolean;
-  JSONNull null;
-};
 
 /**
  * Parses the first JSONSomthing it encounters,
  * string is set to the next (untouched) character.
  */
-JSONSomething* parseJSON(char* string)
+JSON& JSON::parse(char const* string)
 {
-  return parseJSONSomething(&string);
+  return parseJSON(string);
 }
 
-JSONSomething* parseJSONSomething(char** string)
+JSON& JSON::parseJSON(char const*& str)
 {
-  skipWhitespaces(string);
-  char c = **string;
+  skipWhitespaces(str);
+  char c = *str;
   switch(c)
   {
   case '\0':
-    fprintf(stderr, "Unexpected end of string");
-    return NULL;
+    throw JSONException("Unexpected end of string");
   case '"':
-    return (JSONSomething*)parseJSONString(string);
+    return JSONString(str);
   case '{':
-    return (JSONSomething*)parseJSONObject(string);
+    return JSONObject(str);
   case '[':
-    return (JSONSomething*)parseJSONArray(string);
+    return JSONArray(str);
   default:
     if((c >= '0' && c <= '9') || c == '.' || c == '+' || c == '-')
-      return (JSONSomething*)parseJSONNumber(string);
+      return JSONNumber(str);
     else if(c == 't' || c == 'f')
-      return (JSONSomething*)parseJSONBool(string);
+      return JSONBool(str);
     else if(c == 'n')
-      return (JSONSomething*)parseJSONNull(string);
+      return JSONNull(str);
     break;
   }
-  fprintf(stderr, "No valid JSON detected: %c", c);
-  fprintf(stderr, " (%d)\n", c);
-  return NULL;
-}
-
-void freeJSON(JSONSomething* json)
-{
-  if(json == NULL)
-    return;
   
-  switch(json->type)
-  {
-  case JSONObjectType:
-    freeJSONObject(&json->object);
-    break;
-  case JSONArrayType:
-    freeJSONArray(&json->array);
-    break;
-  case JSONStringType:
-    freeJSONString(&json->string);
-    break;
-  case JSONNumberType:
-    freeJSONNumber(&json->number);
-    break;
-  case JSONBoolType:
-    freeJSONBool(&json->boolean);
-    break;
-  case JSONNullType:
-    freeJSONNull(&json->null);
-    break;
-  default:
-    break;
-  }
-  return;
+  string errmsg("No valid JSON detected: ");
+  throw JSONException(errmsg + c);
 }
 
-void printJSONSomething(JSONSomething* json, int indention)
+void JSON::print(void)
 {
-  if(json == NULL)
-    return;
-  
-  switch(json->type)
-  {
-  case JSONObjectType:
-    printJSONObject(&json->object, indention);
-    break;
-  case JSONArrayType:
-    printJSONArray(&json->array, indention);
-    break;
-  case JSONStringType:
-    printJSONString(&json->string, indention);
-    break;
-  case JSONNumberType:
-    printJSONNumber(&json->number, indention);
-    break;
-  case JSONBoolType:
-    printJSONBool(&json->boolean, indention);
-    break;
-  case JSONNullType:
-    printJSONNull(&json->null, indention);
-    break;
-  default:
-    break;
-  }
-  return;
+  print(0);
+  cout << endl;
 }
 
-/**
- * Use this method to print JSONSomethings.
- * Calling the specialized methods directly is unsafe.
- */
-void printJSON(JSONSomething* json)
+JSONArray& JSON::array(void)
 {
-  printJSONSomething(json, 0);
-  printf("\n");
+  JSONArray* ptr = dynamic_cast<JSONArray*>(this);
+  if(ptr == nullptr)
+    throw JSONException("Requested thing is not a JSONArray");
+  return *ptr;
 }
+
+JSONObject& JSON::object(void)
+{
+  JSONObject* ptr = dynamic_cast<JSONObject*>(this);
+  if(ptr == nullptr)
+    throw JSONException("Requested thing is not a JSONObject");
+  return *ptr;
+}
+
+JSONString& JSON::string(void)
+{
+  JSONString* ptr = dynamic_cast<JSONString*>(this);
+  if(ptr == nullptr)
+    throw JSONException("Requested thing is not a JSONString");
+  return *ptr;
+}
+
+JSONNumber& JSON::number(void)
+{
+  JSONNumber* ptr = dynamic_cast<JSONNumber*>(this);
+  if(ptr == nullptr)
+    throw JSONException("Requested thing is not a JSONNumber");
+  return *ptr;
+}
+
+JSONBool& JSON::boolean(void)
+{
+  JSONBool* ptr = dynamic_cast<JSONBool*>(this);
+  if(ptr == nullptr)
+    throw JSONException("Requested thing is not a JSONBool");
+  return *ptr;
+}
+
+JSONNull& JSON::null(void)
+{
+  JSONNull* ptr = dynamic_cast<JSONNull*>(this);
+  if(ptr == nullptr)
+    throw JSONException("Requested thing is not a JSONNull");
+  return *ptr;
+}
+
 
 /******************************************************************************/
 

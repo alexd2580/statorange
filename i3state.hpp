@@ -3,7 +3,10 @@
 
 #include<cstdint>
 #include<string>
+#include<vector>
+
 #include<pthread.h>
+
 
 using namespace std;
 
@@ -46,17 +49,17 @@ public:
 
   I3State(std::string path);
   ~I3State();
-  char valid;
+  bool valid;
   
   string mode;
 
-  uint8_t outputCount;
-  Output* outputs;
+  std::vector<Output> outputs;
+  std::vector<Workspace> workspaces;
   
-  uint8_t wsCount;
-  Workspace* workspaces;
+  size_t focusedWorkspace;
   
-  Workspace* focusedWorkspace;
+  void parseOutputs(void);
+  void parseWorkspaces(void);
   
   void updateOutputs(void);
   void workspaceInit(uint8_t num);

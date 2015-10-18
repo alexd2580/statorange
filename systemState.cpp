@@ -11,12 +11,29 @@
 #include<unistd.h>
 #include<sys/wait.h>
 
-#include"config.hpp"
 #include"systemState.hpp"
 #include"jsonParser.hpp"
 #include"strUtil.hpp"
 
 using namespace std;
+
+string getDate = "date +%Y-%m-%d\\ %H:%M";
+string getSpace = "df -h ";
+
+string ifconfig_file_loc = "/sbin/ifconfig ";
+string iwconfig_file_loc = "/sbin/iwconfig";
+string shell_file_loc = "/bin/sh";
+string temp_file_loc = "/sys/bus/acpi/devices/LNXTHERM:00/thermal_zone/temp";
+string load_file_loc = "/proc/loadavg";
+string bat_file_loc = "/sys/class/power_supply/BAT0/uevent";
+string ifstat_file_loc = "/sys/class/net/%s/operstate";
+
+string ethernet = "eth0";
+string wireless = "wlan0";
+
+string home_dir = "/home";
+string root_dir = "/";
+
 
 string execute(string command, cchar* arg1, cchar* arg2)
 {
@@ -33,7 +50,7 @@ string execute(string command, cchar* arg1, cchar* arg2)
     close(1); //stdout
     dup2(fd[1], 1);
     close(fd[0]);
-    execlp(shell_file_loc, shell_file_loc, "-c", command.c_str(), arg1, arg2, (char*)nullptr);
+    execlp(shell_file_loc.c_str(), shell_file_loc.c_str(), "-c", command.c_str(), arg1, arg2, (char*)nullptr);
     //child has been replaced by shell command
   }
 
@@ -184,23 +201,24 @@ void SystemState::update(void)
   pthread_mutex_lock(&mutex);
 
   char line[1000] = { 0 };
+  string tmp;
   
   //Date
   time = execute(getDate, nullptr, nullptr);
   
   //Temp
-  FILE* tfile = fopen(temp_file_loc, "r");
+  FILE* tfile = fopen(temp_file_loc.c_str(), "r");
   fgets(line, 10, tfile);
   fclose(tfile);
   cpu_temp = (int)strtol(line, nullptr, 0) / 1000;
   
-  FILE* lfile = fopen(load_file_loc, "r");
+  FILE* lfile = fopen(load_file_loc.c_str(), "r");
   fgets(line, 10, lfile);
   fclose(lfile);
   cpu_load = strtof(line, nullptr);
   
   //battery
-  FILE* bfile = fopen(bat_file_loc, "r");
+  FILE* bfile = fopen(bat_file_loc.c_str(), "r");
   if(bfile == nullptr)
     bat_status = NotFound; //Probably no battery
   else
@@ -228,15 +246,15 @@ void SystemState::update(void)
     fclose(bfile);
   }
   
-  sprintf(line, ifstat_file_loc, ethernet);
-  FILE* ethfile = fopen(line, "r");
+  tmp = ifstat_file_loc + ethernet;
+  FILE* ethfile = fopen(tmp.c_str(), "r");
   fgets(line, 10, ethfile);
   fclose(ethfile);
   if((net_eth_up = strncmp(line, "up", 2) == 0))
     net_eth_ip = getIpAddress(ethernet);
 
-  sprintf(line, ifstat_file_loc, wireless);
-  FILE* wlanfile = fopen(line, "r");
+  tmp = ifstat_file_loc + wireless;
+  FILE* wlanfile = fopen(tmp.c_str(), "r");
   fgets(line, 10, wlanfile);
   fclose(wlanfile);
   if((net_wlan_up = strncmp(line, "up", 2) == 0))
