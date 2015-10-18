@@ -4,3 +4,4 @@ debug
 *.o
 *.log
 other
+*.fifo
