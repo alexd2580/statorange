@@ -6,11 +6,14 @@
  */
 
 
-#include<stdlib.h>
-#include<string.h>
-#include<stdio.h>
+#include<cstdlib>
+#include<cstring>
+#include<iostream>
+#include<string>
 #include"jsonSearch.hpp"
-#include"strUtil.hpp"
+#include"util.hpp"
+
+using namespace std;
 
 /******************************************************************************/
 
@@ -123,45 +126,48 @@ int getArrayLength(JSONArray* jsonArray)
  * Stores the length of the field name to fl if it's != NULL.
  * Returns NULL on error.
  */
-char* getJSONNamed(char* string, char** fn, size_t* fl)
+char const* getJSONNamed(char const* string, char const** fn, size_t* fl)
 {
   if(*string != '"')
   {
-    fprintf(stderr, "Named not starting at the given position\n");
-    return NULL;
+    cerr << "Named not starting at the given position" << endl;
+    return nullptr;
   }
   
-  char* start = string+1;
-  char* i = start;
-  char escaped = 0;
+  string++;
+  char const* start = string;
+  bool escaped = false;
+  char c = *string;
   
-  while((*i != '"' || escaped) && *i != '\0')
+  while((c != '"' || escaped) && c != '\0')
   {
-    escaped = !escaped && *i == '\\';
-    i++;
+    escaped = !escaped && c == '\\';
+    string++;
+    c = *string;
   }
   
-  if(*i == '\0')
+  if(c == '\0')
   {
-    fprintf(stderr, "Unexpected end of string\n");
-    return NULL;
+    cerr << "Unexpected end of string" << endl;
+    return nullptr;
   }
   //checking " not required here
-  string = i+1; //skip closing "
   
-  skipWhitespaces(&string);
+  if(fn) *fn = start;
+  if(fl) *fl = (size_t)(string-start);
+  
+  string++; //skip closing "
+  
+  skipWhitespaces(string);
   if(*string != ':')
   {
-    fprintf(stderr, "Unexpected symbol: %c", *string);
-    fprintf(stderr, " (%d)\n", *string);
-    return NULL;
+    cerr << "Unexpected symbol: " << *string << '(' << (int)*string << ')' << endl;
+    return nullptr;
   }
   
   string++; // skip :
-  skipWhitespaces(&string);
+  skipWhitespaces(string);
   
-  if(fn) *fn = start;
-  if(fl) *fl = (size_t)(i-start);
   return string;
 }
 
@@ -173,55 +179,55 @@ char* getJSONNamed(char* string, char** fn, size_t* fl)
  * Stores the number of fields to l if it's != NULL.
  * Returns NULL on error.
  */
-char* getJSONObject(char* string, size_t* l)
+char const* getJSONObject(char const* string, size_t* l)
 {
   if(*string != '{')
   {
-    fprintf(stderr, "Object not starting at the given position\n");
-    return NULL;
+    cerr << "Object not starting at the given position" << endl;
+    return nullptr;
   }
   
   size_t field_count = 0;
   char c = '\0';
-  while(1)
+  while(true)
   {
     c = *string;
     if(field_count == 0 && c ==  '{')
     {
       string++;
-      skipWhitespaces(&string);
+      skipWhitespaces(string);
       if(*string == '}')
         break;
-      string = getJSONNamed(string, NULL, NULL);
+      string = getJSONNamed(string, nullptr, nullptr);
       string = skipJSONSomething(string);
-      if(string == NULL)
-        return NULL;
+      if(string == nullptr)
+        return nullptr;
       
       field_count++;
-      skipWhitespaces(&string);
+      skipWhitespaces(string);
     }
     else if(field_count > 0 && c ==  ',')
     {
       string++;
-      skipWhitespaces(&string);
-      string = getJSONNamed(string, NULL, NULL);
+      skipWhitespaces(string);
+      string = getJSONNamed(string, nullptr, nullptr);
       string = skipJSONSomething(string);
-      if(string == NULL)
-        return NULL;
+      if(string == nullptr)
+        return nullptr;
       field_count++;
-      skipWhitespaces(&string);
+      skipWhitespaces(string);
     }
     else if(c == '}')
       break;
     else if(c == '\0')
     {
-      fprintf(stderr, "Unexpected end of string\n");
-      return NULL;
+      cerr << "Unexpected end of string" << endl;
+      return nullptr;
     }
     else
     {
-      fprintf(stderr, "Unexpected symbol: %c\n", c);
-      return NULL;
+      cerr << "Unexpected symbol: " << c << '(' << (int)c << ')' << endl;
+      return nullptr;
     }
   }
 
@@ -235,75 +241,75 @@ char* getJSONObject(char* string, size_t* l)
  *  if the object cannot be found
  *  or the JSON cannot be parsed.
  */
-char* getJSONObjectField(char* string, char const* nStr, size_t nLen)
+char const* getJSONObjectField(char const* string, char const* nStr, size_t nLen)
 {
   if(*string != '{')
   {
-    fprintf(stderr, "Object not starting at the given position\n");
-    return NULL;
+    cerr << "Object not starting at the given position" << endl;
+    return nullptr;
   }
   
-  char* name;
+  char const* name;
   size_t nameLen;
   
   size_t field_count = 0;
   char c = '\0';
-  while(1)
+  while(true)
   {
     c = *string;
     if(field_count == 0 && c ==  '{')
     {
       string++;
-      skipWhitespaces(&string);
+      skipWhitespaces(string);
       if(*string == '}')
         break;
       string = getJSONNamed(string, &name, &nameLen);
-      if(string == NULL)
-        return NULL;
+      if(string == nullptr)
+        return nullptr;
         
       if(nLen == nameLen)
         if(strncmp(name, nStr, nLen) == 0)
           return string;
 
       string = skipJSONSomething(string);
-      if(string == NULL)
-        return NULL;
+      if(string == nullptr)
+        return nullptr;
       field_count++;
-      skipWhitespaces(&string);
+      skipWhitespaces(string);
     }
     else if(field_count > 0 && c ==  ',')
     {
       string++;
-      skipWhitespaces(&string);
+      skipWhitespaces(string);
       string = getJSONNamed(string, &name, &nameLen);
-      if(string == NULL)
-        return NULL;
+      if(string == nullptr)
+        return nullptr;
         
       if(nLen == nameLen)
         if(strncmp(name, nStr, nLen) == 0)
           return string;
 
       string = skipJSONSomething(string);
-      if(string == NULL)
-        return NULL;
+      if(string == nullptr)
+        return nullptr;
       field_count++;
-      skipWhitespaces(&string);
+      skipWhitespaces(string);
     }
     else if(c == '}')
-      return NULL;
+      return nullptr;
     else if(c == '\0')
     {
-      fprintf(stderr, "Unexpected end of string\n");
-      return NULL;
+      cerr << "Unexpected end of string" << endl;
+      return nullptr;
     }
     else
     {
-      fprintf(stderr, "Unexpected symbol: %c\n", c);
-      return NULL;
+      cerr << "Unexpected symbol: " << c << '(' << (int)c << ')' << endl;
+      return nullptr;
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 /******************************************************************************/
@@ -316,35 +322,36 @@ char* getJSONObjectField(char* string, char const* nStr, size_t nLen)
  * Returns a pointer to the next character after the read string.
  * Returns NULL on fail. In this case the values of s and l are not changed
  */
-char* getJSONString(char* string, char** s, size_t* l)
+char const* getJSONString(char const* string, char const** s, size_t* l)
 {
   if(*string != '"')
   {
-    fprintf(stderr, "String not starting at the given position\n");
-    return NULL;
+    cerr << "String not starting at the given position" << endl;
+    return nullptr;
   }
   
-  char* start = string+1;
-  char* i = start;
-  char escaped = 0;
+  string++;
+  char const* start = string;
+  bool escaped = false;
+  char c = *string;
   
-  while((*i != '"' || escaped) && *i != '\0')
+  while((c != '"' || escaped) && c != '\0')
   {
-    escaped = !escaped && *i == '\\';
-    i++;
+    escaped = !escaped && c == '\\';
+    string++;
+    c = *string;
   }
   
-  if(*i == '\0')
+  if(c == '\0')
   {
-    fprintf(stderr, "Unexpected end of string\n");
-    return NULL;
+    cerr << "Unexpected end of string" << endl;
+    return nullptr;
   }
   //checking " not required here
-  string = i+1; //skip closing "
-
   if(s) *s = start;
-  if(l) *l = (size_t)(i-start);
-  return string;  
+  if(l) *l = (size_t)(string-start);
+
+  return string+1;  
 }
 
 /******************************************************************************/
@@ -355,15 +362,15 @@ char* getJSONString(char* string, char** s, size_t* l)
  * Returns a pointer to the next character after the read num.
  * Returns NULL on fail. In this case the value of n is not changed
  */
-char* getJSONNumber(char* string, double* n)
+char const* getJSONNumber(char const* string, double* n)
 {
   char* endptr;
   double val = strtod(string, &endptr);
   
   if(endptr == string)
   {
-    fprintf(stderr, "Could not convert string to number\n");
-    return NULL;
+    cerr << "Could not convert string to number" << endl;
+    return nullptr;
   }
   
   if(n) *n = val;
@@ -378,22 +385,21 @@ char* getJSONNumber(char* string, double* n)
  * Returns a pointer to the next character after the read bool.
  * Returns NULL on fail. In this case the value of b is not changed.
  */
-char* getJSONBool(char* string, uint8_t* b)
+char const* getJSONBool(char const* string, bool* b)
 {
   if(strncmp(string, "false", 5) == 0)
   {
-    if(b) *b = 0;
+    if(b) *b = false;
     return string + 5;
   }
   else if(strncmp(string, "true", 4) == 0)
   {
-    if(b) *b = 1;
+    if(b) *b = true;
     return string + 4;
   }
 
-  fprintf(stderr, "Could not detect neither true nor false: %.*s", 5, string);
-  fprintf(stderr, "\n");
-  return NULL;
+  cerr << "Could not detect neither true nor false: " << std::string(string, 5) << endl;
+  return nullptr;
 }
 
 /******************************************************************************/
@@ -403,50 +409,48 @@ char* getJSONBool(char* string, uint8_t* b)
  * Offsets string to the next character after the read null.
  * Returns NULL on fail.
  */
-char* getJSONNull(char* string)
+char const* getJSONNull(char const* string)
 {
   if(strncmp(string, "null", 4) == 0)
     return string+4;
     
-  fprintf(stderr, "Could not detect null: %.*s", 4, string);
-  fprintf(stderr, "\n");
-  return NULL;
+  cerr << "Could not detect null: " << std::string(string, 4) << endl;
+  return nullptr;
 }
 
 /******************************************************************************/
 
-char* skipJSONSomething(char* string)
+char const* skipJSONSomething(char const* string)
 {
-  if(string == NULL)
-    return NULL;
+  if(string == nullptr)
+    return nullptr;
 
-  skipWhitespaces(&string);
+  skipWhitespaces(string);
   char c = *string;
   switch(c)
   {
   case '\0':
-    fprintf(stderr, "Unexpected end of string");
-    return NULL;
+    cerr << "Unexpected end of string" << endl;
+    return nullptr;
   case '"':
-    return getJSONString(string, NULL, NULL);
+    return getJSONString(string, nullptr, nullptr);
   case '{':
-    return getJSONObject(string, NULL);
+    return getJSONObject(string, nullptr);
   case '[':
-    fprintf(stderr, "arrays currently unsopported\n");
-    return NULL;
+    cerr << "arrays currently unsopported" << endl;
+    return nullptr;
     //return (JSONSomething*)parseJSONArray(string);
   default:
     if((c >= '0' && c <= '9') || c == '.' || c == '+' || c == '-')
-      return getJSONNumber(string, NULL);
+      return getJSONNumber(string, nullptr);
     else if(c == 't' || c == 'f')
-      return getJSONBool(string, NULL);
+      return getJSONBool(string, nullptr);
     else if(c == 'n')
       return getJSONNull(string);
     break;
   }
-  fprintf(stderr, "No valid JSON detected: %c", c);
-  fprintf(stderr, " (%d)\n", c);
-  return NULL;
+  cerr << "No valid JSON detected: " << c << '(' << (int)c << ')' << endl;
+  return nullptr;
 }
 
 /*

@@ -7,36 +7,31 @@
 
 #include<pthread.h>
 
-
-using namespace std;
-
 #define MAX_DISP_LEN 20
 #define MAX_NAME_LEN 50
 
-typedef struct Output_ Output;
-struct Output_
+struct Output
 {
-  string name;
+  std::string name;
   int posX;
   int posY;
 };
 
-typedef struct Workspace_ Workspace;
-struct Workspace_
+struct Workspace
 {
   /**
    * unique number of workspace
    * nobody ever used more than 256 workspaces!
    */
   uint8_t num; 
-  string name;
+  std::string name;
   char visible;
   char focused;
   char urgent;
-  Output* output;
+  uint8_t output;
   
   long focusedAppID; // -1 indicates unknown
-  string focusedApp; // undefined when unknown
+  std::string focusedApp; // undefined when unknown
 };
 
 class I3State
@@ -51,7 +46,7 @@ public:
   ~I3State();
   bool valid;
   
-  string mode;
+  std::string mode;
 
   std::vector<Output> outputs;
   std::vector<Workspace> workspaces;

@@ -3,14 +3,14 @@
 
 #include<cstdint>
 
-char* skipJSONSomething(char*);
+char const* skipJSONSomething(char const*);
 
 //JSONSomething* getElem(JSONArray* jsonArray, int i); TODO
 //int getArrayLength(JSONArray* jsonArray);
-char* getJSONObject(char* string, size_t* f);
-char* getJSONObjectField(char* string, char const* fn, size_t fl);
-char* getJSONString(char* string, char** s, size_t* l);
-char* getJSONNumber(char* string, double*);
-char* getJSONBool(char* string, uint8_t* b);
+char const* getJSONObject(char const* string, size_t* f);
+char const* getJSONObjectField(char const* string, char const* fn, size_t fl);
+char const* getJSONString(char const* string, char const** s, size_t* l);
+char const* getJSONNumber(char const* string, double*);
+char const* getJSONBool(char const* string, bool* b);
 
 #endif

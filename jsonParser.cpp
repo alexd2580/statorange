@@ -5,156 +5,132 @@
  * I WILL EVENTUALLY (MAYBE) FIX THIS!
  */
 
-
 #include<cstdlib>
 #include<cstring>
 #include<iostream>
 
-#include"jsonParser.h"
-#include"strUtil.h"
+#include"jsonParser.hpp"
+#include"util.hpp"
 
 using namespace std;
 
 /******************************************************************************/
 
-JSONArray::JSONArray(char const*& string)
+JSONArray::JSONArray(cchar*& str)
 {
-  if(*string != '[')
+  if(*str != '[')
     throw JSONException("Array not starting at the given position");
   
   char c = '\0';
   while(true)
   {
-    c = *string;
+    c = *str;
     if(elems.size() == 0 && c== '[')
     {
-      string++;
-      skipWhitespaces(string);
-      if(*string == ']')
+      str++;
+      skipWhitespaces(str);
+      if(*str == ']')
         break;
-      elems.push_pack(JSON::parse(string));
-      skipWhitespaces(string);
+      elems.push_back(JSON::parseJSON(str));
+      skipWhitespaces(str);
     }
     else if(elems.size() > 0 && c == ',')
     {
-      string++; //skip komma
-      skipWhitespaces(string);
-      elems.push_back(JSON::parse(string));
-      skipWhitespaces(string);
+      str++; //skip komma
+      skipWhitespaces(str);
+      elems.push_back(JSON::parseJSON(str));
+      skipWhitespaces(str);
     }
     else if(c == ']')
       break;
     else if(c == '\0')
-      throw JSONException("Unexpected end of string");
+      throw JSONException("Unexpected end of str");
     else
-    {
-      fprintf(stderr, "Unexpected symbol: %c\n", c); //TODO
-      throw JSONException("Unexpected symbol");
-    }
+      throw JSONException(std::string("Unexpected symbol: ") + c);
   }
   
-  string++;
+  str++;
 }
 
 JSONArray::~JSONArray()
 {
+  for(auto i=elems.begin(); i!=elems.end(); i++)
+    delete *i;
 }
 
 void JSONArray::print(size_t indention)
 {
-  cout << '[' << endl << string(indention+INDENT_WIDTH, ' ');
+  cout << '[' << endl << std::string(indention+INDENT_WIDTH, ' ');
   if(elems.size() > 0)
-    elems[0].print(indention+INDENT_WIDTH);
+    elems[0]->print(indention+INDENT_WIDTH);
   for(size_t i=1; i<elems.size(); i++)
   {
-    cout << ',' << endl << string(indention+INDENT_WIDTH, ' ');
-    elems[i].print(indention+INDENT_WIDTH);
+    cout << ',' << endl << std::string(indention+INDENT_WIDTH, ' ');
+    elems[i]->print(indention+INDENT_WIDTH);
   }
-  cout << endl << string(indention, ' ') << ']';
+  cout << endl << std::string(indention, ' ') << ']';
 }
 
 JSON& JSONArray::get(size_t i)
 {
   if(i > elems.size())
     throw JSONException("Array index out of bounds");
-  return elems[i];
+  return *elems[i];
 }
 
-size_t JSONArray::length(void)
+__attribute__((pure)) size_t JSONArray::length(void)
 {
   return elems.size();
 }
 
 /******************************************************************************/
 
-struct JSONNamed_
+void JSONObject::parseNamed(cchar*& str)
 {
-  char* name;
-  size_t name_length;
-  JSONSomething* something;
-};
+  if(*str != '"')
+    throw JSONException("Named not starting at the given position");
+  
+  str++;
+  cchar* start = str;
+  bool escaped = false;
+  char c = *str;
+  
+  while((c != '"' || escaped) && c != '\0')
+  {
+    escaped = !escaped && c == '\\';
+    str++;
+    c = *str;
+  }
+  
+  if(c == '\0')
+    throw JSONException("Unexpected end of str");
 
-JSONNamed* parseJSONNamed(char** string)
-{
-  if(**string != '"')
-  {
-    fprintf(stderr, "Named not starting at the given position\n");
-    return NULL;
-  }
+  std::string key(start, (size_t)(str-start));
   
-  char* start = *string+1;
-  char* i = start;
-  char escaped = 0;
-  
-  while((*i != '"' || escaped) && *i != '\0')
-  {
-    escaped = !escaped && *i == '\\';
-    i++;
-  }
-  
-  if(*i == '\0')
-  {
-    fprintf(stderr, "Unexpected end of string\n");
-    return NULL;
-  }
   //checking " not required here
-  *string = i+1; //skip closing "
-  
-  skipWhitespaces(string);
-  if(**string != ':')
+  str++; //skip closing "
+  skipWhitespaces(str);
+  if(*str != ':')
   {
-    fprintf(stderr, "Unexpected symbol: %c", **string);
-    fprintf(stderr, " (%d)\n", **string);
-    return NULL;
+    std::string errmsg("Unexpected symbol: ");
+    throw JSONException(errmsg + *str);
   }
-  *string = *string+1; // skip :
-  skipWhitespaces(string);
-  JSONSomething* something = parseJSONSomething(string);
-  if(something == NULL)
-    return NULL;
-  
-  JSONNamed* named = (JSONNamed*)malloc(sizeof(JSONNamed));
-  named->name = start;
-  named->name_length = (size_t)(i - start);
-  named->something = something;
-  return named;
-}
+  str++; // skip :
+  skipWhitespaces(str);
+  JSON* something = JSON::parseJSON(str);
 
-void freeJSONNamed(JSONNamed* jsonNamed)
-{
-  freeJSON(jsonNamed->something);
-  free(jsonNamed);
-}
-
-void printJSONNamed(JSONNamed* jsonNamed, int indention)
-{
-  printf("\"%.*s\" : ", (int)jsonNamed->name_length, jsonNamed->name);
-  printJSONSomething(jsonNamed->something, indention);
+  fields.insert(std::pair<std::string,JSON*>(key, something));
 }
 
 /******************************************************************************/
 
-JSONObject::JSONObject(char const*& str)
+void printNamed(map<std::string,JSON*>::iterator i, size_t indention)
+{
+  cout << '"' << i->first << "\" : ";
+  i->second->print(indention);
+}
+
+JSONObject::JSONObject(cchar*& str)
 {
   if(*str != '{')
     throw JSONException("Object not starting at the given position");
@@ -169,14 +145,14 @@ JSONObject::JSONObject(char const*& str)
       skipWhitespaces(str);
       if(*str == '}')
         break;
-      parseJSONNamed(str);
+      parseNamed(str);
       skipWhitespaces(str);
     }
     else if(fields.size() > 0 && c ==  ',')
     {
       str++;
       skipWhitespaces(str);
-      parseJSONNamed(str);
+      parseNamed(str);
       skipWhitespaces(str);
     }
     else if(c == '}')
@@ -184,7 +160,7 @@ JSONObject::JSONObject(char const*& str)
     else if(c == '\0')
       throw JSONException("Unexpected end of string");
     else
-      throw JSONException(string("Unexpected symbol: ") + c);
+      throw JSONException(std::string("Unexpected symbol: ") + c);
   }
   
   str++;
@@ -193,55 +169,60 @@ JSONObject::JSONObject(char const*& str)
 
 JSONObject::~JSONObject()
 {
+  for(auto i=fields.begin(); i!=fields.end(); i++)
+    delete i->second;
 }
 
 void JSONObject::print(size_t indention)
 {
-  cout << '{' << endl << string(indention+INDENT_WIDTH, ' ');
+  cout << '{' << endl << std::string(indention+INDENT_WIDTH, ' ');
 
+  auto i=fields.begin();
   if(fields.size() > 0)
-    fields[0].print(indention+INDENT_WIDTH);
-  for(size_t i=1; i<fields.size(); i++)
+    printNamed(i, indention+INDENT_WIDTH);
+  for(; i!=fields.end(); i++)
   {
-    cout << ',' << endl << string(indention+INDENT_WIDTH, ' ');
-    fields[i].print(indention+INDENT_WIDTH); //TODO
+    cout << ',' << endl << std::string(indention+INDENT_WIDTH, ' ');
+    printNamed(i, indention+INDENT_WIDTH);
   }
-  cout << endl << string(indention, ' ') << '}';
+  cout << endl << std::string(indention, ' ') << '}';
 }
 
-JSON& JSONObject::get(char const* key)
+JSON& JSONObject::get(cchar* key)
 {
-  return get(string(key));
+  std::string skey(key);
+  return get(skey);
 }
 
-JSON& JSONObject::operator[](char const* key)
+JSON& JSONObject::operator[](cchar* key)
 {
-  return get(string(key));
+  std::string skey(key);
+  return get(skey);
 }
 
-JSON& JSONObject::get(string& key)
+JSON& JSONObject::get(std::string& key)
 {
   auto it = fields.find(key);
   if(it == fields.end())
-    throw JSONException(string("Element ") + key + " not found");
-  return *it;
+    throw JSONException(std::string("Element ") + key + " not found");
+  return *(it->second);
 }
 
-JSON& JSONObject::operator[](string& key)
+JSON& JSONObject::operator[](std::string& key)
 {
   return get(key);
 }
 
 /******************************************************************************/
 
-JSONString::JSONString(char const*& str)
+JSONString::JSONString(cchar*& str)
 {
   if(*str != '"')
     throw JSONException("String not starting at the given position");
   
   str++;
-  char const* const start = str;
-  char escaped = 0;
+  cchar* const start = str;
+  bool escaped = 0;
   char c = *str;
   
   while((c != '"' || escaped) && c != '\0')
@@ -251,7 +232,7 @@ JSONString::JSONString(char const*& str)
     c = *str;
   }
   
-  if(*str == '\0')
+  if(c == '\0')
     throw JSONException("Unexpected end of string");
 
   string.assign(start, str-start);
@@ -275,17 +256,22 @@ string JSONString::get(void)
   return string;
 }
 
+JSONString::operator std::string&()
+{
+  return string;
+}
+
 /******************************************************************************/
 
-JSONNumber::JSONNumber(char const*& string)
+JSONNumber::JSONNumber(cchar*& str)
 {
   char* endptr;
-  n = strtod(string, &endptr);
+  n = strtod(str, &endptr);
   
-  if(endptr == string)
+  if(endptr == str)
     throw JSONException("Could not convert string to number");
   
-  string = endptr;
+  str = endptr;
 }
 
 JSONNumber::~JSONNumber()
@@ -297,14 +283,29 @@ void JSONNumber::print(size_t)
   cout << n;
 }
 
-double JSONNumber::get(void)
+__attribute__((pure)) JSONNumber::operator uint8_t()
+{
+  return (uint8_t)n;
+}
+
+__attribute__((pure)) JSONNumber::operator int()
+{
+  return (int)n;
+}
+
+__attribute__((pure)) JSONNumber::operator long()
+{
+  return (long)n;
+}
+
+__attribute__((pure)) JSONNumber::operator double()
 {
   return n;
 }
 
 /******************************************************************************/
 
-JSONBool::JSONBool(char const*& str)
+JSONBool::JSONBool(cchar*& str)
 {
   if(strncmp(str, "false", 5) == 0)
   {
@@ -318,8 +319,8 @@ JSONBool::JSONBool(char const*& str)
   }
   else
   {
-    string errmsg("Could not detect neither true nor false: ");
-    throw JSONException(errmsg + string(str, 5));
+    std::string errmsg("Could not detect neither true nor false: ");
+    throw JSONException(errmsg + std::string(str, 5));
   }
 }
 
@@ -332,22 +333,22 @@ void JSONBool::print(size_t)
   cout << b;
 }
 
-char JSONBool::get(void)
+__attribute__((pure)) JSONBool::operator bool()
 {
   return b;
 }
 
 /******************************************************************************/
 
-JSONNull::JSONNull(char const*& str)
+JSONNull::JSONNull(cchar*& str)
 {
   if(strncmp(str, "null", 4) == 0)
     str += 4;
   else
-    throw JSONException(string("Could not detect null: ") + string(str, 4));
+    throw JSONException(std::string("Could not detect null: ") + std::string(str, 4));
 }
 
-JSONNull::JSONNull()
+JSONNull::~JSONNull()
 {
 }
 
@@ -358,16 +359,20 @@ void JSONNull::print(size_t)
 
 /******************************************************************************/
 
+JSON::~JSON()
+{
+}
+
 /**
  * Parses the first JSONSomthing it encounters,
  * string is set to the next (untouched) character.
  */
-JSON& JSON::parse(char const* string)
+JSON* JSON::parse(cchar* str)
 {
-  return parseJSON(string);
+  return parseJSON(str);
 }
 
-JSON& JSON::parseJSON(char const*& str)
+JSON* JSON::parseJSON(cchar*& str)
 {
   skipWhitespaces(str);
   char c = *str;
@@ -376,22 +381,22 @@ JSON& JSON::parseJSON(char const*& str)
   case '\0':
     throw JSONException("Unexpected end of string");
   case '"':
-    return JSONString(str);
+    return new JSONString(str);
   case '{':
-    return JSONObject(str);
+    return new JSONObject(str);
   case '[':
-    return JSONArray(str);
+    return new JSONArray(str);
   default:
     if((c >= '0' && c <= '9') || c == '.' || c == '+' || c == '-')
-      return JSONNumber(str);
+      return new JSONNumber(str);
     else if(c == 't' || c == 'f')
-      return JSONBool(str);
+      return new JSONBool(str);
     else if(c == 'n')
-      return JSONNull(str);
+      return new JSONNull(str);
     break;
   }
   
-  string errmsg("No valid JSON detected: ");
+  std::string errmsg("No valid JSON detected: ");
   throw JSONException(errmsg + c);
 }
 
@@ -455,12 +460,10 @@ JSONNull& JSON::null(void)
 void test_json(void)
 {
   char buffer[300] = {0};
-  char* string = buffer;
+  char* str = buffer;
   strncpy(buffer, "    {\"lolwut\"             : [\"ROFL\", [], {}, [{}]] }", 290);
-  JSONSomething* json = parseJSON(string);
-  if(json == NULL)
-    return;
-  printJSON(getField((JSONObject*)json, "lolwut"));
-  free(json);
+  JSON* json = JSON::parse(str);
+  json->object().get("lolwut").print();
+  delete json;
 }
 

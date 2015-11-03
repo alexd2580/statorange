@@ -18,15 +18,15 @@
 #include"jsonParser.hpp"
 #include"jsonSearch.hpp"
 #include"output.hpp"
-#include"systemState.hpp"
 #include"i3state.hpp"
 #include"i3-ipc.hpp"
 #include"i3-ipc-constants.hpp"
-#include"strUtil.hpp"
-
-#define getSocket "i3 --get-socketpath"
+#include"util.hpp"
+#include"StateItem.hpp"
 
 using namespace std;
+
+string getSocket("i3 --get-socketpath");
 
 /******************************************************************************/
 /********************************** GLOBALS ***********************************/
@@ -89,9 +89,9 @@ void notify_handler(int signum)
 
 void handleWorkspaceEvent(I3State& i3State, char* response)
 {
-  char* ptr = getJSONObjectField(response, "change", 6);
+  char const* ptr = getJSONObjectField(response, "change", 6);
   size_t evTypeLen;
-  char* eventType;
+  char const* eventType;
   ptr = getJSONString(ptr, &eventType, &evTypeLen);
   
   if(evTypeLen == 4 && strncmp(eventType, "init", 4) == 0)
@@ -119,13 +119,12 @@ void handleWorkspaceEvent(I3State& i3State, char* response)
 
 void handleWindowEvent(I3State& i3State, char* response)
 {
-  JSONObject& windowEvent = JSON::parse(response).object();
-  JSONString& changeString = windowEvent.get("change").string();
-  string change = changeString.get();
+  JSON* json = JSON::parse(response);
+  JSONObject& windowEvent = json->object();
+  string change = windowEvent["change"].string();
   
-  JSONObject& container = windowEvent.get("container").object();
-  double appIdD = container.get("id").number().get();
-  long appIdL = (long)appIdD;
+  JSONObject& container = windowEvent["container"].object();
+  long appId = container["id"].number();
   
   /** New events are also accompanied by focus events if necessary */
   //cLen == 3 && strncmp(cStr, "new", 3) == 0
@@ -138,9 +137,9 @@ void handleWindowEvent(I3State& i3State, char* response)
   {
     for(auto i=i3State.workspaces.begin(); i!=i3State.workspaces.end(); i++)
     {
-      if(i->focusedAppID == appIdL)
+      if(i->focusedAppID == appId)
       {
-        JSONString& name = container.get("name").string();
+        JSONString& name = container["name"].string();
         i->focusedApp = name.get(); // TODO length
         break;
       }
@@ -150,9 +149,8 @@ void handleWindowEvent(I3State& i3State, char* response)
   else if(change.compare("focus") == 0)
   {
     Workspace& fw = i3State.workspaces[i3State.focusedWorkspace];
-    JSONString& name = container.get("name").string();
-    fw.focusedApp = name.get(); //TODO length
-    fw.focusedAppID = appIdL;
+    fw.focusedApp = container["name"].string(); //TODO length
+    fw.focusedAppID = appId;
   }
   /** 
    * usually after a close event a focus event is issued, 
@@ -163,7 +161,7 @@ void handleWindowEvent(I3State& i3State, char* response)
   {
     for(auto i=i3State.workspaces.begin(); i!=i3State.workspaces.end(); i++)
     {
-      if(i->focusedAppID == appIdL)
+      if(i->focusedAppID == appId)
       {
         i->focusedAppID = -1;
         i->focusedApp = "";
@@ -182,6 +180,7 @@ void handleWindowEvent(I3State& i3State, char* response)
   else
     cerr << "Unhandled window event type: " << change << endl;
   
+  delete json;
   return;
 }
 
@@ -201,9 +200,10 @@ void handleEvent(I3State& i3State, uint32_t type, char* response)
   case I3_IPC_EVENT_MODE:
     {
       pthread_mutex_lock(&i3State.mutex);
-      JSONObject& modeEvent = JSON::parse(response).object();
-      JSONString& modeString = modeEvent.get("change").string();
-      i3State.mode = modeString.get();
+      JSON* json = JSON::parse(response);
+      JSONObject& modeEvent = json->object();
+      i3State.mode = modeEvent["change"].string();
+      delete json;
       pthread_mutex_unlock(&i3State.mutex);
     }
     break;
@@ -282,9 +282,12 @@ void* event_listener(void* data)
 
 /******************************************************************************/
 
-int main(void)
+int main(int, char**)
 {
-  string path = execute(getSocket, nullptr, nullptr);
+  Logger l("[Main]", cerr);
+  l.log() << "Launching Statorange" << endl;
+
+  string path = execute(getSocket);
   for(size_t i=0; i<path.length(); i++)
     if(path[i] == '\n')
       path[i] = '\0';
@@ -293,17 +296,13 @@ int main(void)
 
   I3State i3State(path);
   i3State.updateOutputs();
-  SystemState sysState;
+  StateItem::init();
   
   pthread_cond_init(&notifier, nullptr);
   pthread_mutex_init(&mutex, nullptr);
 
   int push_socket = init_socket(path.c_str());
-  event_listener_data data
-  {
-    .i3StateRef = i3State,
-    .push_socket = push_socket
-  };
+  event_listener_data data = { i3State, push_socket };
   pthread_create(&event_listener_thread, nullptr, &event_listener, (void*)&data);
   main_thread = pthread_self();
   
@@ -324,24 +323,26 @@ int main(void)
   sigaction(SIGUSR1, &sigusr1_handler_action, nullptr);
   //signal(SIGUSR1, notify_handler);
 
+  l.log() << "Entering main loop" << endl;
   pthread_mutex_lock(&mutex);
   while(!die)
   {
-    sysState.update();
     if(force_update)
     {
-      sysState.updateAll();
+      StateItem::forceUpdates();
       force_update = 0;
     }
+    else
+      StateItem::updates();
     
     pthread_mutex_lock(&i3State.mutex);
     if(!i3State.valid)
       die = 1;
     else
     {
-      echoPrimaryLemon(i3State, sysState, i3State.outputs[0], 0);
+      echoPrimaryLemon(i3State, 0);
       for(uint8_t i=1; i<i3State.outputs.size(); i++)
-        echoSecondaryLemon(i3State, sysState, i3State.outputs[i], i);
+        echoSecondaryLemon(i3State, i);
       cout << endl;
       cout.flush();
     }
@@ -353,13 +354,17 @@ int main(void)
     pthread_cond_timedwait(&notifier, &mutex, &abstime);
   }
   pthread_mutex_unlock(&mutex);
+  l.log() << "Exiting main loop" << endl;
   
   pthread_join(event_listener_thread, nullptr);
   shutdown(push_socket, SHUT_RDWR);
   
+  StateItem::close();
+  
   pthread_mutex_destroy(&mutex);
   pthread_cond_destroy(&notifier);
   
+  l.log() << "Stopping Statorange" << endl;
   return exit_status; 
 }
 

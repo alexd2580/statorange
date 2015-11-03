@@ -14,7 +14,7 @@ powerline_icons="-f -xos4-terminusicons2mono-medium-r-normal--12-120-72-72-m-60-
 lemonbar_cmd="lemonbar $normal_font $powerline_font $powerline_icons"
 lemonbar_log=$this_path"/lemonbar.log"
 
-statorange_cmd=$this_path"/statorange_debug"
+statorange_cmd=$this_path"/statorange_debug__cpy"
 statorange_fifo=$this_path"/statorange.fifo"
 statorange_log=$this_path"/statorange.log"
 

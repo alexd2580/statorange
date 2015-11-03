@@ -1,14 +1,19 @@
+#define _POSIX_C_SOURCE 200809L
+
 #include<iostream>
 #include<fstream>
 #include<string>
 
 #include<sys/time.h>
 #include<sys/types.h>
+#include<sys/wait.h>
 #include<unistd.h>
 
-#include"strUtil.hpp"
+#include"util.hpp"
 
 using namespace std;
+
+string shell_file_loc = "/bin/sh";
 
 void skipWhitespaces(char const*& string)
 {
@@ -69,5 +74,58 @@ bool loadFile(string& name, string& content)
     return false;
 }
 
+string execute(string& command)
+{
+  int fd[2];
+  pipe(fd);
+  int childpid = fork();
+  if(childpid == -1) //Fail
+  {
+     cerr << "FORK failed" << endl;
+     return 0;
+  } 
+  else if(childpid == 0) //I am child
+  {
+    close(1); //stdout
+    dup2(fd[1], 1);
+    close(fd[0]);
+    execlp(shell_file_loc.c_str(), shell_file_loc.c_str(), "-c", command.c_str(), nullptr);
+    //child has been replaced by shell command
+  }
+
+  wait(nullptr);
+  
+  string res = "";
+  char buffer[500];
+  
+  ssize_t n = 0;
+  errno = EINTR;
+  while(errno == EAGAIN || errno == EINTR)
+  {
+    errno = 0;
+    n = read(fd[0], buffer, 500);
+    if(n == 0)
+      break;
+    buffer[n] = '\0';
+    res += buffer;
+  }
+  
+  cerr << endl << endl << res << endl << endl;
+  return res;
+}
+
+Logger::Logger(string lname, std::ostream& ostr) :
+  logname(lname), ostream(ostr)
+{
+}
+
+Logger::~Logger()
+{
+}
+  
+ostream& Logger::log(void)
+{
+  return ostream << logname << ' ';
+}
 
 

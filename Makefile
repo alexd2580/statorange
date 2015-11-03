@@ -66,7 +66,7 @@ LFLAGS = $(foreach lib,$(LIBS),-l$(lib))
 CSRCFILES := $(wildcard ./*.c)
 COBJFILES := $(patsubst %.c,%.o,$(CSRCFILES))
 CDEPFILES := $(patsubst %.c,%.d,$(CSRCFILES))
-CXXSRCFILES := $(wildcard ./*.cpp)
+CXXSRCFILES := $(wildcard ./*.cpp) $(wildcard ./StateItems/*.cpp)
 CXXOBJFILES := $(patsubst %.cpp,%.o,$(CXXSRCFILES))
 CXXDEPFILES := $(patsubst %.cpp,%.d,$(CXXSRCFILES))
 

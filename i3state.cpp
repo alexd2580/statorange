@@ -1,6 +1,7 @@
 
 #include<cstdlib>
 #include<cstring>
+#include<iostream>
 
 #include<sys/socket.h>
 
@@ -8,7 +9,9 @@
 #include"jsonParser.hpp"
 #include"i3-ipc.hpp"
 #include"i3-ipc-constants.hpp"
-#include"strUtil.hpp"
+#include"util.hpp"
+
+using namespace std;
 
 /******************************************************************************/
 /******************************************************************************/
@@ -31,49 +34,58 @@ void I3State::parseOutputs(void)
   char* buffer = readMessage(fd, &type);
   if(type == I3_INVALID_TYPE)
     return;
-  
-  JSONArray& array = JSON::parse(buffer).array();
-  uint8_t totalDisplays = (uint8_t)array.length();  
-  
-  outputs.clear();
-  
-  double x, y;
-  for(uint8_t i=0; i<totalDisplays; i++)
+    
+  try
   {
-    JSONObject& disp = array.get(i).object();
-    bool active = disp.get("active").boolean().get();
-    if(active)
+    JSON* json = JSON::parse(buffer);
+    JSONArray& array = json->array();
+    uint8_t totalDisplays = (uint8_t)array.length();  
+    
+    outputs.clear();
+    
+    int x, y;
+    for(uint8_t i=0; i<totalDisplays; i++)
     {
-      string name = disp.get("name").string().get();
-      JSONObject& rect = disp.get("rect").object();
-      x = rect.get("x").number().get();
-      y = rect.get("y").number().get();
+      JSONObject& disp = array.get(i).object();
+      bool active = disp["active"].boolean();
+      if(active)
+      {
+        string name = disp["name"].string();
+        JSONObject& rect = disp["rect"].object();
+        x = rect["x"].number();
+        y = rect["y"].number();
 
-      outputs.push_back(Output { .name=name, .posX=(int)x, .posY=(int)y } );
+        outputs.push_back(Output { name, x, y } );
+      }
     }
-  }
 
-  
-  Output tmp;
-  size_t minOutPos;
-  
-  for(size_t fPos=0; fPos<outputs.size()-1; fPos++)
-  {
-    minOutPos = fPos;
-    for(size_t oPos=fPos+1; oPos<outputs.size(); oPos++)
+    
+    Output tmp;
+    size_t minOutPos;
+    
+    for(size_t fPos=0; fPos<outputs.size()-1; fPos++)
     {
-      if(POS_LESS(outputs[oPos], outputs[fPos]))
-        minOutPos = oPos;
+      minOutPos = fPos;
+      for(size_t oPos=fPos+1; oPos<outputs.size(); oPos++)
+      {
+        if(POS_LESS(outputs[oPos], outputs[fPos]))
+          minOutPos = oPos;
+      }
+      
+      if(minOutPos != fPos)
+      {
+        tmp = outputs[fPos];
+        outputs[fPos] = outputs[minOutPos];
+        outputs[minOutPos] = tmp;
+      }
     }
     
-    if(minOutPos != fPos)
-    {
-      tmp = outputs[fPos];
-      outputs[fPos] = outputs[minOutPos];
-      outputs[minOutPos] = tmp;
-    }
+    delete json;
   }
-  
+  catch(JSONException& e)
+  {
+    cerr << e.what() << endl;
+  }
   free(buffer);
   valid = true;
   return;
@@ -102,30 +114,25 @@ void I3State::parseWorkspaces(void)
   focusedWorkspace = 0;
   workspaces.clear();
 
-  JSONArray& array = JSON::parse(buffer).array();
+  JSON* json = JSON::parse(buffer);
+  JSONArray& array = json->array();
   size_t wsCount = array.length();
   
-  double numD;
-
   for(uint8_t i=0; i<wsCount; i++)
   {
     Workspace ws;
     JSONObject& workspace = array.get(i).object();
     
-    numD = workspace.get("num").number().get();
-    ws.num = (uint8_t)numD;
+    ws.num = workspace["num"].number();
+    ws.name = workspace["name"].string(); // TODO LEN
+    ws.visible = workspace["visible"].boolean();
+    ws.focused = workspace["focused"].boolean();
+    ws.urgent = workspace["urgent"].boolean();
     
-    JSONString& name = workspace.get("name").string();
-    ws.name = name.get(); // TODO LEN
-    
-    ws.visible = workspace.get("visible").boolean().get();
-    ws.focused = workspace.get("focused").boolean().get();
-    ws.urgent = workspace.get("urgent").boolean().get();
-    
-    string output = workspace.get("output").string().get();
+    string output = workspace["output"].string();
     for(uint8_t d=0; d<outputs.size(); d++)
-      if(compare(outputs[d].name, output) == 0)
-        ws.output = &outputs[d];
+      if(outputs[d].name.compare(output) == 0)
+        ws.output = d;
         
     ws.focusedApp = "";
     ws.focusedAppID = -1;
@@ -135,6 +142,7 @@ void I3State::parseWorkspaces(void)
       focusedWorkspace = workspaces.size()-1;
   }
 
+  delete json;
   valid = true;
   return;
 }
@@ -142,17 +150,13 @@ void I3State::parseWorkspaces(void)
 /******************************************************************************/
 /******************************************************************************/
 
-I3State::I3State(string path)
+I3State::I3State(string path) :
+  fd(init_socket(path.c_str()))
 {
   pthread_mutex_init(&mutex, nullptr);
   pthread_mutex_lock(&mutex);
   
-  fd = init_socket(path);
-  outputCount = 0;
-  outputs = nullptr;
-  wsCount = 0;
-  workspaces = nullptr;
-  focusedWorkspace = nullptr;
+  focusedWorkspace = 0;
   
   pthread_mutex_unlock(&mutex);
 }
@@ -183,63 +187,70 @@ void I3State::workspaceInit(uint8_t num)
   valid = false;
 
   //Send query
-  if(sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, nullptr) != 0)
-    goto abort_init_update3;
-    
+  bool sent = sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, nullptr) == 0;
+
   uint32_t type;
-  char* buffer = readMessage(fd, &type);
-  if(type == I3_INVALID_TYPE)
-    goto abort_init_update3;
+  char* buffer = nullptr;
+  if(sent)
+    buffer = readMessage(fd, &type);
   
-  JSONArray& array = JSON::parse(buffer).array();
-    goto abort_init_update2; //TODO
-  
-  uint8_t index = 0;
-  auto iter = workspaces.begin();
-  while(iter->num < num && iter != workspaces.end())
+  if(sent && type != I3_INVALID_TYPE)
   {
-    iter++;
-    index++;
-  }
-    
-  if(workspaces[focusedWorkspace].num > num)
-    focusedWorkspace++;
-  
-  for(uint8_t i=0; i<wsCount; i++)
-  {
-    JSONObject& wsJSON = array.get(i).object();
-    
-    double numD = wsJSON.get("num").number().get();
-    if((uint8_t)numD == num)
+    try
     {
-      Workspace ws;
-      ws.num = num;
+      JSON* json = JSON::parse(buffer);
+      JSONArray& array = json->array();
       
-      JSONString& name = wsJSON.get("name").string();
-      ws.name = name.get(); // TODO length
-      
-      ws.visible = wsJSON.get("visible").boolean().get();
-      ws.focused = wsJSON.get("focused").boolean().get();
-      ws.urgent = wsJSON.get("urgent").boolean().get();
-      
-      ws.focusedApp = "";
-      ws.focusedAppID = -1;
-  
-      string output = wsJSON.get("output").string().get();
-      for(size_t d=0; d<outputs.size(); d++)
-        if(compare(outputs[d].name, output) == 0)
-          ws.output = &outputs[d];
-      
-      workspaces.insert(iter, ws);
-      if(ws->focused) 
-        focusedWorkspace = index;
+      uint8_t index = 0;
+      auto iter = workspaces.begin();
+      while(iter->num < num && iter != workspaces.end())
+      {
+        iter++;
+        index++;
+      }
         
-      valid = true;
-      break;
+      if(workspaces[focusedWorkspace].num > num)
+        focusedWorkspace++;
+      
+      for(uint8_t i=0; i<array.length(); i++)
+      {
+        JSONObject& wsJSON = array.get(i).object();
+        
+        uint8_t anum = wsJSON["num"].number();
+        if((uint8_t)anum == num)
+        {
+          Workspace ws;
+          ws.num = num;
+          ws.name = wsJSON["name"].string(); // TODO length
+          ws.visible = wsJSON["visible"].boolean();
+          ws.focused = wsJSON["focused"].boolean();
+          ws.urgent = wsJSON["urgent"].boolean();
+          
+          ws.focusedApp = "";
+          ws.focusedAppID = -1;
+      
+          string output = wsJSON["output"].string();
+          for(uint8_t d=0; d<outputs.size(); d++)
+            if(outputs[d].name.compare(output) == 0)
+              ws.output = d;
+          
+          workspaces.insert(iter, ws);
+          if(ws.focused) 
+            focusedWorkspace = index;
+            
+          valid = true;
+          break;
+        }
+      }
+      delete json;
     }
+    catch(JSONException& e)
+    {
+      cerr << e.what() << endl;
+    }
+    free(buffer);
   }
   
-  free(buffer);
   pthread_mutex_unlock(&mutex);
 }
 
@@ -249,55 +260,54 @@ void I3State::updateWorkspaceStatus(void)
   valid = false;
 
   //Send query
-  if(sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, nullptr) != 0)
-    goto abort_status_update3;
+  bool sent = sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, nullptr) == 0;
     
   uint32_t type;
-  char* buffer = readMessage(fd, &type);
-  if(type == I3_INVALID_TYPE)
-    goto abort_status_update3;
+  char* buffer = nullptr;
+  if(sent)
+    buffer = readMessage(fd, &type);
   
-  focusedWorkspace = nullptr;
-  JSONArray* array = (JSONArray*)parseJSON(buffer);
-  if(array == nullptr)
-    goto abort_status_update2;
-  int arrayLen = getArrayLength(array);
-  
-  double numD;
-  int numI;
-  JSONObject* workspace = nullptr;
-  Workspace* ws;
-
-  for(int i=0; i<arrayLen; i++)
+  if(sent && type != I3_INVALID_TYPE)
   {
-    workspace = (JSONObject*)getElem(array, i);
-    
-    numD = getNumber((JSONNumber*)getField(workspace, "num"));
-    numI = (int)numD;
-    
-    ws = nullptr;
-    for(int j=0; j<wsCount; j++)
-      if(workspaces[j].num == numI)
-      {
-        ws = workspaces+j;
-        break;
-      }
-    if(ws == nullptr)
-      goto abort_status_update1;
-    
-    ws->visible = getBool((JSONBool*)getField(workspace, "visible"));
-    ws->focused = getBool((JSONBool*)getField(workspace, "focused"));
-    if(ws->focused) focusedWorkspace = ws;
-    ws->urgent = getBool((JSONBool*)getField(workspace, "urgent"));
-  }
-  
-  valid = false;
+    focusedWorkspace = 0;
+    try
+    {
+      JSON* json = JSON::parse(buffer);
+      JSONArray& array = json->array();
 
-abort_status_update1:
-  freeJSON((JSONSomething*)array);
-abort_status_update2:
-  free(buffer);
-abort_status_update3:
+      size_t arrayLen = array.length();
+      uint8_t num;
+
+      for(size_t i=0; i<arrayLen; i++)
+      {
+        JSONObject& workspace = array.get(i).object();
+        num = workspace["num"].number();
+        
+        for(size_t j=0; j<workspaces.size(); j++)
+        {
+          Workspace& ws = workspaces[j];
+          if(ws.num == num)
+          {
+            ws.visible = workspace["visible"].boolean();
+            ws.focused = workspace["focused"].boolean();
+            ws.urgent = workspace["urgent"].boolean();
+            if(ws.focused) 
+              focusedWorkspace = j;
+            break;
+          }
+        }
+      }
+      
+      valid = true;
+
+      delete json;
+    }
+    catch(JSONException& e)
+    {
+      cerr << e.what() << endl;
+    }
+    free(buffer);
+  }
   pthread_mutex_unlock(&mutex);
 }
 
@@ -310,17 +320,14 @@ void I3State::workspaceEmpty(uint8_t num)
   while(workspaces[wsBefore].num != num && wsBefore < workspaces.size())
     wsBefore++;
   
-  if(wsBefore == wsCount)
+  if(wsBefore < workspaces.size())
   {
-    pthread_mutex_unlock(&mutex);
-    return;
+    workspaces.erase(workspaces.begin()+wsBefore);
+    if(focusedWorkspace > wsBefore)
+      focusedWorkspace--;
+      
+    valid = true;
   }
-  
-  workspaces.erase(workspaces.begin()+wsBefore);
-  if(focusedWorkspace > wsBefore)
-    focusedWorkspace--;
-    
-  valid = true;
   pthread_mutex_unlock(&mutex);
 }
 
