@@ -123,16 +123,34 @@ void dynamic_section(float value, float min, float max)
     separate(Left, warn_colors);
   else
   {
-    char back_1[9];
-    char back_2[9];
+    static char back_1[9];
+    static char back_2[9];
     static char* back = back_1;
-    back = back == back_1 ? back_2 : back_1;
+    back = (char*)((long)back ^ (long)back_1 ^ (long)back_2);
       
     uint8_t byteV = (uint8_t)((value-min)*256.0f / (max-min));
     MAKE_HEX_COLOR(back, 255, byteV, (uint8_t)(127-byteV/2), 0)
-    char const* colors[2] = { back, color_dwhite };
+    static char const* colors[2];
+    colors[0] = back;
+    colors[1] = color_dwhite;
     separate(Left, colors);
   }
+}
+
+/******************************************************************************/
+/***************************     BUTTONS     **********************************/
+
+void startButton(string cmd)
+{
+  cout << "%{A:";
+  for(auto i=cmd.begin(); i!=cmd.end(); i++)
+    printf(*i == ':' ? "\\%c" : "%c", *i);
+  cout << ":}";
+}
+
+void stopButton(void)
+{
+  cout << "%{A}";
 }
 
 /******************************************************************************/
@@ -154,28 +172,18 @@ void echoWorkspaceButtons(I3State& i3, uint8_t disp)
       else if(ws.focused) colors = active_colors;
       else if(ws.visible) colors = semiactive_colors;
     
-      cout << "%{A:i3-msg workspace ";
-      string c = ws.name;
-      for(auto i=c.begin(); i!=c.end(); i++)
-      {
-        if(*i == ':') 
-          cout << "\\:";
-        else 
-          cout << *i;
-        i++;
-      }
-      cout << ":}";
+      startButton("i3-msg workspace " + ws.name);
       separate(Right, colors);
       cout << ' ' << ws.name << ' ';
-      if(ws.visible && ws.focusedApp.size() != 0)
+      if(ws.focusedApp.size() != 0)
       {
         separate(Right, colors);
         cout << ' ' << ws.focusedApp << ' ';
       }
-      cout << "%{A}";
+      separate(Right, white_on_black);
+      stopButton();
     }
   }
-  separate(Right, white_on_black);
 }
 
 /**

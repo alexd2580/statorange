@@ -11,14 +11,15 @@ private:
   int cpu_temp;
   float cpu_load;
   
-  static std::string temp_file_loc;
-  static std::string load_file_loc;
+  static std::string const temp_file_loc;
+  static std::string const load_file_loc;
+  std::string const sysmgr_cmd;
 
   void performUpdate(void);
   void print(void);
 public:
   CPU();
-  virtual ~CPU();
+  virtual ~CPU() {};
 };
 
 #endif

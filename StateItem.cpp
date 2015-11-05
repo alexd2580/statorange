@@ -5,6 +5,7 @@
 #include"StateItems/Date.hpp"
 #include"StateItems/Net.hpp"
 #include"StateItems/Space.hpp"
+#include"StateItems/Volume.hpp"
 
 using namespace std;
 
@@ -12,10 +13,6 @@ StateItem::StateItem(time_t cd) :
   cooldown(cd)
 {
   last_updated = 0;
-}
-
-StateItem::~StateItem()
-{
 }
 
 void StateItem::update(void)
@@ -40,10 +37,11 @@ vector<StateItem*> StateItem::states;
 void StateItem::init(void)
 {
   //INIT CODE HERE
-  states.push_back(new CPU());
+  states.push_back(new Volume());
   states.push_back(new Net("eth0", Ethernet));
   states.push_back(new Net("wlan0", Wireless));
   states.push_back(new Battery());
+  states.push_back(new CPU());
   vector<string> mpoints;
   mpoints.push_back("/");
   mpoints.push_back("/home");

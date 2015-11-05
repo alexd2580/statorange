@@ -33,12 +33,12 @@ WFLAGS       = -Wall -Wextra -pedantic -Wdouble-promotion -Wformat=2 -Winit-self
                -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings \
                -Wconversion -Wlogical-op \
                -Wmissing-field-initializers \
-               -Wmissing-format-attribute -Wpacked -Winline -Wredundant-decls \
+               -Wmissing-format-attribute -Wpacked -Wredundant-decls \
                -Wvector-operation-performance -Wdisabled-optimization \
                -Wstack-protector
 CWFLAGS      = -Wc++-compat -Wbad-function-cast -Wstrict-prototypes \
                -Wnested-externs -Wunsuffixed-float-constants
-UNUSED       = -Wdeclaration-after-statement -Wmissing-prototypes -Wstrict-overflow=5
+UNUSED       = -Wdeclaration-after-statement -Wmissing-prototypes -Wstrict-overflow=5 -Winline
 #-Wzero-as-null-pointer-constant -Wpadded
 DEBUGFLAGS   = -g3 -O0 -pthread
 RELEASEFLAGS = -g0 -O2 -pthread
@@ -98,7 +98,11 @@ debug: $(PROJNAME_DEBUG) Makefile
 
 release: $(PROJNAME_RELEASE) Makefile
 	@echo "  [ Done ]"
-	
+
+rebuild:
+	make clean && \
+	make all
+
 cleanall: clean cleangedit
 
 -include $(DEPFILES_DEBUG)
@@ -140,3 +144,4 @@ clean:
 cleangedit:
 	@$(RM) -rfv `find ./ -name "*~"` && \
 	echo "  [ Clean gedit~ done ]"
+

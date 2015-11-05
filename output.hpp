@@ -44,8 +44,12 @@ enum Direction
 void separate(Direction d, char const** colors);
 void dynamic_section(float value, float min, float max);
 
-#include<cstdint>
+#include<string>
 
+void startButton(std::string cmd);
+void stopButton(void);
+
+#include<cstdint>
 #include"i3state.hpp"
 
 void init_colors(void);

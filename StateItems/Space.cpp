@@ -49,17 +49,18 @@ Space::Space(vector<string>& mpoints) :
   }
 }
 
-Space::~Space()
-{
-}
-  
 void Space::print(void)
 {
-  separate(Left, neutral_colors);
-  for(auto i=items.begin(); i!=items.end(); i++)
+  if(items.size() > 0)
   {
-    cout << ' ' << i->mountPoint << ' ' << i->used << '/' << i->size << ' ';
     separate(Left, neutral_colors);
+    auto i = items.begin();
+    cout << ' ' << i->mountPoint << ' ' << i->used << '/' << i->size << ' ';
+    for(i++; i!=items.end(); i++)
+    {
+      separate(Left, neutral_colors);
+      cout << ' ' << i->mountPoint << ' ' << i->used << '/' << i->size << ' ';
+    }
+    separate(Left, white_on_black);
   }
-  separate(Left, white_on_black);
 }

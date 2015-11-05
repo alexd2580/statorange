@@ -157,6 +157,7 @@ I3State::I3State(string path) :
   pthread_mutex_lock(&mutex);
   
   focusedWorkspace = 0;
+  mode = "default";
   
   pthread_mutex_unlock(&mutex);
 }
@@ -217,7 +218,7 @@ void I3State::workspaceInit(uint8_t num)
         JSONObject& wsJSON = array.get(i).object();
         
         uint8_t anum = wsJSON["num"].number();
-        if((uint8_t)anum == num)
+        if(anum == num)
         {
           Workspace ws;
           ws.num = num;

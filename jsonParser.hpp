@@ -33,7 +33,7 @@ class JSON
 protected:
   static JSON* parseJSON(char const*& string);
 public:
-  virtual ~JSON();
+  virtual ~JSON() {};
   
   virtual void print(size_t indention) = 0;
   virtual void print(void);
@@ -97,7 +97,7 @@ private:
   double n;
 public:
   JSONNumber(char const*&);
-  virtual ~JSONNumber();
+  virtual ~JSONNumber() {};
   
   virtual void print(size_t);
   operator uint8_t();
@@ -112,7 +112,7 @@ private:
   bool b;
 public:
   JSONBool(char const*&);
-  virtual ~JSONBool();
+  virtual ~JSONBool() {};
   
   virtual void print(size_t);
   operator bool();
@@ -122,7 +122,7 @@ class JSONNull : public JSON
 {
 public:
   JSONNull(char const*&);
-  virtual ~JSONNull();
+  virtual ~JSONNull() {};
 
   virtual void print(size_t);
 };

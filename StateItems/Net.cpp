@@ -10,7 +10,7 @@ using namespace std;
 
 ostream& operator<<(ostream& out, IPv4Address ip)
 {
-	return out << ip.ip1 << '.' << ip.ip2 << '.' << ip.ip3 << '.' << ip.ip4;
+	return out << (int)ip.ip1 << '.' << (int)ip.ip2 << '.' << (int)ip.ip3 << '.' << (int)ip.ip4;
 }
 
 cchar* const Net::ifstat_file_loc = "/sys/class/net/%s/operstate";

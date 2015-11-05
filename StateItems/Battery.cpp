@@ -15,10 +15,6 @@ Battery::Battery() :
 {
 }
 
-Battery::~ Battery()
-{
-}
-
 void Battery::performUpdate(void)
 {
   char line[201];
@@ -73,16 +69,14 @@ void Battery::print(void)
       else if(rem_minutes < 60) { SEP_LEFT(info_colors); }
       else { SEP_LEFT(neutral_colors); }*/
       dynamic_section((float)-rem_minutes, -60.0f, -10.0f);
-      cout << " BAT " << 100*currentLevel / maxCapacity << "%% ";
+      cout << " BAT " << (int)(100*currentLevel / maxCapacity) << "%% ";
       separate(Left, nullptr);
 
       long rem_hrOnly = rem_minutes / 60;
-      if(rem_hrOnly < 10) cout << " 0" << rem_hrOnly;
-      else cout << ' ' << rem_hrOnly;
+      cout << (rem_hrOnly < 10 ? " 0" : " ") << rem_hrOnly;
 
       long rem_minOnly = rem_minutes % 60;
-      if(rem_minOnly < 10) cout << ":0" << rem_minOnly;
-      else cout << ':' << rem_minOnly;
+      cout << (rem_minOnly < 10 ? ":0" : ":") << rem_minOnly << ' ';
       
       break;
     }

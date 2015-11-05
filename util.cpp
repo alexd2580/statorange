@@ -13,7 +13,10 @@
 
 using namespace std;
 
+int const EXIT_RESTART = 4;
+
 string shell_file_loc = "/bin/sh";
+string terminal_cmd = "x-terminal-emulator -e";
 
 void skipWhitespaces(char const*& string)
 {
@@ -74,7 +77,7 @@ bool loadFile(string& name, string& content)
     return false;
 }
 
-string execute(string& command)
+string execute(string const& command)
 {
   int fd[2];
   pipe(fd);
@@ -110,8 +113,12 @@ string execute(string& command)
     res += buffer;
   }
   
-  cerr << endl << endl << res << endl << endl;
   return res;
+}
+
+string mkTerminalCmd(string s)
+{
+  return terminal_cmd + " " + s + "&";
 }
 
 Logger::Logger(string lname, std::ostream& ostr) :

@@ -4,18 +4,16 @@
 
 #include"CPU.hpp"
 #include"../output.hpp"
+#include"../util.hpp"
 
 using namespace std;
 
-string CPU::temp_file_loc = "/sys/bus/acpi/devices/LNXTHERM:00/thermal_zone/temp";
-string CPU::load_file_loc = "/proc/loadavg";
+string const CPU::temp_file_loc = "/sys/bus/acpi/devices/LNXTHERM:00/thermal_zone/temp";
+string const CPU::load_file_loc = "/proc/loadavg";
 
 CPU::CPU() :
-  StateItem(5)
-{
-}
-
-CPU::~CPU()
+  StateItem(5),
+  sysmgr_cmd(mkTerminalCmd("htop"))
 {
 }
 
@@ -36,17 +34,15 @@ void CPU::performUpdate(void)
 
 void CPU::print(void)
 {
-  /*if(sys->cpu_load > 3.0f) { SEP_LEFT(warn_colors); }
-  else if(sys->cpu_load > 1.0f) { SEP_LEFT(info_colors); }
-  else { SEP_LEFT(neutral_colors); }*/
+  startButton(sysmgr_cmd);
+  
   dynamic_section(cpu_load, 0.7f, 3.0f);
   PRINT_ICON(icon_cpu);
   printf(" %.2f ", (double)cpu_load);
   
-  /*if(sys->cpu_temp >= 70) { SEP_LEFT(warn_colors); }
-  else if(sys->cpu_temp >= 55) { SEP_LEFT(info_colors); }
-  else { SEP_LEFT(neutral_colors); }*/
   dynamic_section((float)cpu_temp, 50.0f, 90.0f);
   cout << ' ' << cpu_temp << "°C ";
   separate(Left, white_on_black);
+  
+  stopButton();
 }

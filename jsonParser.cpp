@@ -256,7 +256,7 @@ string JSONString::get(void)
   return string;
 }
 
-JSONString::operator std::string&()
+__attribute__((const)) JSONString::operator std::string&()
 {
   return string;
 }
@@ -272,10 +272,6 @@ JSONNumber::JSONNumber(cchar*& str)
     throw JSONException("Could not convert string to number");
   
   str = endptr;
-}
-
-JSONNumber::~JSONNumber()
-{
 }
 
 void JSONNumber::print(size_t)
@@ -324,10 +320,6 @@ JSONBool::JSONBool(cchar*& str)
   }
 }
 
-JSONBool::~JSONBool()
-{
-}
-
 void JSONBool::print(size_t)
 {
   cout << b;
@@ -348,20 +340,12 @@ JSONNull::JSONNull(cchar*& str)
     throw JSONException(std::string("Could not detect null: ") + std::string(str, 4));
 }
 
-JSONNull::~JSONNull()
-{
-}
-
 void JSONNull::print(size_t)
 {
   cout << "null";
 }
 
 /******************************************************************************/
-
-JSON::~JSON()
-{
-}
 
 /**
  * Parses the first JSONSomthing it encounters,

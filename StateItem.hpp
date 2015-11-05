@@ -19,7 +19,7 @@ protected:
   virtual void print(void) = 0;
 public:
   StateItem(time_t cooldown);
-  virtual ~StateItem();
+  virtual ~StateItem() {};
   
   static void init(void);
   static void updates(void);

@@ -23,7 +23,7 @@ private:
   void print(void);
 public:
   Battery();
-  virtual ~Battery();
+  virtual ~Battery() {};
 };
 
 #endif

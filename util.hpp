@@ -7,6 +7,8 @@
 
 typedef char const cchar;
 
+extern int const EXIT_RESTART;
+
 /**
  * Moves the pointer to the next non-whitespace character
  * After this function *string can point to EOS.
@@ -23,7 +25,9 @@ void storeString(char* dst, size_t dst_size, char* src, size_t src_size);
 
 bool loadFile(std::string& name, std::string& content);
 
-std::string execute(std::string& command);
+std::string execute(std::string const& command);
+
+std::string mkTerminalCmd(std::string);
 
 class Logger
 {

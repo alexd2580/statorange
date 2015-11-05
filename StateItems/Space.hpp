@@ -25,7 +25,7 @@ private:
 
 public:
   Space(std::vector<std::string>&);
-  virtual ~Space();
+  virtual ~Space() {};
 };
 
 #endif
