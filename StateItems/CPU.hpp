@@ -7,6 +7,9 @@
 class CPU : public StateItem
 {
 private:
+  bool cached;
+  std::string printString;
+  
   //CPU
   int cpu_temp;
   float cpu_load;

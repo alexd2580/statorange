@@ -1,6 +1,7 @@
 
 #include<iostream>
 #include<cstdlib>
+#include<sstream>
 
 #include"CPU.hpp"
 #include"../output.hpp"
@@ -19,6 +20,7 @@ CPU::CPU() :
 
 void CPU::performUpdate(void)
 {
+  cached = false;
   char line[11];
   
   FILE* tfile = fopen(temp_file_loc.c_str(), "r");
@@ -34,15 +36,24 @@ void CPU::performUpdate(void)
 
 void CPU::print(void)
 {
-  startButton(sysmgr_cmd);
+  if(!cached)
+  {
+    ostringstream o;
+    startButton(o, sysmgr_cmd);
+    
+    dynamic_section(o, cpu_load, 0.7f, 3.0f);
+    PRINT_ICON(o, icon_cpu);
+    printf(" %.2f ", (double)cpu_load);
+    
+    dynamic_section(o, (float)cpu_temp, 50.0f, 90.0f);
+    o << ' ' << cpu_temp << "°C ";
+    separate(o, Left, white_on_black);
+    
+    stopButton(o);
+    
+    printString = o.str();
+    cached = true;
+  }
   
-  dynamic_section(cpu_load, 0.7f, 3.0f);
-  PRINT_ICON(icon_cpu);
-  printf(" %.2f ", (double)cpu_load);
-  
-  dynamic_section((float)cpu_temp, 50.0f, 90.0f);
-  cout << ' ' << cpu_temp << "°C ";
-  separate(Left, white_on_black);
-  
-  stopButton();
+  cout << printString;
 }

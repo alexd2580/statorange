@@ -12,6 +12,9 @@ enum BatStatus
 class Battery : public StateItem
 {
 private:
+  bool cached;
+  std::string printString;
+
   //BAT
   BatStatus status;
   long dischargeRate;

@@ -90,7 +90,7 @@ char const* sep_right="";          // Powerline separator right
 char const* sep_l_left="";         // Powerline light separator left
 char const* sep_l_right="";        // Powerline light sepatator right
 
-void separate(Direction d, char const** colors)
+void separate(Direction d, char const** colors, ostream& o = cout)
 {
   static char const** current_set_colors = white_on_black;
 
@@ -100,27 +100,27 @@ void separate(Direction d, char const** colors)
   if(d == Left)
   {
     if(colors[0] != current_set_colors[0])
-      printf("%%{F%s}%s%%{R}%%{F%s}", colors[0], sep_left, colors[1]);
+      o << "%{F" << colors[0] << '}' << sep_left << "%{R}%{F" << colors[1] << '}';
     else
-      printf("%%{Fblack}%s%%{F%s}", sep_l_left, colors[1]);
+      o << "%{Fblack}" < sep_l_left < "%{F" << colors[1] << '}';
   }
   else
   {
     if(colors[0] != current_set_colors[0])
-      printf("%%{R}%%{B%s}%s%%{F%s}", colors[0], sep_right, colors[1]);
+      o << "%{R}%{B" << colors[0] << '}' << sep_right << "%{F" << colors[1] << '}';
     else
-      printf("%%{Fblack}%s%%{F%s}", sep_l_right, colors[1]);
+      o << "%{Fblack}" < sep_l_left < "%{F" << colors[1] << '}';
   }
   current_set_colors = colors;
 }
 
 
-void dynamic_section(float value, float min, float max)
+void dynamic_section(float value, float min, float max, ostream& o = cout)
 {
   if(value <= min)
-    separate(Left, neutral_colors);
+    separate(Left, neutral_colors, o);
   else if(value >= max)
-    separate(Left, warn_colors);
+    separate(Left, warn_colors, o);
   else
   {
     static char back_1[9];
@@ -133,24 +133,24 @@ void dynamic_section(float value, float min, float max)
     static char const* colors[2];
     colors[0] = back;
     colors[1] = color_dwhite;
-    separate(Left, colors);
+    separate(Left, colors, o);
   }
 }
 
 /******************************************************************************/
 /***************************     BUTTONS     **********************************/
 
-void startButton(string cmd)
+void startButton(string cmd, ostream& o = cout)
 {
-  cout << "%{A:";
+  o << "%{A:";
   for(auto i=cmd.begin(); i!=cmd.end(); i++)
-    printf(*i == ':' ? "\\%c" : "%c", *i);
-  cout << ":}";
+    o << (*i == ':' ? "\\" : "") << *i;
+  o << ":}";
 }
 
-void stopButton(void)
+void stopButton(ostream& = cout)
 {
-  cout << "%{A}";
+  o << "%{A}";
 }
 
 /******************************************************************************/
