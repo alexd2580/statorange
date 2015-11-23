@@ -4,8 +4,12 @@
 /******************************************************************************/
 /*****************************     ICONS     **********************************/
 
-#define PRINT_ICON(o, icon) \
-  o << "%%{T3}" << icon << "%%{T1}"
+#include<iostream>
+
+static inline void print_icon(char const* const icon, std::ostream& o = std::cout)
+{
+  o << "%{T3}" << icon << "%{T1}";
+}
 
 // Icon glyphs from Terminusicons2
 extern char const* const icon_clock;          // Clock icon
@@ -41,13 +45,13 @@ enum Direction
   Left, Right
 };
 
-void separate(Direction d, char const** colors, std::ostream& = cout);
-void dynamic_section(float value, float min, float max, std::ostream& = cout);
+void separate(Direction d, char const** colors, std::ostream& = std::cout);
+void dynamic_section(float value, float min, float max, std::ostream& = std::cout);
 
 #include<string>
 
-void startButton(std::string cmd, std::ostream& = cout);
-void stopButton(std::ostream& = cout);
+void startButton(std::string cmd, std::ostream& = std::cout);
+void stopButton(std::ostream& = std::cout);
 
 #include<cstdint>
 #include"i3state.hpp"

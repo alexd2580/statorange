@@ -106,7 +106,7 @@ void Net::print(void)
       cout << ' ' << iface << ' ' << iface_ip << ' ';
       break;
     case Wireless:
-      PRINT_ICON(icon_wlan);
+      print_icon(icon_wlan);
       cout << ' ' << iface_essid << '(' << iface_quality << "%%) ";
       separate(Left, neutral_colors);
       cout << ' ' << iface_ip << ' ';

@@ -1,4 +1,3 @@
-#include<iostream>
 #include<cstring>
 #include<string>
 
@@ -90,7 +89,7 @@ char const* sep_right="";          // Powerline separator right
 char const* sep_l_left="";         // Powerline light separator left
 char const* sep_l_right="";        // Powerline light sepatator right
 
-void separate(Direction d, char const** colors, ostream& o = cout)
+void separate(Direction d, char const** colors, ostream& o)
 {
   static char const** current_set_colors = white_on_black;
 
@@ -102,20 +101,20 @@ void separate(Direction d, char const** colors, ostream& o = cout)
     if(colors[0] != current_set_colors[0])
       o << "%{F" << colors[0] << '}' << sep_left << "%{R}%{F" << colors[1] << '}';
     else
-      o << "%{Fblack}" < sep_l_left < "%{F" << colors[1] << '}';
+      o << "%{Fblack}" << sep_l_left << "%{F" << colors[1] << '}';
   }
   else
   {
     if(colors[0] != current_set_colors[0])
       o << "%{R}%{B" << colors[0] << '}' << sep_right << "%{F" << colors[1] << '}';
     else
-      o << "%{Fblack}" < sep_l_left < "%{F" << colors[1] << '}';
+      o << "%{Fblack}" << sep_l_left << "%{F" << colors[1] << '}';
   }
   current_set_colors = colors;
 }
 
 
-void dynamic_section(float value, float min, float max, ostream& o = cout)
+void dynamic_section(float value, float min, float max, ostream& o)
 {
   if(value <= min)
     separate(Left, neutral_colors, o);
@@ -140,7 +139,7 @@ void dynamic_section(float value, float min, float max, ostream& o = cout)
 /******************************************************************************/
 /***************************     BUTTONS     **********************************/
 
-void startButton(string cmd, ostream& o = cout)
+void startButton(string cmd, ostream& o)
 {
   o << "%{A:";
   for(auto i=cmd.begin(); i!=cmd.end(); i++)
@@ -148,7 +147,7 @@ void startButton(string cmd, ostream& o = cout)
   o << ":}";
 }
 
-void stopButton(ostream& = cout)
+void stopButton(ostream& o)
 {
   o << "%{A}";
 }

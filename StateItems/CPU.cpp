@@ -39,15 +39,15 @@ void CPU::print(void)
   if(!cached)
   {
     ostringstream o;
-    startButton(o, sysmgr_cmd);
+    startButton(sysmgr_cmd, o);
     
-    dynamic_section(o, cpu_load, 0.7f, 3.0f);
-    PRINT_ICON(o, icon_cpu);
-    printf(" %.2f ", (double)cpu_load);
+    dynamic_section(cpu_load, 0.7f, 3.0f, o);
+    print_icon(icon_cpu, o);
+    o << ' ' << cpu_load << ' ';
     
-    dynamic_section(o, (float)cpu_temp, 50.0f, 90.0f);
+    dynamic_section((float)cpu_temp, 50.0f, 90.0f, o);
     o << ' ' << cpu_temp << "°C ";
-    separate(o, Left, white_on_black);
+    separate(Left, white_on_black, o);
     
     stopButton(o);
     

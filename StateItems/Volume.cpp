@@ -44,7 +44,7 @@ void Volume::print(void)
 {
   startButton(alsamixer_cmd);
   separate(Left, neutral_colors);
-  PRINT_ICON(icon_vol);
+  print_icon(icon_vol);
   if(mute)
     cout << " Mute ";
   else

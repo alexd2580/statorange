@@ -60,11 +60,11 @@ void Battery::print(void)
       switch(status)
       {
       case Charging:
-        separate(o, Left, neutral_colors);
+        separate(Left, neutral_colors, o);
         o << " BAT charging " << 100*currentLevel/maxCapacity << "%% ";
         break;
       case Full:
-        separate(o, Left, info_colors);
+        separate(Left, info_colors, o);
         o << " BAT full ";
         break;
       case Discharging:
@@ -73,9 +73,9 @@ void Battery::print(void)
         /*if(rem_minutes < 20) {  SEP_LEFT(warn_colors); }
         else if(rem_minutes < 60) { SEP_LEFT(info_colors); }
         else { SEP_LEFT(neutral_colors); }*/
-        dynamic_section(o, (float)-rem_minutes, -60.0f, -10.0f);
+        dynamic_section((float)-rem_minutes, -60.0f, -10.0f, o);
         o << " BAT " << (int)(100*currentLevel / maxCapacity) << "%% ";
-        separate(o, Left, nullptr);
+        separate(Left, nullptr, o);
 
         long rem_hrOnly = rem_minutes / 60;
         o << (rem_hrOnly < 10 ? " 0" : " ") << rem_hrOnly;
@@ -89,7 +89,7 @@ void Battery::print(void)
       default:
         break;
       }
-      separate(o, Left, white_on_black);
+      separate(Left, white_on_black, o);
     
     }
     printString = o.str();

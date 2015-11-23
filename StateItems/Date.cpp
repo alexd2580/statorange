@@ -27,7 +27,7 @@ void Date::performUpdate(void)
 void Date::print(void)
 {
   separate(Left, active_colors);
-  PRINT_ICON(icon_clock);
+  print_icon(icon_clock);
   cout << ' ' << time << ' ';
   separate(Left, white_on_black);
 }
