@@ -46,7 +46,7 @@ void I3State::parseOutputs(void)
     int x, y;
     for(uint8_t i=0; i<totalDisplays; i++)
     {
-      JSONObject& disp = array.get(i).object();
+      JSONObject& disp = array[i].object();
       bool active = disp["active"].boolean();
       if(active)
       {
@@ -114,36 +114,43 @@ void I3State::parseWorkspaces(void)
   focusedWorkspace = 0;
   workspaces.clear();
 
-  JSON* json = JSON::parse(buffer);
-  JSONArray& array = json->array();
-  size_t wsCount = array.length();
-  
-  for(uint8_t i=0; i<wsCount; i++)
+  try
   {
-    Workspace ws;
-    JSONObject& workspace = array.get(i).object();
+    JSON* json = JSON::parse(buffer);
+    JSONArray& array = json->array();
+    size_t wsCount = array.length();
     
-    ws.num = workspace["num"].number();
-    ws.name = workspace["name"].string(); // TODO LEN
-    ws.visible = workspace["visible"].boolean();
-    ws.focused = workspace["focused"].boolean();
-    ws.urgent = workspace["urgent"].boolean();
-    
-    string output = workspace["output"].string();
-    for(uint8_t d=0; d<outputs.size(); d++)
-      if(outputs[d].name.compare(output) == 0)
-        ws.output = d;
-        
-    ws.focusedApp = "";
-    ws.focusedAppID = -1;
-    
-    workspaces.push_back(ws);
-    if(ws.focused) 
-      focusedWorkspace = workspaces.size()-1;
-  }
+    for(uint8_t i=0; i<wsCount; i++)
+    {
+      Workspace ws;
+      JSONObject& workspace = array[i].object();
+      
+      ws.num = workspace["num"].number();
+      ws.name = workspace["name"].string(); // TODO LEN
+      ws.visible = workspace["visible"].boolean();
+      ws.focused = workspace["focused"].boolean();
+      ws.urgent = workspace["urgent"].boolean();
+      
+      string output = workspace["output"].string();
+      for(uint8_t d=0; d<outputs.size(); d++)
+        if(outputs[d].name.compare(output) == 0)
+          ws.output = d;
+          
+      ws.focusedApp = "";
+      ws.focusedAppID = -1;
+      
+      workspaces.push_back(ws);
+      if(ws.focused) 
+        focusedWorkspace = workspaces.size()-1;
+    }
 
-  delete json;
-  valid = true;
+    delete json;
+    valid = true;
+  }
+  catch(JSONException& e)
+  {
+    cerr << e.what() << endl;
+  }
   return;
 }
 
@@ -215,7 +222,7 @@ void I3State::workspaceInit(uint8_t num)
       
       for(uint8_t i=0; i<array.length(); i++)
       {
-        JSONObject& wsJSON = array.get(i).object();
+        JSONObject& wsJSON = array[i].object();
         
         uint8_t anum = wsJSON["num"].number();
         if(anum == num)
@@ -281,7 +288,7 @@ void I3State::updateWorkspaceStatus(void)
 
       for(size_t i=0; i<arrayLen; i++)
       {
-        JSONObject& workspace = array.get(i).object();
+        JSONObject& workspace = array[i].object();
         num = workspace["num"].number();
         
         for(size_t j=0; j<workspaces.size(); j++)

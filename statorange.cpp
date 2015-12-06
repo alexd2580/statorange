@@ -19,8 +19,6 @@
 #include"util.hpp"
 #include"output.hpp"
 #include"StateItem.hpp"
-//#include"i3-ipc.hpp"
-//#include"i3-ipc-constants.hpp"
 
 using namespace std;
 

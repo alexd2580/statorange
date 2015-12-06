@@ -13,25 +13,29 @@ string const CPU::temp_file_loc = "/sys/bus/acpi/devices/LNXTHERM:00/thermal_zon
 string const CPU::load_file_loc = "/proc/loadavg";
 
 CPU::CPU() :
-  StateItem(5),
+  StateItem("CPU", 5),
   sysmgr_cmd(mkTerminalCmd("htop"))
 {
 }
 
-void CPU::performUpdate(void)
+bool CPU::update(void)
 {
   cached = false;
   char line[11];
   
   FILE* tfile = fopen(temp_file_loc.c_str(), "r");
+  FAIL_ON_FALSE(tfile != nullptr)
   fgets(line, 10, tfile);
   fclose(tfile);
   cpu_temp = (int)strtol(line, nullptr, 0) / 1000;
   
   FILE* lfile = fopen(load_file_loc.c_str(), "r");
+  FAIL_ON_FALSE(tfile != nullptr)
   fgets(line, 10, lfile);
   fclose(lfile);
   cpu_load = strtof(line, nullptr);
+  
+  return true;
 }
 
 void CPU::print(void)

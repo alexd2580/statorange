@@ -18,7 +18,7 @@ private:
   static std::string const load_file_loc;
   std::string const sysmgr_cmd;
 
-  void performUpdate(void);
+  bool update(void);
   void print(void);
 public:
   CPU();

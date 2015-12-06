@@ -16,11 +16,11 @@ class Space : public StateItem
 {
 private:
   std::vector<SpaceItem> items;
-  void getSpaceUsage(SpaceItem& dir);
+  bool getSpaceUsage(SpaceItem& dir);
   
   static std::string const getSpace;
 
-  void performUpdate(void);
+  bool update(void);
   void print(void);
 
 public:

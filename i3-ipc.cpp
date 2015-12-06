@@ -8,9 +8,11 @@
 #include<sys/un.h>
 #include<arpa/inet.h>
 #include<unistd.h>
+#include<csignal>
 
 #include"i3-ipc-constants.hpp"
-#include"die.hpp"
+
+extern volatile sig_atomic_t die;
 
 using namespace std;
 
@@ -67,7 +69,7 @@ ssize_t readall(int fd, void* buf, size_t count)
     n = read(fd, (char*)buf + raed, count - raed);
     if(die)
     {
-      cerr << "Aborting readall. Die is set to 1." << endl;
+      cerr << "Aborting readall. die is set to 1." << endl;
       return -1;
     }
     else if(n <= 0)

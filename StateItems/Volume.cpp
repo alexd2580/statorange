@@ -10,7 +10,7 @@ using namespace std;
 /******************************************************************************/
 /******************************************************************************/
 
-void Volume::performUpdate(void)
+bool Volume::update(void)
 {
   string output = execute(amixer_cmd);
   char const* c = output.c_str();
@@ -23,7 +23,7 @@ void Volume::performUpdate(void)
     if(matched == 3)
     {
       mute = strncmp(on, "on]", 3) != 0;
-      return;
+      return true;
     }
     
     while(*c != '\n' && *c != '\0')
@@ -31,10 +31,12 @@ void Volume::performUpdate(void)
     if(*c == '\n')
       c++;
   }
+  
+  return false;
 }
 
 Volume::Volume() :
-  StateItem(300),
+  StateItem("Volume", 300),
   amixer_cmd("amixer get Master"),
   alsamixer_cmd(mkTerminalCmd("alsamixer"))
 {

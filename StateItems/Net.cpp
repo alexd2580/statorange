@@ -20,7 +20,7 @@ string Net::iwconfig_file_loc = "/sbin/iwconfig ";
 /******************************************************************************/
 /******************************************************************************/
 
-void Net::getIpAddress(void)
+bool Net::getIpAddress(void)
 {
   string cmd = ifconfig_file_loc + ' ' + iface;
   string output = execute(cmd);
@@ -30,10 +30,14 @@ void Net::getIpAddress(void)
   skipWhitespaces(c);
   int matched = sscanf(c, "inet addr:%hhu.%hhu.%hhu.%hhu", &iface_ip.ip1, &iface_ip.ip2, &iface_ip.ip3, &iface_ip.ip4);
   if(matched != 4)
+  {
     log() << "Ip address not matched (" << matched << ")" << endl << c << endl;
+    return false;
+  }
+  return true;
 }
 
-void Net::getWirelessState(void)
+bool Net::getWirelessState(void)
 {
   string command = iwconfig_file_loc + iface;
   string output = execute(command);
@@ -45,7 +49,7 @@ void Net::getWirelessState(void)
   {
     skipWhitespaces(c);
     if(*c == '\0')
-      break;
+      return false;
     else if(strncmp(c, "ESSID:", 6) == 0)
     {
       c+=7;
@@ -63,14 +67,15 @@ void Net::getWirelessState(void)
       c = d+1;
       int q2 = (int)strtol(c, nullptr, 0);
       iface_quality = 100*q1 / q2;
-      break; //assuming that quality comes after essid
+      return true;
     }
     skipNonWhitespace(c);
   }
+  return false;
 }
 
 Net::Net(string interface, ConnectionType conType) :
-  StateItem(10), Logger("[Net]", cerr), iface(interface), type(conType)
+  StateItem("Network", 10), Logger("[Net]", cerr), iface(interface), type(conType)
 {
 }
 
@@ -78,21 +83,24 @@ Net::~Net()
 {
 }
 
-void Net::performUpdate(void)
+bool Net::update(void)
 {
   char file[50] = { 0 };
   sprintf(file, ifstat_file_loc, iface.c_str());
   char line[11] = { 0 };
   FILE* upfile = fopen(file, "r");
+  FAIL_ON_FALSE(upfile != nullptr)
   fgets(line, 10, upfile);
   fclose(upfile);
   
   if((iface_up = (strncmp(line, "up", 2) == 0)))
   {
-    getIpAddress();
+    FAIL_ON_FALSE(getIpAddress())
     if(type == Wireless)
-      getWirelessState();
+      FAIL_ON_FALSE(getWirelessState())
   }
+  
+  return true;
 }
 
 void Net::print(void)

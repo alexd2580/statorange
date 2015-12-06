@@ -11,11 +11,11 @@ private:
   std::string time;
   static std::string command;
 
-  void performUpdate(void);
+  bool update(void);
   void print(void);
 public:
   Date();
-  virtual ~Date();
+  virtual ~Date() {};
 };
 
 #endif

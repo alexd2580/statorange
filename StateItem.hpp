@@ -3,22 +3,29 @@
 
 #include<ctime>
 #include<vector>
+#include<string>
 
+#define FAIL_ON_FALSE(b) if(!(b)) { return false; }
 
 class StateItem
 {
 private:
   static std::vector<StateItem*> states;
 
+  std::string module_name;
   time_t cooldown;
   time_t last_updated;
-  void update(void);
-  void forceUpdate(void);
+  bool valid;
+
+  void wrap_update(void);
+  void force_update(void);
+  void wrap_print(void);
 protected:
-  virtual void performUpdate(void) = 0;
+  virtual bool update(void) = 0;
   virtual void print(void) = 0;
+  
 public:
-  StateItem(time_t cooldown);
+  StateItem(std::string module_name, time_t cooldown);
   virtual ~StateItem() {};
   
   static void init(void);

@@ -12,11 +12,11 @@ using namespace std;
 string Battery::bat_file_loc = "/sys/class/power_supply/BAT0/uevent";
 
 Battery::Battery() :
-  StateItem(15), cached(false), printString("")
+  StateItem("Battery", 15), cached(false), printString("")
 {
 }
 
-void Battery::performUpdate(void)
+bool Battery::update(void)
 {
   cached = false;
   char line[201];
@@ -48,6 +48,8 @@ void Battery::performUpdate(void)
     }
     fclose(bfile);
   }
+  
+  return true;
 }
 
 void Battery::print(void)
@@ -97,3 +99,5 @@ void Battery::print(void)
   }
   cout << printString;
 }
+
+

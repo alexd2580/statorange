@@ -1,4 +1,7 @@
 
+#include<iostream>
+#include"output.hpp"
+
 #include"StateItem.hpp"
 #include"StateItems/Battery.hpp"
 #include"StateItems/CPU.hpp"
@@ -9,27 +12,40 @@
 
 using namespace std;
 
-StateItem::StateItem(time_t cd) : 
-  cooldown(cd)
+StateItem::StateItem(string name, time_t cd) : 
+  module_name(name), cooldown(cd)
 {
   last_updated = 0;
+  valid = false;
 }
 
-void StateItem::update(void)
+void StateItem::wrap_update(void)
 {
   time_t now = time(nullptr);
   if(now > last_updated + cooldown)
   {
     last_updated = now;
-    performUpdate();
+    valid = update();
   }
 }
 
-void StateItem::forceUpdate(void)
+void StateItem::force_update(void)
 {
   time_t now = time(nullptr);
   last_updated = now;
-  performUpdate();
+  valid = update();
+}
+
+void StateItem::wrap_print(void)
+{
+  if(valid)
+    print();
+  else
+  {
+    separate(Left, warn_colors);
+    cout << " Module " << module_name << " failed ";
+    separate(Left, white_on_black);
+  }
 }
 
 vector<StateItem*> StateItem::states;
@@ -52,19 +68,19 @@ void StateItem::init(void)
 void StateItem::updates(void)
 {
   for(auto i=states.begin(); i!=states.end(); i++)
-    (*i)->update();
+    (*i)->wrap_update();
 }
 
 void StateItem::forceUpdates(void)
 {
   for(auto i=states.begin(); i!=states.end(); i++)
-    (*i)->forceUpdate();
+    (*i)->force_update();
 }
 
 void StateItem::printState(void)
 {
   for(auto i=states.begin(); i!=states.end(); i++)
-    (*i)->print();
+    (*i)->wrap_print();
 }
 
 void StateItem::close(void)

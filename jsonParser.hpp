@@ -5,21 +5,56 @@
 #include<vector>
 #include<map>
 
-class JSONException
+class TraceCeption
 {
-private:
-  std::string msg;
+protected:
+  std::string const message;
+  TraceCeption const * const exception;
   
 public:
-  JSONException(std::string errormsg) : msg(errormsg)
+  TraceCeption(std::string msg)
+    : message(msg), exception(nullptr)
+  {}
+  
+  TraceCeption(std::string msg, TraceCeption& excp)
+    : message(msg), exception(&excp)
+  {}
+  
+  virtual ~TraceCeption() {}
+  
+  virtual std::string what(void)
+  {
+    return message;
+  }
+  
+  virtual TraceCeption const * next(void) const
+  {
+    return exception;
+  }
+  
+  void printStackTrace(void) const
+  {
+    std::cerr << message << std::endl;
+    if(exception != nullptr)
+      exception->printStackTrace();
+  }
+};
+
+class JSONException : public TraceCeption
+{
+public:
+  JSONException(std::string errormsg)
+    : TraceCeption(errormsg)
   {
   }
   
-  virtual char const* what()
+  JSONException(std::string errormsg, JSONException& excp)
+    : TraceCeption(errormsg, excp)
   {
-    return msg.c_str();
   }
 };
+
+
 
 class JSONArray;
 class JSONObject;
@@ -58,6 +93,7 @@ public:
   
   virtual void print(size_t indention);
   JSON& get(size_t i);
+  JSON& operator[](size_t);
   size_t length(void);
 };
 

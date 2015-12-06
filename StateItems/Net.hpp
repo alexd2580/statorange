@@ -37,10 +37,10 @@ private:
   static std::string ifconfig_file_loc;
   static std::string iwconfig_file_loc;
   
-  void getIpAddress(void);
-  void getWirelessState(void);
+  bool getIpAddress(void);
+  bool getWirelessState(void);
 
-  void performUpdate(void);
+  bool update(void);
   void print(void);
 public:
   Net(std::string interface, ConnectionType);

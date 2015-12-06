@@ -10,18 +10,15 @@ using namespace std;
 string Date::command = "date +%Y-%m-%d\\ %H:%M";
 
 Date::Date() : 
-  StateItem(30)
+  StateItem("Date", 30)
 {
 }
 
-Date::~Date()
-{
-}
-
-void Date::performUpdate(void)
+bool Date::update(void)
 {
   time = execute(command);
   time.pop_back(); //date prints newline
+  return true;
 }
 
 void Date::print(void)

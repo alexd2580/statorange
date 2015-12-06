@@ -6,12 +6,12 @@
 
 using namespace std;
 
-string const Space::getSpace = "df -h ";
+string const Space::getSpace = "df -h";
 
 /******************************************************************************/
 /******************************************************************************/
 
-void Space::getSpaceUsage(SpaceItem& dir)
+bool Space::getSpaceUsage(SpaceItem& dir)
 {
   string cmd = getSpace + " " + dir.mountPoint;
   string output = execute(cmd);
@@ -28,16 +28,19 @@ void Space::getSpaceUsage(SpaceItem& dir)
   beg = c;
   skipNonWhitespace(c);
   dir.used.assign(beg, c-beg);
+  
+  return true;
 }
 
-void Space::performUpdate(void)
+bool Space::update(void)
 {
   for(auto i=items.begin(); i!=items.end(); i++)
-    getSpaceUsage(*i);
+    FAIL_ON_FALSE(getSpaceUsage(*i))
+  return true;
 }
 
 Space::Space(vector<string>& mpoints) :
-  StateItem(30)
+  StateItem("SpaceUsage", 30)
 {
   SpaceItem si;
   for(auto i=mpoints.begin(); i!=mpoints.end(); i++)

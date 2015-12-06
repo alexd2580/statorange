@@ -22,7 +22,7 @@ private:
   long currentLevel;
   
   static std::string bat_file_loc;
-  void performUpdate(void);
+  bool update(void);
   void print(void);
 public:
   Battery();

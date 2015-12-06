@@ -14,7 +14,7 @@ private:
   std::string const amixer_cmd;
   std::string const alsamixer_cmd;
   
-  void performUpdate(void);
+  bool update(void);
   void print(void);
 public:
   Volume();
