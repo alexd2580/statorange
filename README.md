@@ -2,7 +2,7 @@
 
 |Build status|
 |:--:|
-|[![Unstable]]|
+|Unstable|
 
 This is a status generator for i3 designed to replace i3bar/i3status.
 
@@ -12,28 +12,30 @@ Obviously, this software does NOT run on windows.
 Statorange is tightly bound to the really awesome window manager i3,
 so we have that. Also bar (lemonbar) is required for the actual panel.
 
-The predefined status items use the following programs:
-    The battery status depends on the [missing] file
-        /sys/class/power_supply/BAT0/uevent
-    and the ability to read files.
-    
-    Volume requires amixer to get the current volume
-    and alsamixer, which opens when you click the volume section.
-    
-    Space requires "df -h" which _should_ be available from the get-go.
-    
-    The network item checks this file /sys/class/net/%s/operstate
-    [replace %s by your network interface (eth0, wlan0)]
-    to see whether the interface is up (or not).
-    Also /sbin/ifconfig and /sbin/iwconfig are used to get info
-    about the wired and wireless connection state.
-    
-    Date requires date.
-    
-    And the CPU temp/load is read from
-    /sys/bus/acpi/devices/LNXTHERM:00/thermal_zone/temp and /proc/loadavg
-    htop pops up when this section is clicked.
-    
+The predefined status items use the following programs/files:
+
+* Battery<br>
+The [missing] file `/sys/class/power_supply/BAT0/uevent` and the ability to read files.
+
+* Volume<br>
+`amixer` to get the current volume and `alsamixer`, which opens when you click the volume section.
+
+* Space<br>
+`df -h` which _should_ be available from the get-go.
+
+* Network<br>
+`/sys/class/net/%s/operstate` [replace %s by your network interface (`eth0`, `wlan0`)]
+to see whether the interface is up (or not).
+Also `/sbin/ifconfig` and `/sbin/iwconfig` to get info about the connection state.
+
+* Date<br>
+`date`
+
+* CPU<br>
+temperature: `/sys/bus/acpi/devices/LNXTHERM:00/thermal_zone/temp`<br>
+load: `/proc/loadavg`
+`htop` pops up when this section is clicked.
+
 Also, since lemonbar does not provide a trayer section something like trayer
 is advisable. You can add a shortcut to toggle_trayer.sh (i chose mod+t)
 to toggle trayer, for when you really need it (you won't use them a lot, 
