@@ -44,19 +44,19 @@ void make_hex(char* dst, uint8_t a)
   make_hex(color+5, g); \
   make_hex(color+7, b); }
 
-char const* color_white = "white";
+char const* color_white = "#FFFFFFFF";
 char const* color_dwhite = "#FFCCCCCC";
 char const* color_lgrey = "#FF707070";
 char const* color_grey = "#FF454545";
 char const* color_dgrey = "#FF2A2A2A";
-char const* color_red = "red";
+char const* color_red = "#FFFF0000";
 char const* color_blue = "#FF1010D0";
 char const* color_green = "#FF10D010";
 char const* color_dgreen = "#FF008000";
 char const* color_yellow = "#FFCDCD00";
 char const* color_blind = "#FF8B814C";
 char const* color_crimson = "#FFDC143C";
-char const* color_black = "black";
+char const* color_black = "#FF000000";
 
 char const* white_on_black[2]; //{ color_black, color_white };
 char const* inactive_colors[2]; //{ color_dgrey, color_lgrey };
@@ -101,14 +101,14 @@ void separate(Direction d, char const** colors, ostream& o)
     if(colors[0] != current_set_colors[0])
       o << "%{F" << colors[0] << '}' << sep_left << "%{R}%{F" << colors[1] << '}';
     else
-      o << "%{Fblack}" << sep_l_left << "%{F" << colors[1] << '}';
+      o << "%{F#FF000000}" << sep_l_left << "%{F" << colors[1] << '}';
   }
   else
   {
     if(colors[0] != current_set_colors[0])
       o << "%{R}%{B" << colors[0] << '}' << sep_right << "%{F" << colors[1] << '}';
     else
-      o << "%{Fblack}" << sep_l_left << "%{F" << colors[1] << '}';
+      o << "%{F#FF000000}" << sep_l_left << "%{F" << colors[1] << '}';
   }
   current_set_colors = colors;
 }
