@@ -41,6 +41,8 @@ Volume::Volume() :
   amixer_cmd("amixer get Master"),
   alsamixer_cmd(mkTerminalCmd("alsamixer"))
 {
+    mute = true;
+    volume = 0;
 }
 
 void Volume::print(void)

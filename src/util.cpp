@@ -101,12 +101,11 @@ string execute(string const& command)
   string res = "";
   char buffer[500];
   
-  ssize_t n = 0;
   errno = EINTR;
   while(errno == EAGAIN || errno == EINTR)
   {
     errno = 0;
-    n = read(fd[0], buffer, 500);
+    ssize_t n = read(fd[0], buffer, 500);
     if(n == 0)
       break;
     buffer[n] = '\0';

@@ -16,6 +16,9 @@ CPU::CPU() :
   StateItem("CPU", 5),
   sysmgr_cmd(mkTerminalCmd("htop"))
 {
+    cached = false;
+    cpu_temp = 0;
+    cpu_load = 0.0f;
 }
 
 bool CPU::update(void)
@@ -30,7 +33,7 @@ bool CPU::update(void)
   cpu_temp = (int)strtol(line, nullptr, 0) / 1000;
   
   FILE* lfile = fopen(load_file_loc.c_str(), "r");
-  FAIL_ON_FALSE(tfile != nullptr)
+  FAIL_ON_FALSE(lfile != nullptr)
   fgets(line, 10, lfile);
   fclose(lfile);
   cpu_load = strtof(line, nullptr);

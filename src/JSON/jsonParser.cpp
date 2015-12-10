@@ -21,10 +21,9 @@ JSONArray::JSONArray(cchar*& str)
   if(*str != '[')
     throw JSONException("Array not starting at the given position");
   
-  char c = '\0';
   while(true)
   {
-    c = *str;
+    char c = *str;
     if(elems.size() == 0 && c== '[')
     {
       str++;
@@ -145,11 +144,11 @@ JSONObject::JSONObject(cchar*& str)
     if(*str != '{')
       throw JSONException("Expected '{', got: " + *str);
     
-    char c = '\0';
     while(true)
     {
-      c = *str;
-      if(fields.size() == 0 && c ==  '{')
+      char c = *str;
+      size_t field_size = fields.size();
+      if(field_size == 0 && c ==  '{')
       {
         str++;
         skipWhitespaces(str);
@@ -158,7 +157,7 @@ JSONObject::JSONObject(cchar*& str)
         parseNamed(str);
         skipWhitespaces(str);
       }
-      else if(fields.size() > 0 && c ==  ',')
+      else if(field_size > 0 && c ==  ',')
       {
         str++;
         skipWhitespaces(str);
@@ -170,7 +169,7 @@ JSONObject::JSONObject(cchar*& str)
       else if(c == '\0')
         throw JSONException("Unexpected end of string");
       else
-        throw JSONException("Unexpected symbol: " + c);
+        throw JSONException(std::string("Unexpected symbol: ") + c);
     }
     
     str++;
@@ -192,7 +191,8 @@ void JSONObject::print(size_t indention)
   cout << '{' << endl << std::string(indention+INDENT_WIDTH, ' ');
 
   auto i=fields.begin();
-  if(fields.size() > 0)
+  size_t field_size = fields.size();
+  if(field_size > 0)
     printNamed(i, indention+INDENT_WIDTH);
   for(; i!=fields.end(); i++)
   {

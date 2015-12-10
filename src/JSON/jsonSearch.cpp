@@ -188,10 +188,9 @@ char const* getJSONObject(char const* string, size_t* l)
   }
   
   size_t field_count = 0;
-  char c = '\0';
   while(true)
   {
-    c = *string;
+    char c = *string;
     if(field_count == 0 && c ==  '{')
     {
       string++;
@@ -253,10 +252,9 @@ char const* getJSONObjectField(char const* string, char const* nStr, size_t nLen
   size_t nameLen;
   
   size_t field_count = 0;
-  char c = '\0';
   while(true)
   {
-    c = *string;
+    char c = *string;
     if(field_count == 0 && c ==  '{')
     {
       string++;

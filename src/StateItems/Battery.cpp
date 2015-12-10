@@ -14,18 +14,22 @@ string Battery::bat_file_loc = "/sys/class/power_supply/BAT0/uevent";
 Battery::Battery() :
   StateItem("Battery", 15), cached(false), printString("")
 {
+    status = NotFound;
+    dischargeRate = 0;
+    maxCapacity = 0;
+    currentLevel = 0;
 }
 
 bool Battery::update(void)
 {
   cached = false;
-  char line[201];
   //battery
   FILE* bfile = fopen(bat_file_loc.c_str(), "r");
   if(bfile == nullptr)
     status = NotFound; //Probably no battery
   else
   {
+    char line[201];
     while(fgets(line, 200, bfile) != nullptr)
     {
       if(strncmp(line+13, "STATUS", 6) == 0)

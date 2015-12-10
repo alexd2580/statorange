@@ -60,13 +60,10 @@ void I3State::parseOutputs(void)
       }
     }
 
-    
     Output tmp;
-    size_t minOutPos;
-    
     for(size_t fPos=0; fPos<outputs.size()-1; fPos++)
     {
-      minOutPos = fPos;
+      size_t minOutPos = fPos;
       for(size_t oPos=fPos+1; oPos<outputs.size(); oPos++)
       {
         if(POS_LESS(outputs[oPos], outputs[fPos]))
@@ -166,6 +163,7 @@ I3State::I3State(string path) :
   
   focusedWorkspace = 0;
   mode = "default";
+  valid = false;
   
   pthread_mutex_unlock(&mutex);
 }
@@ -285,12 +283,11 @@ void I3State::updateWorkspaceStatus(void)
       JSONArray& array = json->array();
 
       size_t arrayLen = array.length();
-      uint8_t num;
 
       for(size_t i=0; i<arrayLen; i++)
       {
         JSONObject& workspace = array[i].object();
-        num = workspace["num"].number();
+        uint8_t num = workspace["num"].number();
         
         for(size_t j=0; j<workspaces.size(); j++)
         {

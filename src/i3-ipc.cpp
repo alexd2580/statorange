@@ -37,12 +37,11 @@ void printDetailedErrno(void)
 ssize_t writeall(int fd, void* buf, size_t count)
 {
   size_t written = 0;
-  ssize_t n = 0;
 
   while(written < count)
   {
     errno = 0;
-    n = write(fd, (char*)buf + written, count - written);
+    ssize_t n = write(fd, (char*)buf + written, count - written);
     if(die)
       return -1;
     else if(n <= 0)
@@ -61,12 +60,11 @@ ssize_t writeall(int fd, void* buf, size_t count)
 ssize_t readall(int fd, void* buf, size_t count)
 {
   size_t raed = 0;
-  ssize_t n = 0;
 
   while(raed < count)
   {
     errno = 0;
-    n = read(fd, (char*)buf + raed, count - raed);
+    ssize_t n = read(fd, (char*)buf + raed, count - raed);
     if(die)
     {
       cerr << "Aborting readall. die is set to 1." << endl;
