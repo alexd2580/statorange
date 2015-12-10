@@ -4,9 +4,10 @@
 #include<pthread.h>
 #include<sys/socket.h>
 
+#include"JSON/jsonParser.hpp"
+#include"JSON/jsonSearch.hpp"
+
 #include"i3state.hpp"
-#include"jsonParser.hpp"
-#include"jsonSearch.hpp"
 #include"i3-ipc-constants.hpp"
 #include"i3-ipc.hpp"
 #include"util.hpp"
@@ -201,6 +202,9 @@ struct event_listener_data
 
 void* event_listener(void* data)
 {
+  try
+  {
+
   evlog.log() << "Launching event listener" << endl;
   event_listener_data* eldp = (event_listener_data*)data;
   int push_socket = eldp->push_socket;
@@ -240,6 +244,12 @@ void* event_listener(void* data)
   shutdown(push_socket, SHUT_RDWR);
   
   evlog.log() << "Stopping event listener" << endl;
+  
+  }
+  catch(JSONException& e)
+  {
+    cerr << e.what() << endl;
+  }
   //pthread_exit(0); which is better?
   return nullptr; // this produces no warnings
 }

@@ -11,7 +11,7 @@
 #include<iostream>
 #include<string>
 #include"jsonSearch.hpp"
-#include"util.hpp"
+#include"../util.hpp"
 
 using namespace std;
 

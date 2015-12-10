@@ -5,8 +5,9 @@
 
 #include<sys/socket.h>
 
+#include"JSON/jsonParser.hpp"
+
 #include"i3state.hpp"
-#include"jsonParser.hpp"
 #include"i3-ipc.hpp"
 #include"i3-ipc-constants.hpp"
 #include"util.hpp"

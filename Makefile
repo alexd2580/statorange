@@ -49,7 +49,7 @@ CXXFLAGS     = -std=c++11
 # AI-Stuff
 # ---------
 
-#AI_FLAGS=-shared -g3 -O0 -fPIC
+#AI_FLAGS = -shared -g3 -O0 -fPIC
 
 # -----------------------------
 # Linker flags
@@ -63,10 +63,10 @@ LIBS = pthread m dl
 
 LFLAGS = $(foreach lib,$(LIBS),-l$(lib))
 
-CSRCFILES := $(wildcard ./*.c)
+CSRCFILES := $(wildcard ./src/*.c) $(wildcard ./src/*/*.c)
 COBJFILES := $(patsubst %.c,%.o,$(CSRCFILES))
 CDEPFILES := $(patsubst %.c,%.d,$(CSRCFILES))
-CXXSRCFILES := $(wildcard ./*.cpp) $(wildcard ./StateItems/*.cpp)
+CXXSRCFILES := $(wildcard ./src/*.cpp) $(wildcard ./src/*/*.cpp)
 CXXOBJFILES := $(patsubst %.cpp,%.o,$(CXXSRCFILES))
 CXXDEPFILES := $(patsubst %.cpp,%.d,$(CXXSRCFILES))
 

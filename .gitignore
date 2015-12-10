@@ -5,3 +5,5 @@ debug
 *.log
 other
 *.fifo
+statorange
+statorange_debug

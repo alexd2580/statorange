@@ -15,6 +15,8 @@
 #include<pthread.h>
 #include<sys/socket.h>
 
+#include"JSON/jsonParser.hpp"
+
 #include"i3state.hpp"
 #include"util.hpp"
 #include"output.hpp"
@@ -124,6 +126,10 @@ int main(int, char**)
 
   l.log() << "Entering main loop" << endl;
   pthread_mutex_lock(&mutex);
+  
+  try
+  {
+  
   while(!die)
   {
     if(force_update)
@@ -152,6 +158,13 @@ int main(int, char**)
     abstime.tv_sec += 5;
     pthread_cond_timedwait(&notifier, &mutex, &abstime);
   }
+  
+  }
+  catch(JSONException& e)
+  {
+    cerr << e.what() << endl;
+  }
+  
   pthread_mutex_unlock(&mutex);
   l.log() << "Exiting main loop" << endl;
   
