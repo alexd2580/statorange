@@ -20,6 +20,7 @@ bool Volume::update(void)
     int unused;
     char on[5] = { 0 };
     int matched = sscanf(c, "  Front Left: Playback %d [%d%%] [%s", &unused, &volume, on);
+    // TODO other formats
     if(matched == 3)
     {
       mute = strncmp(on, "on]", 3) != 0;
