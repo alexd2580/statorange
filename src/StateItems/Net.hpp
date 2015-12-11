@@ -2,6 +2,7 @@
 #define __NETXYZHEADER_LOL___
 
 #include<string>
+#include<utility>
 #include"../StateItem.hpp"
 #include"../util.hpp"
 
@@ -24,36 +25,29 @@ class Net : public StateItem, public Logger
 {
 private:
   //NET
-  std::string const iface;
-  ConnectionType const type;
+  std::string iface;
+  std::string ifstat_file_loc;
+  ConnectionType type;
   bool iface_up;
   IPv4Address iface_ip;
-  
+
   //optional
   std::string iface_essid;
   int iface_quality;
-  
-  static cchar* const ifstat_file_loc;
+
+  static std::pair<std::string,std::string> ifstat_file_gen;
   static std::string ifconfig_file_loc;
   static std::string iwconfig_file_loc;
-  
+
   bool getIpAddress(void);
   bool getWirelessState(void);
 
   bool update(void);
   void print(void);
 public:
-  Net(std::string interface, ConnectionType);
+  static void settings(JSONObject& section);
+  explicit Net(JSONObject&);
   virtual ~Net();
 };
 
 #endif
-
-
-
-
-
-
-  
-  
-

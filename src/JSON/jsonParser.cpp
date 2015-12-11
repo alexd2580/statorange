@@ -20,7 +20,7 @@ JSONArray::JSONArray(cchar*& str)
 {
   if(*str != '[')
     throw JSONException("Array not starting at the given position");
-  
+
   while(true)
   {
     char c = *str;
@@ -47,7 +47,7 @@ JSONArray::JSONArray(cchar*& str)
     else
       throw JSONException(std::string("Unexpected symbol: ") + c);
   }
-  
+
   str++;
 }
 
@@ -94,30 +94,39 @@ void JSONObject::parseNamed(cchar*& str)
   try
   {
     if(*str != '"')
-      throw JSONException("Expected string, got: " + *str);
-    
+      throw JSONException(std::string("Expected string, got: ") + *str);
+
     str++;
     cchar* start = str;
-    bool escaped = false;
+    std::string key;
     char c = *str;
-    
-    while((c != '"' || escaped) && c != '\0')
+
+    while(c != '"' && c != '\0')
     {
-      escaped = !escaped && c == '\\';
+      if(c == '\\')
+      {
+        key += std::string(start, str-start);
+        str++;
+        c = *str;
+        if(c == '\0')
+          throw JSONException("Unexpected end of string when parsing escaped character");
+        key += c;
+        start = str+1;
+      }
       str++;
       c = *str;
     }
-    
+
     if(c == '\0')
       throw JSONException("Unexpected end of str");
 
-    std::string key(start, (size_t)(str-start));
-    
+    key += std::string(start, (size_t)(str-start));
+
     //checking " not required here
     str++; //skip closing "
     skipWhitespaces(str);
     if(*str != ':')
-      throw JSONException("Expected ':', got: " + *str);
+      throw JSONException(std::string("Expected ':', got: ") + *str);
     str++; // skip :
     skipWhitespaces(str);
     JSON* something = JSON::parseJSON(str);
@@ -125,7 +134,8 @@ void JSONObject::parseNamed(cchar*& str)
   }
   catch(JSONException& e)
   {
-    throw JSONException("While trying to parse Named", e);
+    e.push_stack("While trying to parse Named");
+    throw e;
   }
 }
 
@@ -142,8 +152,8 @@ JSONObject::JSONObject(cchar*& str)
   try
   {
     if(*str != '{')
-      throw JSONException("Expected '{', got: " + *str);
-    
+      throw JSONException(std::string("Expected '{', got: ") + *str);
+
     while(true)
     {
       char c = *str;
@@ -171,12 +181,13 @@ JSONObject::JSONObject(cchar*& str)
       else
         throw JSONException(std::string("Unexpected symbol: ") + c);
     }
-    
+
     str++;
   }
   catch(JSONException& e)
   {
-    throw JSONException("While trying to parse JSONObject", e);
+    e.push_stack("While trying to parse JSONObject");
+    throw e;
   }
 }
 
@@ -200,6 +211,18 @@ void JSONObject::print(size_t indention)
     printNamed(i, indention+INDENT_WIDTH);
   }
   cout << endl << std::string(indention, ' ') << '}';
+}
+
+JSON* JSONObject::has(cchar* key)
+{
+  std::string skey(key);
+  return has(skey);
+}
+
+JSON* JSONObject::has(std::string& key)
+{
+  auto it = fields.find(key);
+  return(it == fields.end() ? nullptr : it->second);
 }
 
 JSON& JSONObject::get(cchar* key)
@@ -235,30 +258,39 @@ JSONString::JSONString(cchar*& str)
   {
     if(*str != '"')
       throw JSONException("String not starting at the given position");
-    
+
     str++;
-    cchar* const start = str;
-    bool escaped = 0;
+    cchar* start = str;
     char c = *str;
-    
-    while((c != '"' || escaped) && c != '\0')
+
+    while(c != '"' && c != '\0')
     {
-      escaped = !escaped && c == '\\';
+      if(c == '\\')
+      {
+        string += std::string(start, str-start);
+        str++;
+        c = *str;
+        if(c == '\0')
+          throw JSONException("Unexpected end of string when parsing escaped character");
+        string += c;
+        start = str+1;
+      }
       str++;
       c = *str;
     }
-    
+
     if(c == '\0')
       throw JSONException("Unexpected end of string");
 
-    string.assign(start, str-start);
-    
+    string += std::string(start, (size_t)(str-start));
+
     //checking " not required here
     str++;
   }
   catch(JSONException& e)
   {
-    throw JSONException("While trying to parse JSONString", e);
+    e.push_stack("While trying to parse JSONString");
+    throw e;
   }
 }
 
@@ -289,15 +321,16 @@ JSONNumber::JSONNumber(cchar*& str)
   {
     char* endptr;
     n = strtod(str, &endptr);
-    
+
     if(endptr == str)
       throw JSONException("Could not convert string to number");
-    
+
     str = endptr;
   }
   catch(JSONException& e) // TODO chage to generic exceptions?
   {
-    throw JSONException("While trying to parse JSONNumber", e);
+    e.push_stack("While trying to parse JSONNumber");
+    throw e;
   }
 }
 
@@ -406,7 +439,7 @@ JSON* JSON::parseJSON(cchar*& str)
       return new JSONNull(str);
     break;
   }
-  
+
   std::string errmsg("No valid JSON detected: ");
   throw JSONException(errmsg + c);
 }
@@ -477,4 +510,3 @@ void test_json(void)
   json->object().get("lolwut").print();
   delete json;
 }
-

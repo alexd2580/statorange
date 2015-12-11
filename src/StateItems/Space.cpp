@@ -6,16 +6,36 @@
 
 using namespace std;
 
-string const Space::getSpace = "df -h";
+string Space::get_space = "";
 
 /******************************************************************************/
 /******************************************************************************/
+
+void Space::settings(JSONObject& section)
+{
+  get_space.assign(section["get_space"].string());
+}
+
+Space::Space(JSONObject& item) :
+  StateItem(item)
+{
+  /*JSONArray mpoints = item["mount_points"].array();
+  mpoints.
+  SpaceItem si;
+  for(auto i=mpoints.begin(); i!=mpoints.end(); i++)
+  {
+    si.mountPoint = *i;
+    si.size = "";
+    si.used = "";
+    items.push_back(si);
+  } TODO */
+}
 
 bool Space::getSpaceUsage(SpaceItem& dir)
 {
-  string cmd = getSpace + " " + dir.mountPoint;
+  string cmd = get_space + " " + dir.mount_point;
   string output = execute(cmd);
-  
+
   char const* c = output.c_str();
   while(*c != '\n') c++;
   c++;
@@ -28,7 +48,7 @@ bool Space::getSpaceUsage(SpaceItem& dir)
   beg = c;
   skipNonWhitespace(c);
   dir.used.assign(beg, c-beg);
-  
+
   return true;
 }
 
@@ -39,30 +59,17 @@ bool Space::update(void)
   return true;
 }
 
-Space::Space(vector<string>& mpoints) :
-  StateItem("SpaceUsage", 30)
-{
-  SpaceItem si;
-  for(auto i=mpoints.begin(); i!=mpoints.end(); i++)
-  {
-    si.mountPoint = *i;
-    si.size = "";
-    si.used = "";
-    items.push_back(si);
-  }
-}
-
 void Space::print(void)
 {
   if(items.size() > 0)
   {
     separate(Left, neutral_colors);
     auto i = items.begin();
-    cout << ' ' << i->mountPoint << ' ' << i->used << '/' << i->size << ' ';
+    cout << ' ' << i->mount_point << ' ' << i->used << '/' << i->size << ' ';
     for(i++; i!=items.end(); i++)
     {
       separate(Left, neutral_colors);
-      cout << ' ' << i->mountPoint << ' ' << i->used << '/' << i->size << ' ';
+      cout << ' ' << i->mount_point << ' ' << i->used << '/' << i->size << ' ';
     }
     separate(Left, white_on_black);
   }

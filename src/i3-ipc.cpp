@@ -90,7 +90,7 @@ int sendMessage(int fd, uint32_t type, char* payload)
   memcpy(header.magic, I3_IPC_MAGIC, 6);
   header.type = type;
   header.size = payload == nullptr ? 0 : (uint32_t)strlen(payload);
-  
+
   ssize_t sent = 0;
   sent = writeall(fd, &header, HEADER_SIZE);
   if(sent < (ssize_t)HEADER_SIZE)
@@ -100,7 +100,7 @@ int sendMessage(int fd, uint32_t type, char* payload)
       cerr << "Could not transmit header" << endl;
       printDetailedErrno();
     }
-    else 
+    else
       cerr << "Could not transmit full header => " << sent << "/" << HEADER_SIZE << endl;
     return -1;
   }
@@ -114,7 +114,7 @@ int sendMessage(int fd, uint32_t type, char* payload)
         cerr << "Could not transmit message" << endl;
         printDetailedErrno();
       }
-      else 
+      else
         cerr << "Could not transmit full message => " << sent << "/" << header.size << endl;
       return -1;
     }
@@ -135,7 +135,7 @@ char* readMessage(int fd, uint32_t* type)
   ssize_t n = 0;
   n = readall(fd, &header, HEADER_SIZE);
   *type = header.type;
-  
+
   if(n < (ssize_t)HEADER_SIZE)
   {
     if(n == -1)
@@ -143,21 +143,21 @@ char* readMessage(int fd, uint32_t* type)
       cerr << "Could not read header" << endl;
       printDetailedErrno();
     }
-    else 
+    else
       cerr << "Could not read the whole header => " << n << "/" << HEADER_SIZE << endl;
     *type = I3_INVALID_TYPE;
     return nullptr;
   }
-  
+
   if(strncmp(header.magic, I3_IPC_MAGIC, 6) != 0)
   {
     cerr << "Invalid magic string" << endl;
     *type = I3_INVALID_TYPE;
     return nullptr;
   }
-  
+
   char* payload = nullptr;
-  
+
   if(header.size > 0)
   {
     payload = (char*)malloc((header.size+1)*sizeof(char));
@@ -169,16 +169,16 @@ char* readMessage(int fd, uint32_t* type)
         cerr << "Could not read message" << endl;
         printDetailedErrno();
       }
-      else 
+      else
         cerr << "Could not read the whole message" << endl;
-        
+
       *type = I3_INVALID_TYPE;
       free(payload);
       return nullptr;
     }
     payload[header.size] = '\0';
   }
-  
+
   return payload;
 }
 
@@ -193,12 +193,12 @@ int init_socket(char const* path)
     return 1;
   }
   //(void)fcntl(sockfd, F_SETFD, FD_CLOEXEC); // WTF
-  
+
   SocketAddr server_address;
   memset(&server_address, 0, sizeof(server_address));
   server_address.sun_family = AF_LOCAL;
   strcpy(server_address.sun_path, path);
-  
+
   int err = connect(sockfd, (struct sockaddr*)&server_address, sizeof(server_address));
   if(err != 0)
   {
@@ -223,10 +223,10 @@ int test_sockets(int argc, char* argv[])
   *p = '\0';
   printf("%s\n", path);
   int fd = init_socket(path);
-  
+
   char msg[] = "[\"workspace\", \"mode\"]";
   sendMessage(fd, 2, msg);
-  
+
   for(int i=0; i<100; i++)
   {
     uint32_t type;
@@ -234,9 +234,6 @@ int test_sockets(int argc, char* argv[])
     cout << "Type " << type << ": " << payload << endl << endl;
     free(payload);
   }
-  
+
   return 0;
 }
-
-
-

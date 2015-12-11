@@ -4,10 +4,11 @@
 #include<string>
 #include<vector>
 #include"../StateItem.hpp"
+#include"../JSON/jsonParser.hpp"
 
 struct SpaceItem
 {
-  std::string mountPoint;
+  std::string mount_point;
   std::string size;
   std::string used;
 };
@@ -15,16 +16,17 @@ struct SpaceItem
 class Space : public StateItem
 {
 private:
+  static std::string get_space;
+
   std::vector<SpaceItem> items;
   bool getSpaceUsage(SpaceItem& dir);
-  
-  static std::string const getSpace;
 
   bool update(void);
   void print(void);
 
 public:
-  Space(std::vector<std::string>&);
+  static void settings(JSONObject&);
+  explicit Space(JSONObject& item);
   virtual ~Space() {};
 };
 

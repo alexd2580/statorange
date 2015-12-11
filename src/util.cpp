@@ -51,13 +51,13 @@ bool hasInput(int fd, int microsec)
   struct timeval tv;
   tv.tv_sec = 0;
   tv.tv_usec = microsec;
-  
+
   retval = select(fd+1, &rfds, nullptr, nullptr, &tv);
 
   return retval > 0;
 }
 
-bool loadFile(string& name, string& content)
+bool load_file(string& name, string& content)
 {
     // We create the file object, saying I want to read it
     fstream file(name.c_str(), fstream::in);
@@ -86,7 +86,7 @@ string execute(string const& command)
   {
      cerr << "FORK failed" << endl;
      return 0;
-  } 
+  }
   else if(childpid == 0) //I am child
   {
     close(1); //stdout
@@ -97,10 +97,10 @@ string execute(string const& command)
   }
 
   wait(nullptr);
-  
+
   string res = "";
   char buffer[500];
-  
+
   errno = EINTR;
   while(errno == EAGAIN || errno == EINTR)
   {
@@ -111,7 +111,7 @@ string execute(string const& command)
     buffer[n] = '\0';
     res += buffer;
   }
-  
+
   return res;
 }
 
@@ -128,10 +128,8 @@ Logger::Logger(string lname, std::ostream& ostr) :
 Logger::~Logger()
 {
 }
-  
+
 ostream& Logger::log(void)
 {
   return ostream << logname << ' ';
 }
-
-

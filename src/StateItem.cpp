@@ -12,9 +12,14 @@
 
 using namespace std;
 
-StateItem::StateItem(string name, time_t cd) : 
-  module_name(name), cooldown(cd)
+StateItem::StateItem(JSONObject& item)
 {
+  module_name.assign(item["item"].string());
+  cooldown = (time_t)item["cooldown"].number();
+  JSON* cmd = item.has("button");
+  if((button = (cmd != nullptr)))
+    button_command = cmd->string();
+
   last_updated = 0;
   valid = false;
 }
@@ -39,7 +44,16 @@ void StateItem::force_update(void)
 void StateItem::wrap_print(void)
 {
   if(valid)
-    print();
+  {
+    if(button)
+    {
+      startButton(button_command, cout);
+      print();
+      stopButton(cout);
+    }
+    else
+      print();
+  }
   else
   {
     separate(Left, warn_colors);
@@ -50,19 +64,40 @@ void StateItem::wrap_print(void)
 
 vector<StateItem*> StateItem::states;
 
-void StateItem::init(void)
+/**
+ * This method initializes the settings for each type of item.
+ * If missing it will throw a JSONException here.
+ * and reads the "order" component of the config, instantiating the items.
+ */
+void StateItem::init(JSONObject& config)
 {
-  //INIT CODE HERE
-  states.push_back(new Volume());
-  states.push_back(new Net("eth0", Ethernet));
-  states.push_back(new Net("wlan0", Wireless));
-  states.push_back(new Battery());
-  states.push_back(new CPU());
-  vector<string> mpoints;
-  mpoints.push_back("/");
-  mpoints.push_back("/home");
-  states.push_back(new Space(mpoints));
-  states.push_back(new Date());
+  Date::settings(config["Date"].object());
+  Net::settings(config["Net"].object());
+  CPU::settings(config["CPU"].object());
+  Battery::settings(config["Battery"].object());
+  Volume::settings(config["Volume"].object());
+  Space::settings(config["Space"].object());
+
+  JSONArray& order = config["order"].array();
+  size_t length = order.length();
+
+  for(size_t i=0; i<length; i++)
+  {
+    JSONObject& section = order[i].object();
+    string item = section["item"].string();
+    if(item.compare("CPU") == 0)
+        states.push_back(new CPU(section));
+    if(item.compare("Battery") == 0)
+        states.push_back(new Battery(section));
+    if(item.compare("Net") == 0)
+        states.push_back(new Net(section));
+    if(item.compare("Date") == 0)
+        states.push_back(new Date(section));
+    if(item.compare("Volume") == 0)
+        states.push_back(new Volume(section));
+    if(item.compare("Space") == 0)
+        states.push_back(new Space(section));
+  }
 }
 
 void StateItem::updates(void)
@@ -88,5 +123,3 @@ void StateItem::close(void)
   for(auto i=states.begin(); i!=states.end(); i++)
     delete (*i);
 }
-
-

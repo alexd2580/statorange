@@ -27,8 +27,6 @@ using namespace std;
 /******************************************************************************/
 /********************************** GLOBALS ***********************************/
 
-string const getSocket("i3 --get-socketpath");
-
 pthread_t main_thread;
 pthread_t event_listener_thread;
 pthread_cond_t notifier;
@@ -46,7 +44,7 @@ Logger term("[Term handler]", cerr);
 void term_handler(int signum)
 {
   die = 1;
-  
+
   pthread_t this_ = pthread_self();
   if(this_ == main_thread)
   {
@@ -71,7 +69,7 @@ void notify_handler(int signum)
 {
   force_update = 1;
   pthread_cond_signal(&notifier);
-  
+
   pthread_t this_ = pthread_self();
   if(this_ == event_listener_thread)
   {
@@ -87,30 +85,10 @@ void notify_handler(int signum)
   return;
 }
 
-/******************************************************************************/
-
-int main(int, char**)
+void register_signal_handlers(void)
 {
-  Logger l("[Main]", cerr);
-  l.log() << "Launching Statorange" << endl;
-
-  string path = execute(getSocket);
-  path.pop_back();
-  
-  init_colors();
-
-  I3State i3State(path);
-  i3State.updateOutputs();
-  StateItem::init();
-  
-  pthread_cond_init(&notifier, nullptr);
-  pthread_mutex_init(&mutex, nullptr);
-
-  forkEventListener(&i3State, path);
-  main_thread = pthread_self();
-  
   struct sigaction term_handler_action;
-  term_handler_action.sa_handler = term_handler;               
+  term_handler_action.sa_handler = term_handler;
   sigemptyset(&term_handler_action.sa_mask);
   //sa.sa_flags = SA_RESTART | SA_NODEFER;
   term_handler_action.sa_flags = 0;
@@ -118,64 +96,122 @@ int main(int, char**)
   sigaction(SIGTERM, &term_handler_action, nullptr);
 
   struct sigaction sigusr1_handler_action;
-  sigusr1_handler_action.sa_handler = notify_handler;               
+  sigusr1_handler_action.sa_handler = notify_handler;
   sigemptyset(&sigusr1_handler_action.sa_mask);
   //sa.sa_flags = SA_RESTART | SA_NODEFER;
   sigusr1_handler_action.sa_flags = 0;
   sigaction(SIGUSR1, &sigusr1_handler_action, nullptr);
+}
 
-  l.log() << "Entering main loop" << endl;
-  pthread_mutex_lock(&mutex);
-  
+/******************************************************************************/
+
+int main(int, char**)
+{
+  Logger l("[Main]", cerr);
+  l.log() << "Launching Statorange" << endl;
+
+  string config_name = "config.json";
+  string config_string;
+  if(!load_file(config_name, config_string))
+  {
+    l.log() << "Could not load config.json" << endl;
+    return EXIT_FAILURE;
+  }
+
+  init_colors();
+
   try
   {
-  
-  while(!die)
-  {
-    if(force_update)
-    {
-      StateItem::forceUpdates();
-      force_update = 0;
-    }
-    else
-      StateItem::updates();
-    
-    pthread_mutex_lock(&i3State.mutex);
-    if(!i3State.valid)
-      die = 1;
-    else
-    {
-      echoPrimaryLemon(i3State, 0);
-      for(uint8_t i=1; i<i3State.outputs.size(); i++)
-        echoSecondaryLemon(i3State, i);
-      cout << endl;
-      cout.flush();
-    }
-    pthread_mutex_unlock(&i3State.mutex);
+    /** Load the config */
+    JSON* config_json_raw = JSON::parse(config_string.c_str());
+    JSONObject& config_json = config_json_raw->object();
 
-    struct timespec abstime;
-    clock_gettime(CLOCK_REALTIME, &abstime);
-    abstime.tv_sec += 5;
-    pthread_cond_timedwait(&notifier, &mutex, &abstime);
-  }
-  
+    //cooldown
+    time_t cooldown = config_json["cooldown"].number();
+
+    //get the socket path to i3
+    string get_socket = config_json["get_socket"].string();
+    string path = execute(get_socket);
+    path.pop_back();
+
+    //init i3State
+    I3State i3State(path);
+    i3State.updateOutputs();
+
+    //init StateItems
+    StateItem::init(config_json);
+
+    //Now the config can be deleted
+    delete config_json_raw;
+
+    /** Initialize and fork event listener */
+    pthread_cond_init(&notifier, nullptr);
+    pthread_mutex_init(&mutex, nullptr);
+
+    forkEventListener(&i3State, path);
+    main_thread = pthread_self();
+
+    register_signal_handlers();
+
+    l.log() << "Entering main loop" << endl;
+    pthread_mutex_lock(&mutex);
+
+    try
+    {
+
+      while(!die)
+      {
+        if(force_update)
+        {
+          StateItem::forceUpdates();
+          force_update = 0;
+        }
+        else
+          StateItem::updates();
+
+        pthread_mutex_lock(&i3State.mutex);
+        if(!i3State.valid)
+          die = 1;
+        else
+        {
+          echoPrimaryLemon(i3State, 0);
+          for(uint8_t i=1; i<i3State.outputs.size(); i++)
+            echoSecondaryLemon(i3State, i);
+          cout << endl;
+          cout.flush();
+        }
+        pthread_mutex_unlock(&i3State.mutex);
+
+        struct timespec abstime;
+        clock_gettime(CLOCK_REALTIME, &abstime);
+        abstime.tv_sec += cooldown;
+        pthread_cond_timedwait(&notifier, &mutex, &abstime);
+      }
+    }
+    catch(JSONException& e)
+    {
+      l.log() << "Exception catched:" << endl;
+      e.printStackTrace();
+      exit_status = EXIT_FAILURE;
+    }
   }
   catch(JSONException& e)
   {
-    cerr << e.what() << endl;
+    l.log() << "Could not parse config:" << endl;
+    e.printStackTrace();
+    exit_status = EXIT_FAILURE;
   }
-  
+
   pthread_mutex_unlock(&mutex);
   l.log() << "Exiting main loop" << endl;
-  
+
   pthread_join(event_listener_thread, nullptr);
-    
+
   StateItem::close();
-  
+
   pthread_mutex_destroy(&mutex);
   pthread_cond_destroy(&notifier);
-  
-  l.log() << "Stopping Statorange" << endl;
-  return exit_status; 
-}
 
+  l.log() << "Stopping Statorange" << endl;
+  return exit_status;
+}

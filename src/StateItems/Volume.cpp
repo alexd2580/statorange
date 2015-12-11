@@ -10,9 +10,24 @@ using namespace std;
 /******************************************************************************/
 /******************************************************************************/
 
+string Volume::get_volume = "";
+
+void Volume::settings(JSONObject& section)
+{
+    string s = section["get_volume"].string();
+    get_volume.assign(s);
+}
+
+Volume::Volume(JSONObject& item) :
+  StateItem(item)
+{
+    mute = true;
+    volume = 0;
+}
+
 bool Volume::update(void)
 {
-  string output = execute(amixer_cmd);
+  string output = execute(get_volume);
   char const* c = output.c_str();
 
   while(*c != '\0')
@@ -26,28 +41,19 @@ bool Volume::update(void)
       mute = strncmp(on, "on]", 3) != 0;
       return true;
     }
-    
+
     while(*c != '\n' && *c != '\0')
       c++;
     if(*c == '\n')
       c++;
   }
-  
-  return false;
-}
 
-Volume::Volume() :
-  StateItem("Volume", 300),
-  amixer_cmd("amixer get Master"),
-  alsamixer_cmd(mkTerminalCmd("alsamixer"))
-{
-    mute = true;
-    volume = 0;
+  return false;
 }
 
 void Volume::print(void)
 {
-  startButton(alsamixer_cmd);
+  startButton(get_volume);
   separate(Left, neutral_colors);
   print_icon(icon_vol);
   if(mute)

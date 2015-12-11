@@ -4,54 +4,45 @@
 #include<string>
 #include<vector>
 #include<map>
+#include<stack>
+#include<iostream>
 
-class TraceCeption
+#include"../util.hpp"
+
+class TraceCeption // TODO use it
 {
 protected:
-  std::string const message;
-  TraceCeption const * const exception;
-  
+  std::stack<std::string> stacktrace;
+
 public:
-  TraceCeption(std::string msg)
-    : message(msg), exception(nullptr)
-  {}
-  
-  TraceCeption(std::string msg, TraceCeption& excp)
-    : message(msg), exception(&excp)
-  {}
-  
+  explicit TraceCeption(std::string msg)
+  {
+    stacktrace.push(msg);
+  }
+
   virtual ~TraceCeption() {}
-  
-  virtual std::string what(void)
+
+  void push_stack(std::string msg)
   {
-    return message;
+    stacktrace.push(msg);
   }
-  
-  virtual TraceCeption const * next(void) const
+
+  void printStackTrace(void)
   {
-    return exception;
-  }
-  
-  void printStackTrace(void) const
-  {
-    std::cerr << message << std::endl;
-    if(exception != nullptr)
-      exception->printStackTrace();
+    while(!stacktrace.empty())
+    {
+      std::cerr << stacktrace.top() << std::endl;
+      stacktrace.pop();
+    }
   }
 };
 
 class JSONException : public TraceCeption
 {
 public:
-  JSONException(std::string errormsg)
+  explicit JSONException(std::string errormsg)
     : TraceCeption(errormsg)
-  {
-  }
-  
-  JSONException(std::string errormsg, JSONException& excp)
-    : TraceCeption(errormsg, excp)
-  {
-  }
+  {}
 };
 
 
@@ -69,12 +60,12 @@ protected:
   static JSON* parseJSON(char const*& string);
 public:
   virtual ~JSON() {};
-  
+
   virtual void print(size_t indention) = 0;
   virtual void print(void);
-  
+
   static JSON* parse(char const* string);
-  
+
   JSONArray& array(void);
   JSONObject& object(void);
   JSONString& string(void);
@@ -88,9 +79,9 @@ class JSONArray : public JSON
 private:
   std::vector<JSON*> elems;
 public:
-  JSONArray(char const*&);
+  explicit JSONArray(char const*&);
   virtual ~JSONArray();
-  
+
   virtual void print(size_t indention);
   JSON& get(size_t i);
   JSON& operator[](size_t);
@@ -104,12 +95,14 @@ private:
 
   void parseNamed(char const*&);
 public:
-  JSONObject(char const*&);
+  explicit JSONObject(char const*&);
   virtual ~JSONObject();
 
   virtual void print(size_t indention);
-  JSON& get(char const*);
-  JSON& operator[](char const*);  
+  JSON* has(cchar*);
+  JSON* has(std::string&);
+  JSON& get(cchar*);
+  JSON& operator[](cchar*);
   JSON& get(std::string&);
   JSON& operator[](std::string&);
 };
@@ -119,9 +112,9 @@ class JSONString : public JSON
 private:
   std::string string;
 public:
-  JSONString(char const*&);
+  explicit JSONString(char const*&);
   virtual ~JSONString();
-  
+
   virtual void print(size_t);
   std::string get(void);
   operator std::string&();
@@ -132,9 +125,9 @@ class JSONNumber : public JSON
 private:
   double n;
 public:
-  JSONNumber(char const*&);
+  explicit JSONNumber(char const*&);
   virtual ~JSONNumber() {};
-  
+
   virtual void print(size_t);
   operator uint8_t();
   operator int();
@@ -147,9 +140,9 @@ class JSONBool : public JSON
 private:
   bool b;
 public:
-  JSONBool(char const*&);
+  explicit JSONBool(char const*&);
   virtual ~JSONBool() {};
-  
+
   virtual void print(size_t);
   operator bool();
 };
@@ -157,7 +150,7 @@ public:
 class JSONNull : public JSON
 {
 public:
-  JSONNull(char const*&);
+  explicit JSONNull(char const*&);
   virtual ~JSONNull() {};
 
   virtual void print(size_t);

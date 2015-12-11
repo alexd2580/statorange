@@ -7,16 +7,21 @@
 
 using namespace std;
 
-string Date::command = "date +%Y-%m-%d\\ %H:%M";
+string Date::get_date = "";
 
-Date::Date() : 
-  StateItem("Date", 30)
+void Date::settings(JSONObject& section)
+{
+  get_date.assign(section["get_date"].string());
+}
+
+Date::Date(JSONObject& item) :
+  StateItem(item)
 {
 }
 
 bool Date::update(void)
 {
-  time = execute(command);
+  time = execute(get_date);
   time.pop_back(); //date prints newline
   return true;
 }

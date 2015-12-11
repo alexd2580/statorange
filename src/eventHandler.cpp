@@ -37,7 +37,7 @@ void handleWorkspaceEvent(I3State& i3State, char* response)
   size_t evTypeLen;
   char const* eventType;
   ptr = getJSONString(ptr, &eventType, &evTypeLen);
-  
+
   if(evTypeLen == 4 && strncmp(eventType, "init", 4) == 0)
   {
     GET_DISPLAY_NUM
@@ -84,17 +84,17 @@ void handleWindowEvent(I3State& i3State, char* response)
   JSON* json = JSON::parse(response);
   JSONObject& windowEvent = json->object();
   string change = windowEvent["change"].string();
-  
+
   JSONObject& container = windowEvent["container"].object();
   long appId = container["id"].number();
-  
+
   /** New events are also accompanied by focus events if necessary */
   //cLen == 3 && strncmp(cStr, "new", 3) == 0
-  
+
   /**
-   * On a title update check if the application is focused 
+   * On a title update check if the application is focused
    * on any visible workspace. If yes -> update (id does not change)
-   */  
+   */
   if(change.compare("title") == 0)
   {
     for(auto i=i3State.workspaces.begin(); i!=i3State.workspaces.end(); i++)
@@ -104,15 +104,15 @@ void handleWindowEvent(I3State& i3State, char* response)
         break;
       }
   }
-  /** Copy the title/id of the currently focused window to it's WS. */  
+  /** Copy the title/id of the currently focused window to it's WS. */
   else if(change.compare("focus") == 0)
   {
     Workspace& fw = i3State.workspaces[i3State.focusedWorkspace];
     fw.focusedApp = getWindowName(container);
     fw.focusedAppID = appId;
   }
-  /** 
-   * usually after a close event a focus event is issued, 
+  /**
+   * usually after a close event a focus event is issued,
    * if there is a focused window. therefore delete the focus here.
    * I don't know on which workspace the application closed.
    */
@@ -138,7 +138,7 @@ void handleWindowEvent(I3State& i3State, char* response)
   }
   else
     evlog.log() << "Unhandled window event type: " << change << endl;
-  
+
   delete json;
   return;
 }
@@ -181,7 +181,7 @@ void handleEvent(I3State& i3State, uint32_t type, char* response)
     evlog.log() << "Unhandled event type: " << type << endl;
     break;
   }
-  
+
   if(i3State.valid == 0)
   {
     evlog.log() << "Invalid change after event " << type << " occured" << endl;
@@ -189,8 +189,8 @@ void handleEvent(I3State& i3State, uint32_t type, char* response)
       evlog.log() << response << endl;
     die = 1;
   }
-  
-  if(response != NULL) 
+
+  if(response != NULL)
     free(response);
 }
 
@@ -202,9 +202,6 @@ struct event_listener_data
 
 void* event_listener(void* data)
 {
-  try
-  {
-
   evlog.log() << "Launching event listener" << endl;
   event_listener_data* eldp = (event_listener_data*)data;
   int push_socket = eldp->push_socket;
@@ -214,42 +211,44 @@ void* event_listener(void* data)
   sendMessage(push_socket, I3_IPC_MESSAGE_TYPE_SUBSCRIBE, abonnements);
   uint32_t type;
   char* response = readMessage(push_socket, &type);
-  handleEvent(i3State, type, response);
-    
-  evlog.log() << "Entering event listener loop" << endl;
-  while(!die)
+  try
   {
-    //this sleep prevents the application from dying because of SIGUSR1 spam.
-    //on the other hand, the user can now crash, or at least DOS i3 with
-    //events, which cannot be processed fast enough
-    //could be replaced with a mutex...
-    struct timespec t;
-    t.tv_sec = 0;
-    t.tv_nsec = 10000000;
-    nanosleep(&t, NULL);
-  
-    response = readMessage(push_socket, &type);
     handleEvent(i3State, type, response);
-    
-    while(!die && hasInput(push_socket, 1000))
+
+    evlog.log() << "Entering event listener loop" << endl;
+    while(!die)
     {
+      //this sleep prevents the application from dying because of SIGUSR1 spam.
+      //on the other hand, the user can now crash, or at least DOS i3 with
+      //events, which cannot be processed fast enough
+      //could be replaced with a mutex...
+      struct timespec t;
+      t.tv_sec = 0;
+      t.tv_nsec = 10000000;
+      nanosleep(&t, NULL);
+
       response = readMessage(push_socket, &type);
       handleEvent(i3State, type, response);
+
+      while(!die && hasInput(push_socket, 1000))
+      {
+        response = readMessage(push_socket, &type);
+        handleEvent(i3State, type, response);
+      }
+
+      pthread_cond_signal(&notifier);
     }
-    
-    pthread_cond_signal(&notifier);
-  }
-  evlog.log() << "Exiting event listener loop" << endl;
-  
-  shutdown(push_socket, SHUT_RDWR);
-  
-  evlog.log() << "Stopping event listener" << endl;
-  
+    evlog.log() << "Exiting event listener loop" << endl;
   }
   catch(JSONException& e)
   {
-    cerr << e.what() << endl;
+    evlog.log() << "Catched exception:" << endl;
+    e.printStackTrace();
   }
+
+  shutdown(push_socket, SHUT_RDWR);
+  evlog.log() << "Stopping event listener" << endl;
+
   //pthread_exit(0); which is better?
   return nullptr; // this produces no warnings
 }
@@ -261,4 +260,3 @@ void forkEventListener(I3State* i3, string& path)
   data->push_socket = init_socket(path.c_str());
   pthread_create(&event_listener_thread, nullptr, &event_listener, (void*)data);
 }
-

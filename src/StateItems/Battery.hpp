@@ -3,6 +3,7 @@
 
 #include<string>
 #include"../StateItem.hpp"
+#include"../JSON/jsonParser.hpp"
 
 enum BatStatus
 {
@@ -12,6 +13,8 @@ enum BatStatus
 class Battery : public StateItem
 {
 private:
+  static std::string bat_file_loc;
+
   bool cached;
   std::string printString;
 
@@ -20,12 +23,12 @@ private:
   long dischargeRate;
   long maxCapacity;
   long currentLevel;
-  
-  static std::string bat_file_loc;
+
   bool update(void);
   void print(void);
 public:
-  Battery();
+  static void settings(JSONObject&);
+  Battery(JSONObject&);
   virtual ~Battery() {};
 };
 

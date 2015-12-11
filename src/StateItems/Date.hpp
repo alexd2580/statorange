@@ -9,12 +9,13 @@ class Date : public StateItem
 private:
   //DATE & TIME
   std::string time;
-  static std::string command;
+  static std::string get_date;
 
   bool update(void);
   void print(void);
 public:
-  Date();
+  static void settings(JSONObject& section);
+  Date(JSONObject& item);
   virtual ~Date() {};
 };
 

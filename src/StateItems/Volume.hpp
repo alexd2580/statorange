@@ -7,19 +7,19 @@
 class Volume : public StateItem
 {
 private:
+  static std::string get_volume;
+
   //VOLUME
   bool mute;
   int volume;
-  
-  std::string const amixer_cmd;
-  std::string const alsamixer_cmd;
-  
+
   bool update(void);
   void print(void);
+
 public:
-  Volume();
+  static void settings(JSONObject&);
+  Volume(JSONObject& item);
   virtual ~Volume() {};
-}; 
+};
 
 #endif
-

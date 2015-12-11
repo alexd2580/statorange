@@ -1,7 +1,7 @@
 #ifndef __COMPACT_JSON_SEARCH__
 #define __COMPACT_JSON_SEARCH__
 
-#include<cstdint>
+#include<cstddef>
 
 char const* skipJSONSomething(char const*);
 

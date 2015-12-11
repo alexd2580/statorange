@@ -3,25 +3,27 @@
 
 #include<string>
 #include"../StateItem.hpp"
+#include"../JSON/jsonParser.hpp"
 
 class CPU : public StateItem
 {
 private:
+  static std::string temp_file_loc;
+  static std::string load_file_loc;
+
   bool cached;
-  std::string printString;
-  
+  std::string print_string;
+
   //CPU
   int cpu_temp;
   float cpu_load;
-  
-  static std::string const temp_file_loc;
-  static std::string const load_file_loc;
-  std::string const sysmgr_cmd;
 
   bool update(void);
   void print(void);
+
 public:
-  CPU();
+  static void settings(JSONObject&);
+  CPU(JSONObject& item);
   virtual ~CPU() {};
 };
 

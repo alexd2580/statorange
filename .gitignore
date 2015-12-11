@@ -7,3 +7,5 @@ other
 *.fifo
 statorange
 statorange_debug
+ycm_extra_conf.py
+confíg.json

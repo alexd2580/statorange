@@ -13,18 +13,26 @@ ostream& operator<<(ostream& out, IPv4Address ip)
 	return out << (int)ip.ip1 << '.' << (int)ip.ip2 << '.' << (int)ip.ip3 << '.' << (int)ip.ip4;
 }
 
-cchar* const Net::ifstat_file_loc = "/sys/class/net/%s/operstate";
-string Net::ifconfig_file_loc = "/sbin/ifconfig ";
-string Net::iwconfig_file_loc = "/sbin/iwconfig ";
+pair<string,string> Net::ifstat_file_gen = pair<string, string>("","");
+string Net::ifconfig_file_loc = "";
+string Net::iwconfig_file_loc = "";
 
 /******************************************************************************/
 /******************************************************************************/
+
+void Net::settings(JSONObject& section)
+{
+	ifstat_file_gen.first = section["ifstat_file_pre"].string();
+	ifstat_file_gen.second = section["ifstat_file_post"].string();
+	ifconfig_file_loc = section["ifconfig_file"].string();
+	iwconfig_file_loc = section["iwconfig_file"].string();
+}
 
 bool Net::getIpAddress(void)
 {
   string cmd = ifconfig_file_loc + ' ' + iface;
   string output = execute(cmd);
-  
+
   char const* c = output.c_str();
   while(*c != '\n') c++;
   skipWhitespaces(c);
@@ -39,9 +47,9 @@ bool Net::getIpAddress(void)
 
 bool Net::getWirelessState(void)
 {
-  string command = iwconfig_file_loc + iface;
+  string command = iwconfig_file_loc + ' ' + iface;
   string output = execute(command);
-  
+
   iface_quality = -1;
   char const* c = output.c_str();
 
@@ -56,7 +64,7 @@ bool Net::getWirelessState(void)
       char const* e = c;
       while(*e != '"')
         e++;
-      
+
       iface_essid.assign(c, e-c);
     }
     else if(strncmp(c, "Link Quality=", 13) == 0)
@@ -74,9 +82,16 @@ bool Net::getWirelessState(void)
   return false;
 }
 
-Net::Net(string interface, ConnectionType conType) :
-  StateItem("Network", 10), Logger("[Net]", cerr), iface(interface), type(conType)
+Net::Net(JSONObject& item) :
+  StateItem(item), Logger("[Net]", cerr)
 {
+	iface.assign(item["interface"].string());
+	ifstat_file_loc.assign(ifstat_file_gen.first + iface + ifstat_file_gen.second);
+	string contype = item["type"].string();
+	if(contype.compare("wireless") == 0)
+		type = Wireless;
+	else if(contype.compare("ethernet") == 0)
+		type = Ethernet;
 }
 
 Net::~Net()
@@ -85,21 +100,19 @@ Net::~Net()
 
 bool Net::update(void)
 {
-  char file[50] = { 0 };
-  sprintf(file, ifstat_file_loc, iface.c_str());
   char line[11] = { 0 };
-  FILE* upfile = fopen(file, "r");
+  FILE* upfile = fopen(ifstat_file_loc.c_str(), "r");
   FAIL_ON_FALSE(upfile != nullptr)
   fgets(line, 10, upfile);
   fclose(upfile);
-  
+
   if((iface_up = (strncmp(line, "up", 2) == 0)))
   {
     FAIL_ON_FALSE(getIpAddress())
     if(type == Wireless)
       FAIL_ON_FALSE(getWirelessState())
   }
-  
+
   return true;
 }
 
@@ -120,6 +133,7 @@ void Net::print(void)
       cout << ' ' << iface_ip << ' ';
       break;
     default:
+			cout << " Something went wrong ";
       break;
     }
     separate(Left, white_on_black);

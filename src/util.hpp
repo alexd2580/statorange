@@ -23,7 +23,7 @@ bool hasInput(int fd, int microsec);
 
 void storeString(char* dst, size_t dst_size, char* src, size_t src_size);
 
-bool loadFile(std::string& name, std::string& content);
+bool load_file(std::string& name, std::string& content);
 
 std::string execute(std::string const& command);
 
@@ -37,7 +37,7 @@ private:
 public:
   Logger(std::string lname, std::ostream& ostr);
   ~Logger();
-  
+
   std::ostream& log(void);
 };
 

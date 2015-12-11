@@ -5,6 +5,8 @@
 #include<vector>
 #include<string>
 
+#include"JSON/jsonParser.hpp"
+
 #define FAIL_ON_FALSE(b) if(!(b)) { return false; }
 
 class StateItem
@@ -15,6 +17,8 @@ private:
   std::string module_name;
   time_t cooldown;
   time_t last_updated;
+  bool button;
+  std::string button_command;
   bool valid;
 
   void wrap_update(void);
@@ -23,12 +27,12 @@ private:
 protected:
   virtual bool update(void) = 0;
   virtual void print(void) = 0;
-  
+  StateItem(JSONObject& item);
+
 public:
-  StateItem(std::string module_name, time_t cooldown);
   virtual ~StateItem() {};
-  
-  static void init(void);
+
+  static void init(JSONObject& config);
   static void updates(void);
   static void forceUpdates(void);
   static void printState(void);

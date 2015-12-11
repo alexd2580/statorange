@@ -42,7 +42,7 @@ private:
 public:
   pthread_mutex_t mutex; //TODO private
 
-  I3State(std::string path);
+  explicit I3State(std::string path);
   ~I3State();
   bool valid;
   

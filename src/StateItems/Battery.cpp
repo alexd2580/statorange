@@ -9,10 +9,15 @@
 
 using namespace std;
 
-string Battery::bat_file_loc = "/sys/class/power_supply/BAT0/uevent";
+string Battery::bat_file_loc = "/dev/zero";
 
-Battery::Battery() :
-  StateItem("Battery", 15), cached(false), printString("")
+void Battery::settings(JSONObject& section)
+{
+    bat_file_loc.assign(section["battery_file"].string());
+}
+
+Battery::Battery(JSONObject& item) :
+  StateItem(item), cached(false), printString("")
 {
     status = NotFound;
     dischargeRate = 0;
@@ -52,7 +57,7 @@ bool Battery::update(void)
     }
     fclose(bfile);
   }
-  
+
   return true;
 }
 
@@ -88,7 +93,7 @@ void Battery::print(void)
 
         long rem_minOnly = rem_minutes % 60;
         o << (rem_minOnly < 10 ? ":0" : ":") << rem_minOnly << ' ';
-        
+
         break;
       }
       case NotFound:
@@ -96,12 +101,10 @@ void Battery::print(void)
         break;
       }
       separate(Left, white_on_black, o);
-    
+
     }
     printString = o.str();
     cached = true;
   }
   cout << printString;
 }
-
-

@@ -2,6 +2,7 @@
 #define __I3IPCINTERFACE__
 
 #include<cstdint>
+#include<unistd.h>
 
 ssize_t readall(int fd, void* buf, size_t count);
 

@@ -35,15 +35,15 @@ void I3State::parseOutputs(void)
   char* buffer = readMessage(fd, &type);
   if(type == I3_INVALID_TYPE)
     return;
-    
+
   try
   {
     JSON* json = JSON::parse(buffer);
     JSONArray& array = json->array();
-    uint8_t totalDisplays = (uint8_t)array.length();  
-    
+    uint8_t totalDisplays = (uint8_t)array.length();
+
     outputs.clear();
-    
+
     int x, y;
     for(uint8_t i=0; i<totalDisplays; i++)
     {
@@ -69,7 +69,7 @@ void I3State::parseOutputs(void)
         if(POS_LESS(outputs[oPos], outputs[fPos]))
           minOutPos = oPos;
       }
-      
+
       if(minOutPos != fPos)
       {
         tmp = outputs[fPos];
@@ -77,13 +77,14 @@ void I3State::parseOutputs(void)
         outputs[minOutPos] = tmp;
       }
     }
-    
+
     delete json;
   }
   catch(JSONException& e)
   {
-    cerr << e.what() << endl;
+    e.printStackTrace();
   }
+
   free(buffer);
   valid = true;
   return;
@@ -103,12 +104,12 @@ void I3State::parseWorkspaces(void)
   //Send query
   if(sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, nullptr) != 0)
     return;
-    
+
   uint32_t type;
   char* buffer = readMessage(fd, &type);
   if(type == I3_INVALID_TYPE)
     return;
-  
+
   focusedWorkspace = 0;
   workspaces.clear();
 
@@ -117,28 +118,28 @@ void I3State::parseWorkspaces(void)
     JSON* json = JSON::parse(buffer);
     JSONArray& array = json->array();
     size_t wsCount = array.length();
-    
+
     for(uint8_t i=0; i<wsCount; i++)
     {
       Workspace ws;
       JSONObject& workspace = array[i].object();
-      
+
       ws.num = workspace["num"].number();
       ws.name = workspace["name"].string(); // TODO LEN
       ws.visible = workspace["visible"].boolean();
       ws.focused = workspace["focused"].boolean();
       ws.urgent = workspace["urgent"].boolean();
-      
+
       string output = workspace["output"].string();
       for(uint8_t d=0; d<outputs.size(); d++)
         if(outputs[d].name.compare(output) == 0)
           ws.output = d;
-          
+
       ws.focusedApp = "";
       ws.focusedAppID = -1;
-      
+
       workspaces.push_back(ws);
-      if(ws.focused) 
+      if(ws.focused)
         focusedWorkspace = workspaces.size()-1;
     }
 
@@ -147,7 +148,7 @@ void I3State::parseWorkspaces(void)
   }
   catch(JSONException& e)
   {
-    cerr << e.what() << endl;
+    e.printStackTrace();
   }
   return;
 }
@@ -160,20 +161,20 @@ I3State::I3State(string path) :
 {
   pthread_mutex_init(&mutex, nullptr);
   pthread_mutex_lock(&mutex);
-  
+
   focusedWorkspace = 0;
   mode = "default";
   valid = false;
-  
+
   pthread_mutex_unlock(&mutex);
 }
 
 I3State::~I3State()
 {
   pthread_mutex_lock(&mutex);
-  
+
   shutdown(fd, SHUT_RDWR);
-  
+
   pthread_mutex_unlock(&mutex);
   pthread_mutex_destroy(&mutex);
 }
@@ -200,14 +201,14 @@ void I3State::workspaceInit(uint8_t num)
   char* buffer = nullptr;
   if(sent)
     buffer = readMessage(fd, &type);
-  
+
   if(sent && type != I3_INVALID_TYPE)
   {
     try
     {
       JSON* json = JSON::parse(buffer);
       JSONArray& array = json->array();
-      
+
       uint8_t index = 0;
       auto iter = workspaces.begin();
       while(iter->num < num && iter != workspaces.end())
@@ -215,14 +216,14 @@ void I3State::workspaceInit(uint8_t num)
         iter++;
         index++;
       }
-        
+
       if(workspaces[focusedWorkspace].num > num)
         focusedWorkspace++;
-      
+
       for(uint8_t i=0; i<array.length(); i++)
       {
         JSONObject& wsJSON = array[i].object();
-        
+
         uint8_t anum = wsJSON["num"].number();
         if(anum == num)
         {
@@ -232,19 +233,19 @@ void I3State::workspaceInit(uint8_t num)
           ws.visible = wsJSON["visible"].boolean();
           ws.focused = wsJSON["focused"].boolean();
           ws.urgent = wsJSON["urgent"].boolean();
-          
+
           ws.focusedApp = "";
           ws.focusedAppID = -1;
-      
+
           string output = wsJSON["output"].string();
           for(uint8_t d=0; d<outputs.size(); d++)
             if(outputs[d].name.compare(output) == 0)
               ws.output = d;
-          
+
           workspaces.insert(iter, ws);
-          if(ws.focused) 
+          if(ws.focused)
             focusedWorkspace = index;
-            
+
           valid = true;
           break;
         }
@@ -253,11 +254,11 @@ void I3State::workspaceInit(uint8_t num)
     }
     catch(JSONException& e)
     {
-      cerr << e.what() << endl;
+      e.printStackTrace();
     }
     free(buffer);
   }
-  
+
   pthread_mutex_unlock(&mutex);
 }
 
@@ -268,12 +269,12 @@ void I3State::updateWorkspaceStatus(void)
 
   //Send query
   bool sent = sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, nullptr) == 0;
-    
+
   uint32_t type;
   char* buffer = nullptr;
   if(sent)
     buffer = readMessage(fd, &type);
-  
+
   if(sent && type != I3_INVALID_TYPE)
   {
     focusedWorkspace = 0;
@@ -288,7 +289,7 @@ void I3State::updateWorkspaceStatus(void)
       {
         JSONObject& workspace = array[i].object();
         uint8_t num = workspace["num"].number();
-        
+
         for(size_t j=0; j<workspaces.size(); j++)
         {
           Workspace& ws = workspaces[j];
@@ -297,20 +298,20 @@ void I3State::updateWorkspaceStatus(void)
             ws.visible = workspace["visible"].boolean();
             ws.focused = workspace["focused"].boolean();
             ws.urgent = workspace["urgent"].boolean();
-            if(ws.focused) 
+            if(ws.focused)
               focusedWorkspace = j;
             break;
           }
         }
       }
-      
+
       valid = true;
 
       delete json;
     }
     catch(JSONException& e)
     {
-      cerr << e.what() << endl;
+      e.printStackTrace();
     }
     free(buffer);
   }
@@ -325,16 +326,14 @@ void I3State::workspaceEmpty(uint8_t num)
   uint8_t wsBefore = 0;
   while(workspaces[wsBefore].num != num && wsBefore < workspaces.size())
     wsBefore++;
-  
+
   if(wsBefore < workspaces.size())
   {
     workspaces.erase(workspaces.begin()+wsBefore);
     if(focusedWorkspace > wsBefore)
       focusedWorkspace--;
-      
+
     valid = true;
   }
   pthread_mutex_unlock(&mutex);
 }
-
-
