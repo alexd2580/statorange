@@ -4,6 +4,8 @@
 |:--:|
 |Unstable|
 
+![](screenshot.png)
+
 This is a status generator for i3 designed to replace i3bar/i3status.
 
 ## Prerequisites
@@ -61,9 +63,8 @@ is fed to lemonbar).
 
 ## Installing fonts
 
-The fonts used in statorange_launcher.sh have to be regustered.
-./install.sh copies them to $HOME/.fonts. These commands must
-be run on sartup (put them in ~/.xsession):
+The fonts used in statorange_launcher.sh have to be regustered. Copy the fonts from res to ~/.fonts.
+Also these commands must be run on sartup (put them in ~/.xsession):
 
 ```shell
 xset fp+ $HOME/.fonts/misc
