@@ -108,5 +108,3 @@ typedef struct i3_ipc_header {
 
 /** The type used to indicate an invalid header */
 #define I3_INVALID_TYPE ((uint32_t)UINT_MAX)
-
-

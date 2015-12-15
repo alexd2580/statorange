@@ -16,6 +16,32 @@ extern volatile sig_atomic_t die;
 
 using namespace std;
 
+#define CASE_RETURN(l) case l: return "l";
+
+string ipc_type_to_string(unsigned int type)
+{
+  switch(type)
+  {
+  CASE_RETURN(I3_IPC_REPLY_TYPE_TREE)
+  CASE_RETURN(I3_IPC_REPLY_TYPE_MARKS)
+  CASE_RETURN(I3_IPC_REPLY_TYPE_COMMAND)
+  CASE_RETURN(I3_IPC_REPLY_TYPE_OUTPUTS)
+  CASE_RETURN(I3_IPC_REPLY_TYPE_VERSION)
+  CASE_RETURN(I3_IPC_REPLY_TYPE_SUBSCRIBE)
+  CASE_RETURN(I3_IPC_REPLY_TYPE_WORKSPACES)
+  CASE_RETURN(I3_IPC_REPLY_TYPE_BAR_CONFIG)
+  CASE_RETURN(I3_IPC_EVENT_MODE)
+  CASE_RETURN(I3_IPC_EVENT_OUTPUT)
+  CASE_RETURN(I3_IPC_EVENT_WINDOW)
+  CASE_RETURN(I3_IPC_EVENT_BINDING)
+  CASE_RETURN(I3_IPC_EVENT_WORKSPACE)
+  CASE_RETURN(I3_IPC_EVENT_BARCONFIG_UPDATE)
+  default:
+    return "unknown";
+  }
+  return "";
+}
+
 void printDetailedErrno(void)
 {
   cerr << "errno = " << errno << ": ";

@@ -1,0 +1,65 @@
+{
+  "get_socket" : "i3 --get-socketpath",
+  "cooldown" : 5,
+
+  "Battery" : {
+    "battery_file" : "/sys/class/power_supply/BAT0/uevent"
+  },
+  "CPU" : {
+    "temperature_file" : "/sys/bus/acpi/devices/LNXTHERM:00/thermal_zone/temp",
+    "load_file" : "/proc/loadavg"
+  },
+  "Volume" : {
+    "get_volume" : "amixer get Master"
+  },
+  "Space" : {
+    "get_space" : "df -h"
+  },
+  "Date" : {
+    "get_date" : "date +%Y-%m-%d\\ %H:%M"
+  },
+  "Net" : {
+    "ifstat_file_pre" : "/sys/class/net/",
+    "ifstat_file_post" : "/operstate",
+    "ifconfig_file": "/sbin/ifconfig",
+    "iwconfig_file" : "/sbin/iwconfig"
+  },
+
+  "order" : [
+    {
+      "item" : "Volume",
+      "cooldown" : 300,
+      "button" : "x-terminal-emulator -e alsamixer &"
+    },
+    {
+      "item" : "Net",
+      "cooldown" : 10,
+      "interface" : "wlan0",
+      "type" : "wireless"
+    },
+    {
+      "item" : "Net",
+      "cooldown" : 10,
+      "interface" : "eth0",
+      "type" : "ethernet"
+    },
+    {
+      "item" : "Battery",
+      "cooldown" : 15
+    },
+    {
+      "item" : "CPU",
+      "cooldown" : 5,
+      "button" : "x-terminal-emulator -e htop &"
+    },
+    {
+      "item" : "Space",
+      "cooldown" : 30,
+      "mount_points" : ["/", "/home"]
+    },
+    {
+      "item" : "Date",
+      "cooldown" : 30
+    }
+  ]
+}

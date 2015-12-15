@@ -18,27 +18,132 @@ int const EXIT_RESTART = 4;
 string shell_file_loc = "/bin/sh";
 string terminal_cmd = "x-terminal-emulator -e";
 
-void skipWhitespaces(char const*& string)
+TextPos::TextPos(cchar* begin)
+{
+  string = begin;
+  line = 1;
+  column = 1;
+}
+
+char TextPos::operator*(void)
+{
+  return *string;
+}
+
+cchar* TextPos::ptr(void) const
+{
+  return string;
+}
+
+char TextPos::next(void)
+{
+  string++;
+  char c = *string;
+  line += c == '\n' ? 1 : 0; // just to make sure
+  column = c == '\n' ? 1 : column+1;
+  return c;
+}
+
+void TextPos::skip_whitespace(void)
 {
   char c = *string;
   while((c==' '||c=='\n'||c=='\t') && c!='\0')
-  {
-    string++;
-    c = *string;
-  }
-  return;
+    c = next();
 }
 
-void skipNonWhitespace(char const*& string)
+void TextPos::skip_nonspace(void)
 {
   char c = *string;
   while(c!=' ' && c!='\n' && c!='\t' && c!='\0')
-  {
-    string++;
-    c = *string;
-  }
-  return;
+    c = next();
 }
+
+string TextPos::to_string(void)
+{
+  const std::string colon(":");
+  return colon + std::to_string(line) + colon + std::to_string(column) + colon;
+}
+
+unsigned int TextPos::get_line(void) const
+{
+  return line;
+}
+
+unsigned int TextPos::get_column(void) const
+{
+  return column;
+}
+
+double TextPos::parse_num(void)
+{
+  char* endptr;
+  double n = strtod(string, &endptr);
+  if(endptr == string)
+    throw TraceCeption(*this, "Could not convert string to number");
+  column += endptr - string;
+  string = endptr;
+  return n;
+}
+
+void TextPos::offset(size_t off)
+{
+  for(size_t i=0; i<off; i++)
+    (void)next();
+}
+
+std::ostream& operator<<(std::ostream& out, TextPos const& pos)
+{
+  return pos.ptr() == nullptr ? out : out << ':' << pos.get_line() << ':' << pos.get_column() << ':';
+}
+
+string parse_escaped_string(TextPos& pos)
+{
+  char c = *pos;
+  if(c != '"')
+    throw TraceCeption(pos, string("Expected [\"], got: [") + (char)c + "].");
+
+  std::string res;
+  c = pos.next();
+  cchar* start = pos.ptr();
+
+  while(c != '"' && c != '\0')
+  {
+    if(c == '\\') //if an escaped char is found
+    {
+      res += string(start, pos.ptr()-start); // push current part
+      c = pos.next();
+      if(c == '\0')
+        throw TraceCeption(pos, string("Unexpected EOS when parsing escaped character."));
+      switch(c)
+      {
+      case 'n':
+        res += '\n';
+        break;
+      case 't':
+        res += '\t';
+        break;
+      case 'r':
+        res += '\r';
+        break;
+      default:
+        res += c;
+        break;
+      }
+      start = pos.ptr() + 1;
+    }
+    c = pos.next();
+  }
+
+  if(c == '\0')
+    throw TraceCeption(pos, string("Unexpected EOS"));
+
+  res += std::string(start, (size_t)(pos.ptr()-start));
+
+  //checking " not required here
+  (void)pos.next();
+  return res;
+}
+
 
 bool hasInput(int fd, int microsec)
 {
