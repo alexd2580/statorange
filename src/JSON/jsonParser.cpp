@@ -1,6 +1,6 @@
 /**
  * ONLY FOR PRIVATE USE! UNREFINED AND FAILING EVERYWHERE!
- * ESPECIALLY FOR NON-VALID JSON!
+ * ESPECIALLY AT NON-VALID JSON!
  * IF YOU FIND BUGS YOU CAN KEEP 'EM!
  * I WILL EVENTUALLY (MAYBE) FIX THIS!
  */
@@ -16,45 +16,61 @@ using namespace std;
 
 /******************************************************************************/
 
-JSONArray::JSONArray(cchar*& str)
+JSONArray::JSONArray(TextPos& pos, JSON* parent_, std::string* field_name_) : JSON(parent_, field_name_)
 {
-  if(*str != '[')
-    throw JSONException("Array not starting at the given position");
-
-  while(true)
+  try
   {
-    char c = *str;
-    if(elems.size() == 0 && c== '[')
+    char c = *pos;
+    if(c != '[')
+      throw JSONException("Array not starting at the given position");
+
+    while(true)
     {
-      str++;
-      skipWhitespaces(str);
-      if(*str == ']')
+      c = *pos;
+      size_t esize = elems.size();
+      if((esize == 0 && c== '[') || (esize > 0 && c == ','))
+      {
+        (void)pos.next();
+        pos.skip_whitespace();
+        if(*pos == ']' && esize == 0)
+          break;
+        try
+        {
+          elems.push_back(JSON::parseJSON(pos));
+        }
+        catch(TraceCeption& e)
+        {
+          e.push_stack("While parsing array element #" + std::to_string(elems.size()));
+          throw e;
+        }
+        pos.skip_whitespace();
+      }
+      else if(c == ']')
         break;
-      elems.push_back(JSON::parseJSON(str));
-      skipWhitespaces(str);
+      else if(c == '\0')
+        throw JSONException(pos, "Unexpected end of str");
+      else
+        throw JSONException(pos, std::string("Unexpected symbol: ") + (char)c);
     }
-    else if(elems.size() > 0 && c == ',')
-    {
-      str++; //skip komma
-      skipWhitespaces(str);
-      elems.push_back(JSON::parseJSON(str));
-      skipWhitespaces(str);
-    }
-    else if(c == ']')
-      break;
-    else if(c == '\0')
-      throw JSONException("Unexpected end of str");
-    else
-      throw JSONException(std::string("Unexpected symbol: ") + c);
+    (void)pos.next(); //no need to check closing ] or \0
+  }
+  catch(TraceCeption& e)
+  {
+    e.push_stack("While parsing array");
+    throw e;
   }
 
-  str++;
 }
 
 JSONArray::~JSONArray()
 {
   for(auto i=elems.begin(); i!=elems.end(); i++)
     delete *i;
+}
+
+std::string JSONArray::get_type(void)
+{
+  return "array";
 }
 
 void JSONArray::print(size_t indention)
@@ -89,52 +105,32 @@ __attribute__((pure)) size_t JSONArray::length(void)
 
 /******************************************************************************/
 
-void JSONObject::parseNamed(cchar*& str)
+void JSONObject::parseNamed(TextPos& pos)
 {
+  std::string key;
   try
   {
-    if(*str != '"')
-      throw JSONException(std::string("Expected string, got: ") + *str);
-
-    str++;
-    cchar* start = str;
-    std::string key;
-    char c = *str;
-
-    while(c != '"' && c != '\0')
-    {
-      if(c == '\\')
-      {
-        key += std::string(start, str-start);
-        str++;
-        c = *str;
-        if(c == '\0')
-          throw JSONException("Unexpected end of string when parsing escaped character");
-        key += c;
-        start = str+1;
-      }
-      str++;
-      c = *str;
-    }
-
-    if(c == '\0')
-      throw JSONException("Unexpected end of str");
-
-    key += std::string(start, (size_t)(str-start));
-
-    //checking " not required here
-    str++; //skip closing "
-    skipWhitespaces(str);
-    if(*str != ':')
-      throw JSONException(std::string("Expected ':', got: ") + *str);
-    str++; // skip :
-    skipWhitespaces(str);
-    JSON* something = JSON::parseJSON(str);
+    key.assign(parse_escaped_string(pos));
+    pos.skip_whitespace();
+    char c = *pos;
+    if(c != ':')
+      throw JSONException(pos, std::string("Expected ':', got: ") + (char)c);
+    (void)pos.next(); // skip :
+  }
+  catch(TraceCeption& e)
+  {
+    e.push_stack("While parsing a field name of an object");
+    throw e;
+  }
+  try
+  {
+    pos.skip_whitespace();
+    JSON* something = JSON::parseJSON(pos);
     fields.insert(std::pair<std::string,JSON*>(key, something));
   }
-  catch(JSONException& e)
+  catch(TraceCeption& e)
   {
-    e.push_stack("While trying to parse Named");
+    e.push_stack("While trying to parse the field with the key \"" + key + "\".");
     throw e;
   }
 }
@@ -147,46 +143,40 @@ void printNamed(map<std::string,JSON*>::iterator i, size_t indention)
   i->second->print(indention);
 }
 
-JSONObject::JSONObject(cchar*& str)
+JSONObject::JSONObject(TextPos& pos, JSON* parent_, std::string* field_name_) : JSON(parent_, field_name_)
 {
   try
   {
-    if(*str != '{')
-      throw JSONException(std::string("Expected '{', got: ") + *str);
+    char c = *pos;
+    if(c != '{')
+      throw JSONException(pos, std::string("Expected '{', got: ") + (char)c);
 
     while(true)
     {
-      char c = *str;
+      c = *pos;
       size_t field_size = fields.size();
-      if(field_size == 0 && c ==  '{')
+      if((field_size == 0 && c ==  '{') || (field_size > 0 && c ==  ','))
       {
-        str++;
-        skipWhitespaces(str);
-        if(*str == '}')
+        pos.next();
+        pos.skip_whitespace();
+        if(*pos == '}' && field_size == 0)
           break;
-        parseNamed(str);
-        skipWhitespaces(str);
-      }
-      else if(field_size > 0 && c ==  ',')
-      {
-        str++;
-        skipWhitespaces(str);
-        parseNamed(str);
-        skipWhitespaces(str);
+        parseNamed(pos);
+        pos.skip_whitespace();
       }
       else if(c == '}')
         break;
       else if(c == '\0')
-        throw JSONException("Unexpected end of string");
+        throw JSONException(pos, "Unexpected end of string");
       else
-        throw JSONException(std::string("Unexpected symbol: ") + c);
+        throw JSONException(pos, std::string("Unexpected symbol: ") + (char)c);
     }
 
-    str++;
+    (void)pos.next(); //skip closing brace
   }
-  catch(JSONException& e)
+  catch(TraceCeption& e)
   {
-    e.push_stack("While trying to parse JSONObject");
+    e.push_stack("While parsing JSONObject");
     throw e;
   }
 }
@@ -195,6 +185,11 @@ JSONObject::~JSONObject()
 {
   for(auto i=fields.begin(); i!=fields.end(); i++)
     delete i->second;
+}
+
+std::string JSONObject::get_type(void)
+{
+  return "object";
 }
 
 void JSONObject::print(size_t indention)
@@ -252,50 +247,28 @@ JSON& JSONObject::operator[](std::string& key)
 
 /******************************************************************************/
 
-JSONString::JSONString(cchar*& str)
+JSONString::JSONString(TextPos& pos, JSON* parent_, std::string* field_name_)
+  : JSON(parent_, field_name_)
 {
+
   try
   {
-    if(*str != '"')
-      throw JSONException("String not starting at the given position");
-
-    str++;
-    cchar* start = str;
-    char c = *str;
-
-    while(c != '"' && c != '\0')
-    {
-      if(c == '\\')
-      {
-        string += std::string(start, str-start);
-        str++;
-        c = *str;
-        if(c == '\0')
-          throw JSONException("Unexpected end of string when parsing escaped character");
-        string += c;
-        start = str+1;
-      }
-      str++;
-      c = *str;
-    }
-
-    if(c == '\0')
-      throw JSONException("Unexpected end of string");
-
-    string += std::string(start, (size_t)(str-start));
-
-    //checking " not required here
-    str++;
+    string.assign(parse_escaped_string(pos));
   }
-  catch(JSONException& e)
+  catch(TraceCeption& e)
   {
-    e.push_stack("While trying to parse JSONString");
+    e.push_stack("While parsing JSONString");
     throw e;
   }
 }
 
 JSONString::~JSONString()
 {
+}
+
+std::string JSONString::get_type(void)
+{
+  return "string";
 }
 
 void JSONString::print(size_t)
@@ -315,23 +288,23 @@ __attribute__((const)) JSONString::operator std::string&()
 
 /******************************************************************************/
 
-JSONNumber::JSONNumber(cchar*& str)
+JSONNumber::JSONNumber(TextPos& pos, JSON* parent_, std::string* field_name_)
+  : JSON(parent_, field_name_)
 {
   try
   {
-    char* endptr;
-    n = strtod(str, &endptr);
-
-    if(endptr == str)
-      throw JSONException("Could not convert string to number");
-
-    str = endptr;
+    n = pos.parse_num();
   }
-  catch(JSONException& e) // TODO chage to generic exceptions?
+  catch(TraceCeption& e) // TODO chage to generic exceptions?
   {
-    e.push_stack("While trying to parse JSONNumber");
+    e.push_stack("While parsing JSONNumber");
     throw e;
   }
+}
+
+std::string JSONNumber::get_type(void)
+{
+  return "num";
 }
 
 void JSONNumber::print(size_t)
@@ -361,23 +334,30 @@ __attribute__((pure)) JSONNumber::operator double()
 
 /******************************************************************************/
 
-JSONBool::JSONBool(cchar*& str)
+JSONBool::JSONBool(TextPos& pos, JSON* parent_, std::string* field_name_)
+  : JSON(parent_, field_name_)
 {
+  cchar* str = pos.ptr();
   if(strncmp(str, "false", 5) == 0)
   {
     b = false;
-    str += 5;
+    pos.offset(5);
   }
   else if(strncmp(str, "true", 4) == 0)
   {
     b = true;
-    str += 4;
+    pos.offset(4);
   }
   else
   {
     std::string errmsg("Could not detect neither true nor false: ");
-    throw JSONException(errmsg + std::string(str, 5));
+    throw JSONException(pos, errmsg + std::string(str, 5));
   }
+}
+
+std::string JSONBool::get_type(void)
+{
+  return "bool";
 }
 
 void JSONBool::print(size_t)
@@ -392,12 +372,19 @@ __attribute__((pure)) JSONBool::operator bool()
 
 /******************************************************************************/
 
-JSONNull::JSONNull(cchar*& str)
+JSONNull::JSONNull(TextPos& pos, JSON* parent_, std::string* field_name_)
+  : JSON(parent_, field_name_)
 {
+  cchar* str = pos.ptr();
   if(strncmp(str, "null", 4) == 0)
-    str += 4;
+    pos.offset(4);
   else
-    throw JSONException("Could not detect null: " + std::string(str, 4));
+    throw JSONException(pos, "Could not detect null: " + std::string(str, 4));
+}
+
+std::string JSONNull::get_type(void)
+{
+  return "null";
 }
 
 void JSONNull::print(size_t)
@@ -407,41 +394,46 @@ void JSONNull::print(size_t)
 
 /******************************************************************************/
 
+JSON::JSON(JSON* parent_, std::string* field_name_) :
+  parent(parent_), field_name(field_name_)
+{}
+
 /**
  * Parses the first JSONSomthing it encounters,
  * string is set to the next (untouched) character.
  */
 JSON* JSON::parse(cchar* str)
 {
-  return parseJSON(str);
+  TextPos pos(str);
+  return parseJSON(pos);
 }
 
-JSON* JSON::parseJSON(cchar*& str)
+JSON* JSON::parseJSON(TextPos& pos)
 {
-  skipWhitespaces(str);
-  char c = *str;
+  pos.skip_whitespace();
+  char c = *pos;
   switch(c)
   {
   case '\0':
     throw JSONException("Unexpected end of string");
   case '"':
-    return new JSONString(str);
+    return new JSONString(pos, nullptr, nullptr);
   case '{':
-    return new JSONObject(str);
+    return new JSONObject(pos, nullptr, nullptr);
   case '[':
-    return new JSONArray(str);
+    return new JSONArray(pos, nullptr, nullptr);
   default:
     if((c >= '0' && c <= '9') || c == '.' || c == '+' || c == '-')
-      return new JSONNumber(str);
+      return new JSONNumber(pos, nullptr, nullptr);
     else if(c == 't' || c == 'f')
-      return new JSONBool(str);
+      return new JSONBool(pos, nullptr, nullptr);
     else if(c == 'n')
-      return new JSONNull(str);
+      return new JSONNull(pos, nullptr, nullptr);
     break;
   }
 
   std::string errmsg("No valid JSON detected: ");
-  throw JSONException(errmsg + c);
+  throw JSONException(pos, errmsg + c);
 }
 
 void JSON::print(void)
@@ -454,7 +446,14 @@ JSONArray& JSON::array(void)
 {
   JSONArray* ptr = dynamic_cast<JSONArray*>(this);
   if(ptr == nullptr)
-    throw JSONException("Requested thing is not a JSONArray");
+  {
+    JSONException e("Requested thing is not a JSONArray");
+    if(parent != nullptr)
+      e.push_stack("In an " + parent->get_type());
+    if(field_name != nullptr)
+      e.push_stack("As a field with name " + *field_name);
+    throw e;
+  }
   return *ptr;
 }
 
@@ -462,7 +461,14 @@ JSONObject& JSON::object(void)
 {
   JSONObject* ptr = dynamic_cast<JSONObject*>(this);
   if(ptr == nullptr)
-    throw JSONException("Requested thing is not a JSONObject");
+  {
+    JSONException e("Requested thing is not a JSONObject");
+    if(field_name != nullptr)
+      e.push_stack("As a field with name " + *field_name);
+    if(parent != nullptr)
+      e.push_stack("In an " + parent->get_type());
+    throw e;
+  }
   return *ptr;
 }
 
@@ -470,7 +476,14 @@ JSONString& JSON::string(void)
 {
   JSONString* ptr = dynamic_cast<JSONString*>(this);
   if(ptr == nullptr)
-    throw JSONException("Requested thing is not a JSONString");
+  {
+    JSONException e("Requested thing is not a JSONString");
+    if(field_name != nullptr)
+      e.push_stack("As a field with name " + *field_name);
+    if(parent != nullptr)
+      e.push_stack("In an " + parent->get_type());
+    throw e;
+  }
   return *ptr;
 }
 
@@ -478,7 +491,14 @@ JSONNumber& JSON::number(void)
 {
   JSONNumber* ptr = dynamic_cast<JSONNumber*>(this);
   if(ptr == nullptr)
-    throw JSONException("Requested thing is not a JSONNumber");
+  {
+    JSONException e("Requested thing is not a JSONNumber");
+    if(field_name != nullptr)
+      e.push_stack("As a field with name " + *field_name);
+    if(parent != nullptr)
+      e.push_stack("In an " + parent->get_type());
+    throw e;
+  }
   return *ptr;
 }
 
@@ -486,7 +506,14 @@ JSONBool& JSON::boolean(void)
 {
   JSONBool* ptr = dynamic_cast<JSONBool*>(this);
   if(ptr == nullptr)
-    throw JSONException("Requested thing is not a JSONBool");
+  {
+    JSONException e("Requested thing is not a JSONBool");
+    if(field_name != nullptr)
+      e.push_stack("As a field with name " + *field_name);
+    if(parent != nullptr)
+      e.push_stack("In an " + parent->get_type());
+    throw e;
+  }
   return *ptr;
 }
 
@@ -494,7 +521,14 @@ JSONNull& JSON::null(void)
 {
   JSONNull* ptr = dynamic_cast<JSONNull*>(this);
   if(ptr == nullptr)
-    throw JSONException("Requested thing is not a JSONNull");
+  {
+    JSONException e("Requested thing is not a JSONNull");
+    if(field_name != nullptr)
+      e.push_stack("As a field with name " + *field_name);
+    if(parent != nullptr)
+      e.push_stack("In an " + parent->get_type());
+    throw e;
+  }
   return *ptr;
 }
 

@@ -5,7 +5,6 @@
 #include<sys/socket.h>
 
 #include"JSON/jsonParser.hpp"
-#include"JSON/jsonSearch.hpp"
 
 #include"i3state.hpp"
 #include"i3-ipc-constants.hpp"
@@ -26,57 +25,65 @@ extern volatile sig_atomic_t force_update;
 Logger evlog("[EventHandler]", cerr);
 
 #define GET_DISPLAY_NUM \
-  ptr = getJSONObjectField(response, "current", 7); \
-  ptr = getJSONObjectField(ptr, "num", 3); \
-  double n; \
-  getJSONNumber(ptr, &n);
+  double n = object["current"].object()["num"].number();
 
 void handleWorkspaceEvent(I3State& i3State, char* response)
 {
-  char const* ptr = getJSONObjectField(response, "change", 6);
-  size_t evTypeLen;
-  char const* eventType;
-  ptr = getJSONString(ptr, &eventType, &evTypeLen);
-
-  if(evTypeLen == 4 && strncmp(eventType, "init", 4) == 0)
+  JSON* json = JSON::parse(response);
+  JSONObject& object = json->object();
+  try
   {
-    GET_DISPLAY_NUM
-    i3State.workspaceInit((uint8_t)n);
+    string change = object["response"].string();
+    if(change.compare("init") == 0)
+    {
+      GET_DISPLAY_NUM
+      i3State.workspaceInit((uint8_t)n);
+    }
+    else if(change.compare("focus") == 0)
+      i3State.updateWorkspaceStatus();
+    else if(change.compare("urgent") == 0)
+      i3State.updateWorkspaceStatus();
+    else if(change.compare("empty") == 0)
+    {
+      GET_DISPLAY_NUM
+      i3State.workspaceEmpty((uint8_t)n);
+    }
+    else
+      evlog.log() << "Unhandled workspace event type: " << change << endl;
   }
-  else if(evTypeLen == 5 && strncmp(eventType, "focus", 5) == 0)
-    i3State.updateWorkspaceStatus();
-  else if(evTypeLen == 6 && strncmp(eventType, "urgent", 6) == 0)
-    i3State.updateWorkspaceStatus();
-  else if(evTypeLen == 5 && strncmp(eventType, "empty", 5) == 0)
+  catch(TraceCeption& e)
   {
-    GET_DISPLAY_NUM
-    i3State.workspaceEmpty((uint8_t)n);
+    delete json;
+    throw e;
   }
-  else
-  {
-    evlog.log() << "Unhandled workspace event type: ";
-    evlog.log().write(eventType, (int)evTypeLen);
-    evlog.log() << endl;
-  }
-  return;
+  delete json;
 }
 
 string getWindowName(JSONObject& container)
 {
-  string name = container["name"].string();
-  if(name.length() > 20)
+  try
   {
-    string class_ = container["window_properties"].object()["class"].string();
-    if(class_.length() > 20)
+    string name = container["name"].string();
+    if(name.length() > 20)
     {
-      string sub = name.substr(0, 15);
-      return sub + "[...]";
+      string class_ = container["window_properties"].object()["class"].string();
+      if(class_.length() > 20)
+      {
+        string sub = name.substr(0, 15);
+        return sub + "[...]";
+      }
+      else
+        return class_;
     }
     else
-      return class_;
+      return name;
   }
-  else
-    return name;
+  catch(TraceCeption& e)
+  {
+    evlog.log() << "Exception when trying to get window name/class" << endl;
+    e.printStackTrace();
+    return "ERROR";
+  }
 }
 
 void handleWindowEvent(I3State& i3State, char* response)
@@ -141,6 +148,7 @@ void handleWindowEvent(I3State& i3State, char* response)
 
   delete json;
   return;
+
 }
 
 /**
@@ -149,40 +157,49 @@ void handleWindowEvent(I3State& i3State, char* response)
  */
 void handleEvent(I3State& i3State, uint32_t type, char* response)
 {
-  switch(type)
+  try
   {
-  case I3_INVALID_TYPE:
-    if(!die)
-      evlog.log() << "Invalid packet received. Aborting" << endl;
-    die = 1;
-    break;
-  case I3_IPC_EVENT_MODE:
+    switch(type)
     {
-      pthread_mutex_lock(&i3State.mutex);
-      JSON* json = JSON::parse(response);
-      JSONObject& modeEvent = json->object();
-      i3State.mode = modeEvent["change"].string();
-      delete json;
-      pthread_mutex_unlock(&i3State.mutex);
+    case I3_INVALID_TYPE:
+      if(!die)
+        evlog.log() << "Invalid packet received. Aborting" << endl;
+      die = 1;
+      break;
+    case I3_IPC_EVENT_MODE:
+      {
+        pthread_mutex_lock(&i3State.mutex);
+        JSON* json = JSON::parse(response);
+        JSONObject& modeEvent = json->object();
+        i3State.mode = modeEvent["change"].string();
+        delete json;
+        pthread_mutex_unlock(&i3State.mutex);
+      }
+      break;
+    case I3_IPC_EVENT_WINDOW:
+      handleWindowEvent(i3State, response);
+      break;
+    case I3_IPC_EVENT_WORKSPACE:
+      handleWorkspaceEvent(i3State, response);
+      break;
+    case I3_IPC_EVENT_OUTPUT:
+      evlog.log() << "Output event - Restarting application" << endl;
+      exit_status = EXIT_RESTART;
+      die = 1;
+      break;
+    default:
+      evlog.log() << "Unhandled event type: " << type << endl;
+      break;
     }
-    break;
-  case I3_IPC_EVENT_WINDOW:
-    handleWindowEvent(i3State, response);
-    break;
-  case I3_IPC_EVENT_WORKSPACE:
-    handleWorkspaceEvent(i3State, response);
-    break;
-  case I3_IPC_EVENT_OUTPUT:
-    evlog.log() << "Output event - Restarting application" << endl;
-    exit_status = EXIT_RESTART;
-    die = 1;
-    break;
-  default:
-    evlog.log() << "Unhandled event type: " << type << endl;
-    break;
+  }
+  catch(TraceCeption& e)
+  {
+    e.push_stack(std::string(response));
+    e.push_stack("While handling an event of type: " + ipc_type_to_string(type));
+    throw e;
   }
 
-  if(i3State.valid == 0)
+  if(i3State.valid == 0) // is this necessary?
   {
     evlog.log() << "Invalid change after event " << type << " occured" << endl;
     if(response != NULL)
@@ -214,20 +231,28 @@ void* event_listener(void* data)
   try
   {
     handleEvent(i3State, type, response);
+  }
+  catch(TraceCeption& e)
+  {
+    evlog.log() << "Could not subscribe to events:" << endl;
+    e.printStackTrace();
+  }
 
-    evlog.log() << "Entering event listener loop" << endl;
-    while(!die)
+  evlog.log() << "Entering event listener loop" << endl;
+  while(!die)
+  {
+    //this sleep prevents the application from dying because of SIGUSR1 spam.
+    //on the other hand, the user can now crash, or at least DOS i3 with
+    //events, which cannot be processed fast enough
+    //could be replaced with a mutex...
+    struct timespec t;
+    t.tv_sec = 0;
+    t.tv_nsec = 10000000;
+    nanosleep(&t, NULL);
+
+    response = readMessage(push_socket, &type);
+    try
     {
-      //this sleep prevents the application from dying because of SIGUSR1 spam.
-      //on the other hand, the user can now crash, or at least DOS i3 with
-      //events, which cannot be processed fast enough
-      //could be replaced with a mutex...
-      struct timespec t;
-      t.tv_sec = 0;
-      t.tv_nsec = 10000000;
-      nanosleep(&t, NULL);
-
-      response = readMessage(push_socket, &type);
       handleEvent(i3State, type, response);
 
       while(!die && hasInput(push_socket, 1000))
@@ -235,16 +260,18 @@ void* event_listener(void* data)
         response = readMessage(push_socket, &type);
         handleEvent(i3State, type, response);
       }
-
-      pthread_cond_signal(&notifier);
     }
-    evlog.log() << "Exiting event listener loop" << endl;
+    catch(TraceCeption& e)
+    {
+      evlog.log() << "Catched JSONException" << endl;
+      e.printStackTrace();
+      evlog.log() << "Retrying" << endl;
+    }
+
+    pthread_cond_signal(&notifier);
   }
-  catch(JSONException& e)
-  {
-    evlog.log() << "Catched exception:" << endl;
-    e.printStackTrace();
-  }
+  evlog.log() << "Exiting event listener loop" << endl;
+
 
   shutdown(push_socket, SHUT_RDWR);
   evlog.log() << "Stopping event listener" << endl;

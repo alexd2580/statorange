@@ -4,48 +4,10 @@
 #include<string>
 #include<vector>
 #include<map>
-#include<stack>
 #include<iostream>
 
 #include"../util.hpp"
-
-class TraceCeption // TODO use it
-{
-protected:
-  std::stack<std::string> stacktrace;
-
-public:
-  explicit TraceCeption(std::string msg)
-  {
-    stacktrace.push(msg);
-  }
-
-  virtual ~TraceCeption() {}
-
-  void push_stack(std::string msg)
-  {
-    stacktrace.push(msg);
-  }
-
-  void printStackTrace(void)
-  {
-    while(!stacktrace.empty())
-    {
-      std::cerr << stacktrace.top() << std::endl;
-      stacktrace.pop();
-    }
-  }
-};
-
-class JSONException : public TraceCeption
-{
-public:
-  explicit JSONException(std::string errormsg)
-    : TraceCeption(errormsg)
-  {}
-};
-
-
+#include"JSONException.hpp"
 
 class JSONArray;
 class JSONObject;
@@ -57,9 +19,18 @@ class JSONNull;
 class JSON
 {
 protected:
-  static JSON* parseJSON(char const*& string);
+  static JSON* parseJSON(TextPos& string);
+
+  /**
+   * These are used for error localization. //necessary? TODO
+   * If a JSO is a field of an object, then the field name is also saved
+   */
+  JSON* const parent;
+  std::string* const field_name;
 public:
+  JSON(JSON* parent_, std::string* field_name_);
   virtual ~JSON() {};
+  virtual std::string get_type(void) = 0;
 
   virtual void print(size_t indention) = 0;
   virtual void print(void);
@@ -79,8 +50,9 @@ class JSONArray : public JSON
 private:
   std::vector<JSON*> elems;
 public:
-  explicit JSONArray(char const*&);
+  JSONArray(TextPos&, JSON* parent_, std::string* field_name_);
   virtual ~JSONArray();
+  std::string get_type(void);
 
   virtual void print(size_t indention);
   JSON& get(size_t i);
@@ -93,10 +65,11 @@ class JSONObject : public JSON
 private:
   std::map<std::string, JSON*> fields;
 
-  void parseNamed(char const*&);
+  void parseNamed(TextPos&);
 public:
-  explicit JSONObject(char const*&);
+  JSONObject(TextPos&, JSON* parent_, std::string* field_name_);
   virtual ~JSONObject();
+  std::string get_type(void);
 
   virtual void print(size_t indention);
   JSON* has(cchar*);
@@ -112,8 +85,9 @@ class JSONString : public JSON
 private:
   std::string string;
 public:
-  explicit JSONString(char const*&);
+  JSONString(TextPos&, JSON* parent_, std::string* field_name_);
   virtual ~JSONString();
+  std::string get_type(void);
 
   virtual void print(size_t);
   std::string get(void);
@@ -125,8 +99,9 @@ class JSONNumber : public JSON
 private:
   double n;
 public:
-  explicit JSONNumber(char const*&);
+  JSONNumber(TextPos&, JSON* parent_, std::string* field_name_);
   virtual ~JSONNumber() {};
+  std::string get_type(void);
 
   virtual void print(size_t);
   operator uint8_t();
@@ -140,8 +115,9 @@ class JSONBool : public JSON
 private:
   bool b;
 public:
-  explicit JSONBool(char const*&);
+  JSONBool(TextPos&, JSON* parent_, std::string* field_name_);
   virtual ~JSONBool() {};
+  std::string get_type(void);
 
   virtual void print(size_t);
   operator bool();
@@ -150,8 +126,9 @@ public:
 class JSONNull : public JSON
 {
 public:
-  explicit JSONNull(char const*&);
+  JSONNull(TextPos&, JSON* parent_, std::string* field_name_);
   virtual ~JSONNull() {};
+  std::string get_type(void);
 
   virtual void print(size_t);
 };

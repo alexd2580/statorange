@@ -53,7 +53,6 @@ bool Volume::update(void)
 
 void Volume::print(void)
 {
-  startButton(get_volume);
   separate(Left, neutral_colors);
   print_icon(icon_vol);
   if(mute)
@@ -61,5 +60,4 @@ void Volume::print(void)
   else
     cout << ' ' << volume << "% ";
   separate(Left, white_on_black);
-  stopButton();
 }
