@@ -55,7 +55,7 @@ CXXFLAGS     = -std=c++11
 # Linker flags
 # -----------------------------
 
-LIBS = pthread m dl
+LIBS = pthread m dl asound
 
 # -----------------------------
 # Some automatic stuff

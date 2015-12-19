@@ -7,11 +7,13 @@
 class Volume : public StateItem
 {
 private:
-  static std::string get_volume;
+  static std::string deprecated_get_volume;
+  std::string card;
+  std::string mixer;
 
   //VOLUME
   bool mute;
-  int volume;
+  unsigned short volume;
 
   bool update(void);
   void print(void);

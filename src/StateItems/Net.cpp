@@ -36,7 +36,7 @@ bool Net::getIpAddress(void)
   char const* c = output.c_str();
   while(*c != '\n') c++;
   skipWhitespaces(c);
-  int matched = sscanf(c, "inet addr:%hhu.%hhu.%hhu.%hhu", &iface_ip.ip1, &iface_ip.ip2, &iface_ip.ip3, &iface_ip.ip4);
+  int matched = sscanf(c, "inet %hhu.%hhu.%hhu.%hhu", &iface_ip.ip1, &iface_ip.ip2, &iface_ip.ip3, &iface_ip.ip4); // inet addr:
   if(matched != 4)
   {
     log() << "Ip address not matched (" << matched << ")" << endl << c << endl;
