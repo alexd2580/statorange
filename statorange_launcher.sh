@@ -15,6 +15,7 @@ lemonbar_cmd="lemonbar $normal_font $powerline_font $powerline_icons"
 lemonbar_log=$this_path"/lemonbar.log"
 
 statorange_cmd=$this_path"/statorange"
+statorange_config=$this_path"/config.json"
 statorange_fifo=$this_path"/statorange.fifo"
 statorange_log=$this_path"/statorange.log"
 
@@ -33,7 +34,7 @@ do
   #echo $transparency_pid
   
   echo -n "Launching statorange ... "
-  $statorange_cmd 2>> $statorange_log 1> $statorange_fifo &
+  $statorange_cmd $statorange_config 2>> $statorange_log 1> $statorange_fifo &
   statorange_pid=$!
   echo $statorange_pid
 

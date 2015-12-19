@@ -105,12 +105,18 @@ void register_signal_handlers(void)
 
 /******************************************************************************/
 
-int main(int, char**)
+int main(int argc, char* argv[])
 {
   Logger l("[Main]", cerr);
   l.log() << "Launching Statorange" << endl;
+  
+  if(argc < 2)
+  {
+    cout << "Please supply the config path." << endl;
+    return EXIT_FAILURE;
+  }
 
-  string config_name = "config.json";
+  string config_name(argv[1]);
   string config_string;
   if(!load_file(config_name, config_string))
   {
