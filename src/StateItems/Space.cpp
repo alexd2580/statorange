@@ -17,7 +17,7 @@ void Space::settings(JSONObject& section)
 }
 
 Space::Space(JSONObject& item) :
-  StateItem(item)
+  StateItem(item), Logger("[Space]", cerr)
 {
   /*JSONArray mpoints = item["mount_points"].array();
   mpoints.
@@ -36,19 +36,28 @@ bool Space::getSpaceUsage(SpaceItem& dir)
   string cmd = get_space + " " + dir.mount_point;
   string output = execute(cmd);
 
-  char const* c = output.c_str();
-  while(*c != '\n') c++;
-  c++;
-  skipNonWhitespace(c);
-  skipWhitespaces(c);
-  char const* beg = c;
-  skipNonWhitespace(c);
-  dir.size.assign(beg, c-beg);
-  skipWhitespaces(c);
-  beg = c;
-  skipNonWhitespace(c);
-  dir.used.assign(beg, c-beg);
+  try
+  {
+    TextPos pos(output.c_str());
+    while(*pos != '\n')
+      (void)pos.next();
+    (void)pos.next();
+    pos.skip_nonspace();
+    pos.skip_whitespace();
+    char const* beg = pos.ptr();
+    pos.skip_nonspace();
+    dir.size.assign(beg, pos.ptr()-beg);
+    pos.skip_whitespace();
+    beg = pos.ptr();
+    pos.skip_nonspace();
+    dir.used.assign(beg, pos.ptr()-beg);
+  }
+  catch(TraceCeption& e)
+  {
+    log() << "While parsing output of " << get_space << endl;
+    e.printStackTrace();
 
+  }
   return true;
 }
 

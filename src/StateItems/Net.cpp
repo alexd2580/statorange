@@ -33,13 +33,14 @@ bool Net::getIpAddress(void)
   string cmd = ifconfig_file_loc + ' ' + iface;
   string output = execute(cmd);
 
-  char const* c = output.c_str();
-  while(*c != '\n') c++;
-  skipWhitespaces(c);
-  int matched = sscanf(c, "inet %hhu.%hhu.%hhu.%hhu", &iface_ip.ip1, &iface_ip.ip2, &iface_ip.ip3, &iface_ip.ip4); // inet addr:
+  TextPos pos(output.c_str());
+  while(*pos != '\n')
+		(void)pos.next();
+  pos.skip_whitespace();
+  int matched = sscanf(pos.ptr(), "inet %hhu.%hhu.%hhu.%hhu", &iface_ip.ip1, &iface_ip.ip2, &iface_ip.ip3, &iface_ip.ip4);
   if(matched != 4)
   {
-    log() << "Ip address not matched (" << matched << ")" << endl << c << endl;
+    log() << pos.to_string() << "Ip address not matched (" << matched << ")" << endl << pos.ptr() << endl;
     return false;
   }
   return true;
@@ -51,33 +52,33 @@ bool Net::getWirelessState(void)
   string output = execute(command);
 
   iface_quality = -1;
-  char const* c = output.c_str();
+  TextPos pos(output.c_str());
 
   while(true)
   {
-    skipWhitespaces(c);
-    if(*c == '\0')
+    pos.skip_whitespace();
+    if(*pos == '\0')
       return false;
-    else if(strncmp(c, "ESSID:", 6) == 0)
+    else if(strncmp(pos.ptr(), "ESSID:", 6) == 0)
     {
-      c+=7;
+      pos.offset(7);
+			char const * c = pos.ptr();
       char const* e = c;
       while(*e != '"')
         e++;
 
       iface_essid.assign(c, e-c);
     }
-    else if(strncmp(c, "Link Quality=", 13) == 0)
+    else if(strncmp(pos.ptr(), "Link Quality=", 13) == 0)
     {
-      c+=13;
-      char * d;
-      int q1 = (int)strtol(c, &d, 0);
-      c = d+1;
-      int q2 = (int)strtol(c, nullptr, 0);
-      iface_quality = 100*q1 / q2;
+      pos.offset(13);
+      double q1 = pos.parse_num();
+      (void)pos.next();
+      double q2 = pos.parse_num();
+      iface_quality = (int)(100*q1 / q2);
       return true;
     }
-    skipNonWhitespace(c);
+    pos.skip_nonspace();
   }
   return false;
 }

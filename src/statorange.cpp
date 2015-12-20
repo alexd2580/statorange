@@ -188,20 +188,22 @@ int main(int argc, char* argv[])
         }
         pthread_mutex_unlock(&i3State.mutex);
 
+        if(die)
+          break; //skip time delay here -> annoying
         struct timespec abstime;
         clock_gettime(CLOCK_REALTIME, &abstime);
         abstime.tv_sec += cooldown;
         pthread_cond_timedwait(&notifier, &mutex, &abstime);
       }
     }
-    catch(JSONException& e)
+    catch(TraceCeption& e)
     {
       l.log() << "Exception catched:" << endl;
       e.printStackTrace();
       exit_status = EXIT_FAILURE;
     }
   }
-  catch(JSONException& e)
+  catch(TraceCeption& e)
   {
     l.log() << "Could not parse config:" << endl;
     e.printStackTrace();

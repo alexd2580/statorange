@@ -13,6 +13,8 @@
 
 using namespace std;
 
+extern volatile sig_atomic_t die;
+
 int const EXIT_RESTART = 4;
 
 string shell_file_loc = "/bin/sh";
@@ -25,12 +27,12 @@ TextPos::TextPos(cchar* begin)
   column = 1;
 }
 
-char TextPos::operator*(void)
+__attribute__((pure)) char TextPos::operator*(void)
 {
   return *string;
 }
 
-cchar* TextPos::ptr(void) const
+__attribute__((pure)) cchar* TextPos::ptr(void) const
 {
   return string;
 }
@@ -64,12 +66,12 @@ string TextPos::to_string(void)
   return colon + std::to_string(line) + colon + std::to_string(column) + colon;
 }
 
-unsigned int TextPos::get_line(void) const
+__attribute__((pure)) unsigned int TextPos::get_line(void) const
 {
   return line;
 }
 
-unsigned int TextPos::get_column(void) const
+__attribute__((pure)) unsigned int TextPos::get_column(void) const
 {
   return column;
 }
@@ -80,7 +82,7 @@ double TextPos::parse_num(void)
   double n = strtod(string, &endptr);
   if(endptr == string)
     throw TraceCeption(*this, "Could not convert string to number");
-  column += endptr - string;
+  column += (unsigned int)(endptr - string);
   string = endptr;
   return n;
 }
@@ -207,10 +209,11 @@ string execute(string const& command)
   char buffer[500];
 
   errno = EINTR;
-  while(errno == EAGAIN || errno == EINTR)
+  while((errno == EAGAIN || errno == EINTR) && !die)
   {
     errno = 0;
-    ssize_t n = read(fd[0], buffer, 500);
+    ssize_t n = 0;
+    n = read(fd[0], buffer, 500);
     if(n == 0)
       break;
     buffer[n] = '\0';

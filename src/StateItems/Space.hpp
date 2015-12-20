@@ -13,7 +13,7 @@ struct SpaceItem
   std::string used;
 };
 
-class Space : public StateItem
+class Space : public StateItem, public Logger
 {
 private:
   static std::string get_space;
