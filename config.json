@@ -10,7 +10,7 @@
     "load_file" : "/proc/loadavg"
   },
   "Volume" : {
-    "get_volume" : "amixer get Master"
+    "deprecated_get_volume" : "amixer get Master"
   },
   "Space" : {
     "get_space" : "df -h"
@@ -29,18 +29,20 @@
     {
       "item" : "Volume",
       "cooldown" : 300,
-      "button" : "x-terminal-emulator -e alsamixer &"
+      "button" : "x-terminal-emulator -e alsamixer &",
+      "card" : "default",
+      "mixer" : "Master"
     },
     {
       "item" : "Net",
       "cooldown" : 10,
-      "interface" : "wlan0",
+      "interface" : "wlp2s0",
       "type" : "wireless"
     },
     {
       "item" : "Net",
       "cooldown" : 10,
-      "interface" : "eth0",
+      "interface" : "enp0s25",
       "type" : "ethernet"
     },
     {
