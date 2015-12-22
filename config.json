@@ -15,9 +15,6 @@
   "Space" : {
     "get_space" : "df -h"
   },
-  "Date" : {
-    "get_date" : "date +%Y-%m-%d\\ %H:%M"
-  },
   "Net" : {
     "iwconfig_file" : "/sbin/iwconfig"
   },
@@ -60,7 +57,8 @@
     },
     {
       "item" : "Date",
-      "cooldown" : 30
+      "cooldown" : 30,
+      "format" : "%Y-%m-%d %H:%M"
     }
   ]
 }
