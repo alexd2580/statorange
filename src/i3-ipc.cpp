@@ -16,7 +16,7 @@ extern volatile sig_atomic_t die;
 
 using namespace std;
 
-#define CASE_RETURN(l) case l: return "l";
+#define CASE_RETURN(l) case l: return #l;
 
 string ipc_type_to_string(unsigned int type)
 {

@@ -33,7 +33,7 @@ void handleWorkspaceEvent(I3State& i3State, char* response)
   JSONObject& object = json->object();
   try
   {
-    string change = object["response"].string();
+    string change = object["change"].string();
     if(change.compare("init") == 0)
     {
       GET_DISPLAY_NUM
@@ -188,7 +188,7 @@ void handleEvent(I3State& i3State, uint32_t type, char* response)
       die = 1;
       break;
     default:
-      evlog.log() << "Unhandled event type: " << type << endl;
+      evlog.log() << "Unhandled event type: " << ipc_type_to_string(type) << endl;
       break;
     }
   }

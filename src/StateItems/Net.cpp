@@ -8,43 +8,77 @@
 
 using namespace std;
 
-ostream& operator<<(ostream& out, IPv4Address ip)
-{
-	return out << (int)ip.ip1 << '.' << (int)ip.ip2 << '.' << (int)ip.ip3 << '.' << (int)ip.ip4;
-}
-
-pair<string,string> Net::ifstat_file_gen = pair<string, string>("","");
-string Net::ifconfig_file_loc = "";
 string Net::iwconfig_file_loc = "";
+
+time_t Net::min_cooldown = 1000; // TODO magicnumber
+map<string, pair<string, string>> Net::addresses;
 
 /******************************************************************************/
 /******************************************************************************/
 
 void Net::settings(JSONObject& section)
 {
-	ifstat_file_gen.first = section["ifstat_file_pre"].string();
-	ifstat_file_gen.second = section["ifstat_file_post"].string();
-	ifconfig_file_loc = section["ifconfig_file"].string();
 	iwconfig_file_loc = section["iwconfig_file"].string();
 }
 
-bool Net::getIpAddress(void)
-{
-  string cmd = ifconfig_file_loc + ' ' + iface;
-  string output = execute(cmd);
+#include<sys/types.h>
+#include<ifaddrs.h>
+#include<netinet/in.h>
+#include<arpa/inet.h>
 
-  TextPos pos(output.c_str());
-  while(*pos != '\n')
-		(void)pos.next();
-  pos.skip_whitespace();
-  int matched = sscanf(pos.ptr(), "inet %hhu.%hhu.%hhu.%hhu", &iface_ip.ip1, &iface_ip.ip2, &iface_ip.ip3, &iface_ip.ip4);
-  if(matched != 4)
-  {
-    log() << pos.to_string() << "Ip address not matched (" << matched << ")" << endl << pos.ptr() << endl;
-    return false;
-  }
-  return true;
+bool Net::getIpAddresses(void)
+{
+		static time_t last_updated = 0;
+		time_t now = time(nullptr);
+		if(now < last_updated + min_cooldown)
+			return true;
+
+		last_updated = now;
+
+		addresses.clear();
+
+    struct ifaddrs* base;
+    struct ifaddrs* ifa;
+    void* tmpAddrPtr;
+
+		string iface;
+		string ipv4;
+		string ipv6;
+
+    if(getifaddrs(&base) != 0)
+      return false;
+		ifa = base;
+
+    while(ifa != nullptr)
+    {
+        if(ifa->ifa_addr)
+				{
+					iface = string(ifa->ifa_name);
+
+	        if (ifa->ifa_addr->sa_family == AF_INET)
+	        {
+	            tmpAddrPtr= &((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
+	            char addressBuffer[INET_ADDRSTRLEN];
+	            inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
+							ipv4 = string(addressBuffer);
+	        }
+	        else if (ifa->ifa_addr->sa_family == AF_INET6)
+	        {
+	            tmpAddrPtr=&((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_addr;
+	            char addressBuffer[INET6_ADDRSTRLEN];
+	            inet_ntop(AF_INET6, tmpAddrPtr, addressBuffer, INET6_ADDRSTRLEN);
+							ipv6 = string(addressBuffer);
+	        }
+
+					if(ipv4.size() > 0 || ipv6.size() > 0)
+						addresses[iface] = pair<string, string>(ipv4, ipv6);
+				}
+        ifa = ifa->ifa_next;
+    }
+    if(base != nullptr) freeifaddrs(base);
+    return true;
 }
+
 
 bool Net::getWirelessState(void)
 {
@@ -87,12 +121,27 @@ Net::Net(JSONObject& item) :
   StateItem(item), Logger("[Net]", cerr)
 {
 	iface.assign(item["interface"].string());
-	ifstat_file_loc.assign(ifstat_file_gen.first + iface + ifstat_file_gen.second);
+
 	string contype = item["type"].string();
 	if(contype.compare("wireless") == 0)
-		type = Wireless;
+		iface_type = Wireless;
 	else if(contype.compare("ethernet") == 0)
-		type = Ethernet;
+		iface_type = Ethernet;
+
+	string showtype = item["show"].string();
+	if(showtype.compare("ipv4") == 0)
+		iface_show = IPv4;
+	else if(showtype.compare("ipv6") == 0)
+		iface_show = IPv6;
+	else if(showtype.compare("both") == 0)
+		iface_show = Both;
+	else if(showtype.compare("none") == 0)
+		iface_show = None;
+	else if(showtype.compare("ipv6_fallback") == 0)
+		iface_show = IPv6_Fallback;
+
+	time_t this_cooldown = item["cooldown"].number();
+	min_cooldown = min(min_cooldown, this_cooldown);
 }
 
 Net::~Net()
@@ -101,18 +150,21 @@ Net::~Net()
 
 bool Net::update(void)
 {
-  char line[11] = { 0 };
-  FILE* upfile = fopen(ifstat_file_loc.c_str(), "r");
-  FAIL_ON_FALSE(upfile != nullptr)
-  fgets(line, 10, upfile);
-  fclose(upfile);
+	FAIL_ON_FALSE(getIpAddresses())
 
-  if((iface_up = (strncmp(line, "up", 2) == 0)))
-  {
-    FAIL_ON_FALSE(getIpAddress())
-    if(type == Wireless)
-      FAIL_ON_FALSE(getWirelessState())
-  }
+	auto it = addresses.find(iface);
+	if(it == addresses.end())
+	{
+		iface_up = false;
+		return true;
+	}
+	iface_up = true;
+
+	iface_ipv4.assign(it->second.first);
+	iface_ipv6.assign(it->second.second);
+
+  if(iface_type == Wireless)
+    FAIL_ON_FALSE(getWirelessState())
 
   return true;
 }
@@ -122,21 +174,45 @@ void Net::print(void)
   if(iface_up)
   {
     separate(Left, neutral_colors);
-    switch(type)
+    switch(iface_type)
     {
     case Ethernet:
-      cout << ' ' << iface << ' ' << iface_ip << ' ';
+      cout << ' ' << iface;
       break;
     case Wireless:
       print_icon(icon_wlan);
       cout << ' ' << iface_essid << '(' << iface_quality << "%%) ";
       separate(Left, neutral_colors);
-      cout << ' ' << iface_ip << ' ';
       break;
     default:
 			cout << " Something went wrong ";
-      break;
+			return;
     }
+
+		switch(iface_show)
+		{
+		case IPv6_Fallback:
+			if(iface_ipv6.size() == 0)
+				cout << ' ' << iface_ipv4 << ' ';
+			else
+				cout << ' ' << iface_ipv6 << ' ';
+			break;
+		case Both:
+			cout << ' ' << iface_ipv4 << ' ';
+			separate(Left, neutral_colors);
+			cout << ' ' << iface_ipv6 << ' ';
+			break;
+		case IPv4:
+			cout << ' ' << iface_ipv4 << ' ';
+			break;
+		case IPv6:
+			cout << ' ' << iface_ipv6 << ' ';
+			break;
+		case None:
+		default:
+			cout << " Up ";
+			break;
+		}
     separate(Left, white_on_black);
   }
 }

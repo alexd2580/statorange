@@ -21,29 +21,35 @@ enum ConnectionType
   Wireless, Ethernet
 };
 
+enum ShowType
+{
+  None, IPv4, IPv6, IPv6_Fallback, Both
+};
+
 class Net : public StateItem, public Logger
 {
 private:
-  //NET
-  std::string iface;
-  std::string ifstat_file_loc;
-  ConnectionType type;
-  bool iface_up;
-  IPv4Address iface_ip;
+  std::string     iface;
+  bool            iface_up;
+  ConnectionType  iface_type;
+  ShowType        iface_show;
+  std::string     iface_ipv4;
+  std::string     iface_ipv6;
 
-  //optional
+  //optional (wireless)
   std::string iface_essid;
   int iface_quality;
 
-  static std::pair<std::string,std::string> ifstat_file_gen;
-  static std::string ifconfig_file_loc;
-  static std::string iwconfig_file_loc;
 
-  bool getIpAddress(void);
   bool getWirelessState(void);
-
   bool update(void);
   void print(void);
+//static:
+  static std::string iwconfig_file_loc;
+  static std::map<std::string, std::pair<std::string, std::string>> addresses;
+  static bool getIpAddresses(void);
+  static time_t min_cooldown;
+
 public:
   static void settings(JSONObject& section);
   explicit Net(JSONObject&);

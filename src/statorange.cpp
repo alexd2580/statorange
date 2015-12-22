@@ -109,7 +109,7 @@ int main(int argc, char* argv[])
 {
   Logger l("[Main]", cerr);
   l.log() << "Launching Statorange" << endl;
-  
+
   if(argc < 2)
   {
     cout << "Please supply the config path." << endl;
@@ -126,6 +126,9 @@ int main(int argc, char* argv[])
 
   init_colors();
 
+  time_t cooldown;
+  string path;
+
   try
   {
     /** Load the config */
@@ -133,79 +136,80 @@ int main(int argc, char* argv[])
     JSONObject& config_json = config_json_raw->object();
 
     //cooldown
-    time_t cooldown = config_json["cooldown"].number();
+    cooldown = config_json["cooldown"].number();
 
     //get the socket path to i3
     string get_socket = config_json["get_socket"].string();
-    string path = execute(get_socket);
+    path = execute(get_socket);
     path.pop_back();
-
-    //init i3State
-    I3State i3State(path);
-    i3State.updateOutputs();
 
     //init StateItems
     StateItem::init(config_json);
 
     //Now the config can be deleted
     delete config_json_raw;
-
-    /** Initialize and fork event listener */
-    pthread_cond_init(&notifier, nullptr);
-    pthread_mutex_init(&mutex, nullptr);
-
-    forkEventListener(&i3State, path);
-    main_thread = pthread_self();
-
-    register_signal_handlers();
-
-    l.log() << "Entering main loop" << endl;
-    pthread_mutex_lock(&mutex);
-
-    try
-    {
-
-      while(!die)
-      {
-        if(force_update)
-        {
-          StateItem::forceUpdates();
-          force_update = 0;
-        }
-        else
-          StateItem::updates();
-
-        pthread_mutex_lock(&i3State.mutex);
-        if(!i3State.valid)
-          die = 1;
-        else
-        {
-          echoPrimaryLemon(i3State, 0);
-          for(uint8_t i=1; i<i3State.outputs.size(); i++)
-            echoSecondaryLemon(i3State, i);
-          cout << endl;
-          cout.flush();
-        }
-        pthread_mutex_unlock(&i3State.mutex);
-
-        if(die)
-          break; //skip time delay here -> annoying
-        struct timespec abstime;
-        clock_gettime(CLOCK_REALTIME, &abstime);
-        abstime.tv_sec += cooldown;
-        pthread_cond_timedwait(&notifier, &mutex, &abstime);
-      }
-    }
-    catch(TraceCeption& e)
-    {
-      l.log() << "Exception catched:" << endl;
-      e.printStackTrace();
-      exit_status = EXIT_FAILURE;
-    }
   }
   catch(TraceCeption& e)
   {
     l.log() << "Could not parse config:" << endl;
+    e.printStackTrace();
+    return EXIT_FAILURE;
+  }
+
+  //init i3State
+  I3State i3State(path);
+  i3State.updateOutputs();
+
+
+  /** Initialize and fork event listener */
+  pthread_cond_init(&notifier, nullptr);
+  pthread_mutex_init(&mutex, nullptr);
+
+  forkEventListener(&i3State, path);
+  main_thread = pthread_self();
+
+  register_signal_handlers();
+
+  l.log() << "Entering main loop" << endl;
+  pthread_mutex_lock(&mutex);
+
+  try
+  {
+
+    while(!die)
+    {
+      if(force_update)
+      {
+        StateItem::forceUpdates();
+        force_update = 0;
+      }
+      else
+        StateItem::updates();
+
+      pthread_mutex_lock(&i3State.mutex);
+      if(!i3State.valid)
+        die = 1;
+      else
+      {
+        echoPrimaryLemon(i3State, 0);
+        for(uint8_t i=1; i<i3State.outputs.size(); i++)
+          echoSecondaryLemon(i3State, i);
+        cout << endl;
+        cout.flush();
+      }
+      pthread_mutex_unlock(&i3State.mutex);
+
+      if(die)
+        break; //skip time delay here -> annoying
+      struct timespec abstime;
+      clock_gettime(CLOCK_REALTIME, &abstime);
+      abstime.tv_sec += cooldown;
+      pthread_cond_timedwait(&notifier, &mutex, &abstime);
+    }
+  }
+  catch(TraceCeption& e)
+  {
+    l.log() << "Exception catched:" << endl;
     e.printStackTrace();
     exit_status = EXIT_FAILURE;
   }

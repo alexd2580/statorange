@@ -19,9 +19,6 @@
     "get_date" : "date +%Y-%m-%d\\ %H:%M"
   },
   "Net" : {
-    "ifstat_file_pre" : "/sys/class/net/",
-    "ifstat_file_post" : "/operstate",
-    "ifconfig_file": "/sbin/ifconfig",
     "iwconfig_file" : "/sbin/iwconfig"
   },
 
@@ -37,13 +34,16 @@
       "item" : "Net",
       "cooldown" : 10,
       "interface" : "wlp2s0",
-      "type" : "wireless"
+      "type" : "wireless",
+      "show" : "ipv4",
+      "_comment" : "you can also use ipv6, both, none, or ipv6_fallback"
     },
     {
       "item" : "Net",
       "cooldown" : 10,
       "interface" : "enp0s25",
-      "type" : "ethernet"
+      "type" : "ethernet",
+      "show" : "ipv4"
     },
     {
       "item" : "Battery",
