@@ -113,7 +113,7 @@ Available mount points can be queried with `df -h`.
   * `card` - the soundcard (put default there)
   * `mixer` - probably you want to put "Master" there
 * Date
-  * `format` - the format in which to print the date. See http://www.cplusplus.com/reference/iomanip/put_time/
+  * `format` - <a href=http://www.cplusplus.com/reference/iomanip/put_time/>the format in which to print the date.</a>
 
 After configuring the configuration perform a relogin.
 
