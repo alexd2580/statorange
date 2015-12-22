@@ -20,18 +20,13 @@ The predefined status items use the following programs/files:
 The [missing] file `/sys/class/power_supply/BAT0/uevent` and the ability to read files.
 
 * Volume<br>
-`amixer` to get the current volume and `alsamixer`, which opens when you click the volume section.
+`alsamixer`, which opens when you click the volume section.
 
 * Space<br>
 `df -h` which _should_ be available from the get-go.
 
 * Network<br>
-`/sys/class/net/%s/operstate` [replace %s by your network interface (`eth0`, `wlan0`)]
-to see whether the interface is up (or not).
-Also `/sbin/ifconfig` and `/sbin/iwconfig` to get info about the connection state.
-
-* Date<br>
-`date`
+`/sbin/iwconfig` to get info about the wireless connection.
 
 * CPU<br>
 temperature: `/sys/bus/acpi/devices/LNXTHERM:00/thermal_zone/temp`<br>
@@ -40,7 +35,7 @@ load: `/proc/loadavg`
 
 Also, since lemonbar does not provide a trayer section something like trayer
 is advisable. You can add a shortcut to toggle_trayer.sh (i chose mod+t)
-to toggle trayer, for when you really need it (you won't use them a lot, 
+to toggle trayer, for when you really need it (you won't use them a lot,
 except for nm-applet or wicd to connect to a network GRAPHICALLY).
 
 ### Required Packaged Software
@@ -59,7 +54,7 @@ except for nm-applet or wicd to connect to a network GRAPHICALLY).
 
 Basically it's just typing `make` into the console. This compiles
 the status generator (the part which produces a formatted string which
-is fed to lemonbar). 
+is fed to lemonbar).
 
 ## Installing fonts
 
@@ -98,8 +93,8 @@ The config (`config.json`) is written in JSON. An example configuration can be f
 * `get_socket` - retrieve i3 un*x socket path.
 * `cooldown` - delay between bar updates in seconds.
 * static settings for the state items (CPU, Battery, Volume, Space, Date, Net).
-Check if `/sbin/ifconfig` and `/sbin/ifconfig` executables are present.
-* `order` - as the name implies, the order is important. 
+Check if the `/sbin/iwconfig` executable is present.
+* `order` - as the name implies, the order is important.
 The objects in this list specify the sections on the right side of the bar.
 Each object has the following fields:
   * `item` - the name of the item (CPU, Battery, ...)
@@ -110,9 +105,15 @@ Also some objects require additional fields:
 * Net
   * `type` - ethernet or wireless
   * `interface` - the interface. Available interfaces can be displayed by running `/sbin/ifconfig`.
+  * `show` - what address to show (ipv4, ipv6, none, both, ipv6_fallback)
 * Space
   * `mount_points` - an array of mount points. I have /home as a separate partition.
 Available mount points can be queried with `df -h`.
+* Volume
+  * `card` - the soundcard (put default there)
+  * `mixer` - probably you want to put "Master" there
+* Date
+  * `format` - the format in which to print the date. See http://www.cplusplus.com/reference/iomanip/put_time/
 
 After configuring the configuration perform a relogin.
 
@@ -128,7 +129,7 @@ statorange_launcher.log #err stream from statorange_launcher.sh
 ## Inner structure
 
 Statorange splits into two threads. The main one sleeps most of the time.
-Every 5 seconds (default... probably) it wakes up, queries the WM state, 
+Every 5 seconds (default... probably) it wakes up, queries the WM state,
 updates the system state if necessary (you can set the update interval for each item),
 and prints a lemonbar formatted string to stdout before going back to sleep.
 

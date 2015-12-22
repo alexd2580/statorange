@@ -16,7 +16,7 @@
     "get_space" : "df -h"
   },
   "Date" : {
-    "get_date" : "date +%Y-%m-%d\\ %H:%M"
+    "deprecated_get_date" : "date"
   },
   "Net" : {
     "iwconfig_file" : "/sbin/iwconfig"
@@ -35,8 +35,7 @@
       "cooldown" : 10,
       "interface" : "wlp2s0",
       "type" : "wireless",
-      "show" : "ipv4",
-      "_comment" : "you can also use ipv6, both, none, or ipv6_fallback"
+      "show" : "ipv4"
     },
     {
       "item" : "Net",
@@ -61,7 +60,8 @@
     },
     {
       "item" : "Date",
-      "cooldown" : 30
+      "cooldown" : 30,
+      "format" : "%Y-%m-%d %H:%M"
     }
   ]
 }
