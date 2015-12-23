@@ -241,3 +241,11 @@ ostream& Logger::log(void)
 {
   return ostream << logname << ' ';
 }
+
+#include<cerrno>
+#include<cstring>
+void Logger::log_errno(void)
+{
+  log() << "errno = " << errno << endl;
+  log() << "Error description is : " << strerror(errno) << endl;
+}

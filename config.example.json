@@ -18,9 +18,6 @@
   "Date" : {
     "deprecated_get_date" : "date"
   },
-  "Net" : {
-    "iwconfig_file" : "/sbin/iwconfig"
-  },
 
   "order" : [
     {

@@ -8,18 +8,11 @@
 
 using namespace std;
 
-string Net::iwconfig_file_loc = "";
-
 time_t Net::min_cooldown = 1000; // TODO magicnumber
 map<string, pair<string, string>> Net::addresses;
 
 /******************************************************************************/
 /******************************************************************************/
-
-void Net::settings(JSONObject& section)
-{
-	iwconfig_file_loc = section["iwconfig_file"].string();
-}
 
 #include<sys/types.h>
 #include<ifaddrs.h>
@@ -46,7 +39,7 @@ bool Net::getIpAddresses(void)
 		string ipv6;
 
     if(getifaddrs(&base) != 0)
-      return false;
+      return true;
 		ifa = base;
 
     while(ifa != nullptr)
@@ -75,11 +68,98 @@ bool Net::getIpAddresses(void)
 				}
         ifa = ifa->ifa_next;
     }
-    if(base != nullptr) freeifaddrs(base);
+    if(base != nullptr)
+			freeifaddrs(base);
     return true;
 }
 
+#include<cstdio>
+#include<cerrno>
+#include<sys/ioctl.h>
+#include<sys/stat.h>
+#include<sys/socket.h>
+#include<fcntl.h>
+#include<linux/wireless.h>
 
+bool Net::get_wireless_state(void)
+{
+  int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+  if(sockfd == -1)
+  {
+      log() << "Cannot open socket" << endl;
+			log_errno();
+      return false;
+  }
+
+	try
+	{
+    struct iwreq wreq;
+    memset(&wreq, 0, sizeof(struct iwreq));
+    snprintf(wreq.ifr_name, 7, "wlp2s0");
+
+    /*** ESSID ***/
+    char buffer[32];
+    memset(buffer, 0, 32);
+    wreq.u.essid.pointer = buffer;
+    wreq.u.essid.length = 32;
+
+    if(ioctl(sockfd, SIOCGIWESSID, &wreq) == -1)
+    {
+        log() << "SIOCGIWESSID ioctl failed" << endl;
+        log_errno();
+        throw false;
+    }
+
+    iface_essid.assign((char*)wreq.u.essid.pointer);
+
+    /*** QUALITY ***/
+    iw_statistics stats;
+    wreq.u.data.pointer = &stats;
+    wreq.u.data.length = sizeof(iw_statistics);
+
+    if(ioctl(sockfd, SIOCGIWSTATS, &wreq) == -1)
+    {
+      log() << "SIOCGIWSTATS ioctl failed" << endl;
+      log_errno();
+      throw false;
+    }
+
+    if(stats.qual.updated & IW_QUAL_DBM)
+    {
+        #define DBM_MIN (-100)
+        #define DBM_MAX (-20)
+        int dbm = stats.qual.level - 256;
+        iface_quality = 100*(dbm-DBM_MIN) / (DBM_MAX-DBM_MIN);
+    }
+    else
+    {
+        log() << "Cannot read quality" << endl;
+				iface_quality = -100;
+    }
+
+    /*** BITRATE ***/
+    if(ioctl(sockfd, SIOCGIWRATE, &wreq) == -1)
+    {
+      log() << "SIOCGIWRATE ioctl failed" << endl;
+			log_errno();
+      throw false;
+    }
+
+    iface_bitrate = wreq.u.bitrate.value/1000000;
+
+    /*cout << "ESSID: " << essid << endl;
+    cout << "Quality: " << quality << "% (" << dbm << ")" << endl;
+    cout << "Bitrate: " << bitrate << "Mbit" << endl;*/
+		throw true;
+	}
+	catch(bool b)
+	{
+    shutdown(sockfd, SHUT_RDWR);
+		return b;
+	}
+}
+
+/*
 bool Net::getWirelessState(void)
 {
   string command = iwconfig_file_loc + ' ' + iface;
@@ -115,7 +195,7 @@ bool Net::getWirelessState(void)
     pos.skip_nonspace();
   }
   return false;
-}
+}*/
 
 Net::Net(JSONObject& item) :
   StateItem(item), Logger("[Net]", cerr)
@@ -164,7 +244,7 @@ bool Net::update(void)
 	iface_ipv6.assign(it->second.second);
 
   if(iface_type == Wireless)
-    FAIL_ON_FALSE(getWirelessState())
+    FAIL_ON_FALSE(get_wireless_state())
 
   return true;
 }

@@ -21,14 +21,7 @@ class JSON
 protected:
   static JSON* parseJSON(TextPos& string);
 
-  /**
-   * These are used for error localization. //necessary? TODO
-   * If a JSO is a field of an object, then the field name is also saved
-   */
-  JSON* const parent;
-  std::string* const field_name;
 public:
-  JSON(JSON* parent_, std::string* field_name_);
   virtual ~JSON() {};
   virtual std::string get_type(void) = 0;
 
@@ -50,7 +43,7 @@ class JSONArray : public JSON
 private:
   std::vector<JSON*> elems;
 public:
-  JSONArray(TextPos&, JSON* parent_, std::string* field_name_);
+  JSONArray(TextPos&);
   virtual ~JSONArray();
   std::string get_type(void);
 
@@ -67,7 +60,7 @@ private:
 
   void parseNamed(TextPos&);
 public:
-  JSONObject(TextPos&, JSON* parent_, std::string* field_name_);
+  JSONObject(TextPos&);
   virtual ~JSONObject();
   std::string get_type(void);
 
@@ -85,7 +78,7 @@ class JSONString : public JSON
 private:
   std::string string;
 public:
-  JSONString(TextPos&, JSON* parent_, std::string* field_name_);
+  JSONString(TextPos&);
   virtual ~JSONString();
   std::string get_type(void);
 
@@ -99,7 +92,7 @@ class JSONNumber : public JSON
 private:
   double n;
 public:
-  JSONNumber(TextPos&, JSON* parent_, std::string* field_name_);
+  JSONNumber(TextPos&);
   virtual ~JSONNumber() {};
   std::string get_type(void);
 
@@ -115,7 +108,7 @@ class JSONBool : public JSON
 private:
   bool b;
 public:
-  JSONBool(TextPos&, JSON* parent_, std::string* field_name_);
+  JSONBool(TextPos&);
   virtual ~JSONBool() {};
   std::string get_type(void);
 
@@ -126,7 +119,7 @@ public:
 class JSONNull : public JSON
 {
 public:
-  JSONNull(TextPos&, JSON* parent_, std::string* field_name_);
+  JSONNull(TextPos&);
   virtual ~JSONNull() {};
   std::string get_type(void);
 
@@ -135,6 +128,6 @@ public:
 
 #define INDENT_WIDTH 2
 
-void test_main(void);
+void test_json(void);
 
 #endif

@@ -17,21 +17,21 @@ so we have that. Also bar (lemonbar) is required for the actual panel.
 The predefined status items use the following programs/files:
 
 * Battery<br>
-The [missing] file `/sys/class/power_supply/BAT0/uevent` and the ability to read files.
+  * The [missing] file `/sys/class/power_supply/BAT0/uevent` and the ability to read files.
 
 * Volume<br>
-`alsamixer`, which opens when you click the volume section.
+  * `alsamixer`, which opens when you click the volume section.
 
 * Space<br>
-`df -h` which _should_ be available from the get-go.
+  * `df -h` which _should_ be available from the get-go.
 
 * Network<br>
-`/sbin/iwconfig` to get info about the wireless connection.
+  * `/sbin/iwconfig` to get info about the wireless connection.
 
 * CPU<br>
-temperature: `/sys/bus/acpi/devices/LNXTHERM:00/thermal_zone/temp`<br>
-load: `/proc/loadavg`
-`htop` pops up when this section is clicked.
+  * temperature: `/sys/bus/acpi/devices/LNXTHERM:00/thermal_zone/temp`
+  * load: `/proc/loadavg`
+  * `htop` pops up when this section is clicked.
 
 Also, since lemonbar does not provide a trayer section something like trayer
 is advisable. You can add a shortcut to toggle_trayer.sh (i chose mod+t)

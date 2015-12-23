@@ -16,7 +16,7 @@ using namespace std;
 
 /******************************************************************************/
 
-JSONArray::JSONArray(TextPos& pos, JSON* parent_, std::string* field_name_) : JSON(parent_, field_name_)
+JSONArray::JSONArray(TextPos& pos)
 {
   try
   {
@@ -143,7 +143,7 @@ void printNamed(map<std::string,JSON*>::iterator i, size_t indention)
   i->second->print(indention);
 }
 
-JSONObject::JSONObject(TextPos& pos, JSON* parent_, std::string* field_name_) : JSON(parent_, field_name_)
+JSONObject::JSONObject(TextPos& pos)
 {
   try
   {
@@ -247,10 +247,8 @@ JSON& JSONObject::operator[](std::string& key)
 
 /******************************************************************************/
 
-JSONString::JSONString(TextPos& pos, JSON* parent_, std::string* field_name_)
-  : JSON(parent_, field_name_)
+JSONString::JSONString(TextPos& pos)
 {
-
   try
   {
     string.assign(parse_escaped_string(pos));
@@ -288,8 +286,7 @@ __attribute__((const)) JSONString::operator std::string&()
 
 /******************************************************************************/
 
-JSONNumber::JSONNumber(TextPos& pos, JSON* parent_, std::string* field_name_)
-  : JSON(parent_, field_name_)
+JSONNumber::JSONNumber(TextPos& pos)
 {
   try
   {
@@ -334,8 +331,7 @@ __attribute__((pure)) JSONNumber::operator double()
 
 /******************************************************************************/
 
-JSONBool::JSONBool(TextPos& pos, JSON* parent_, std::string* field_name_)
-  : JSON(parent_, field_name_)
+JSONBool::JSONBool(TextPos& pos)
 {
   cchar* str = pos.ptr();
   if(strncmp(str, "false", 5) == 0)
@@ -372,8 +368,7 @@ __attribute__((pure)) JSONBool::operator bool()
 
 /******************************************************************************/
 
-JSONNull::JSONNull(TextPos& pos, JSON* parent_, std::string* field_name_)
-  : JSON(parent_, field_name_)
+JSONNull::JSONNull(TextPos& pos)
 {
   cchar* str = pos.ptr();
   if(strncmp(str, "null", 4) == 0)
@@ -394,10 +389,6 @@ void JSONNull::print(size_t)
 
 /******************************************************************************/
 
-JSON::JSON(JSON* parent_, std::string* field_name_) :
-  parent(parent_), field_name(field_name_)
-{}
-
 /**
  * Parses the first JSONSomthing it encounters,
  * string is set to the next (untouched) character.
@@ -417,18 +408,18 @@ JSON* JSON::parseJSON(TextPos& pos)
   case '\0':
     throw JSONException("Unexpected end of string");
   case '"':
-    return new JSONString(pos, nullptr, nullptr);
+    return new JSONString(pos);
   case '{':
-    return new JSONObject(pos, nullptr, nullptr);
+    return new JSONObject(pos);
   case '[':
-    return new JSONArray(pos, nullptr, nullptr);
+    return new JSONArray(pos);
   default:
     if((c >= '0' && c <= '9') || c == '.' || c == '+' || c == '-')
-      return new JSONNumber(pos, nullptr, nullptr);
+      return new JSONNumber(pos);
     else if(c == 't' || c == 'f')
-      return new JSONBool(pos, nullptr, nullptr);
+      return new JSONBool(pos);
     else if(c == 'n')
-      return new JSONNull(pos, nullptr, nullptr);
+      return new JSONNull(pos);
     break;
   }
 
@@ -447,11 +438,8 @@ JSONArray& JSON::array(void)
   JSONArray* ptr = dynamic_cast<JSONArray*>(this);
   if(ptr == nullptr)
   {
-    JSONException e("Requested thing is not a JSONArray");
-    if(parent != nullptr)
-      e.push_stack("In an " + parent->get_type());
-    if(field_name != nullptr)
-      e.push_stack("As a field with name " + *field_name);
+    JSONException e(std::string("This JSON instance is of type ") + get_type());
+    e.push_stack("Cannot cast to JSONArray");
     throw e;
   }
   return *ptr;
@@ -462,11 +450,8 @@ JSONObject& JSON::object(void)
   JSONObject* ptr = dynamic_cast<JSONObject*>(this);
   if(ptr == nullptr)
   {
-    JSONException e("Requested thing is not a JSONObject");
-    if(field_name != nullptr)
-      e.push_stack("As a field with name " + *field_name);
-    if(parent != nullptr)
-      e.push_stack("In an " + parent->get_type());
+    JSONException e(std::string("This JSON instance is of type ") + get_type());
+    e.push_stack("Cannot cast to JSONObject");
     throw e;
   }
   return *ptr;
@@ -477,11 +462,8 @@ JSONString& JSON::string(void)
   JSONString* ptr = dynamic_cast<JSONString*>(this);
   if(ptr == nullptr)
   {
-    JSONException e("Requested thing is not a JSONString");
-    if(field_name != nullptr)
-      e.push_stack("As a field with name " + *field_name);
-    if(parent != nullptr)
-      e.push_stack("In an " + parent->get_type());
+    JSONException e(std::string("This JSON instance is of type ") + get_type());
+    e.push_stack("Cannot cast to JSONString");
     throw e;
   }
   return *ptr;
@@ -492,11 +474,8 @@ JSONNumber& JSON::number(void)
   JSONNumber* ptr = dynamic_cast<JSONNumber*>(this);
   if(ptr == nullptr)
   {
-    JSONException e("Requested thing is not a JSONNumber");
-    if(field_name != nullptr)
-      e.push_stack("As a field with name " + *field_name);
-    if(parent != nullptr)
-      e.push_stack("In an " + parent->get_type());
+    JSONException e(std::string("This JSON instance is of type ") + get_type());
+    e.push_stack("Cannot cast to JSONNumber");
     throw e;
   }
   return *ptr;
@@ -507,11 +486,8 @@ JSONBool& JSON::boolean(void)
   JSONBool* ptr = dynamic_cast<JSONBool*>(this);
   if(ptr == nullptr)
   {
-    JSONException e("Requested thing is not a JSONBool");
-    if(field_name != nullptr)
-      e.push_stack("As a field with name " + *field_name);
-    if(parent != nullptr)
-      e.push_stack("In an " + parent->get_type());
+    JSONException e(std::string("This JSON instance is of type ") + get_type());
+    e.push_stack("Cannot cast to JSONBool");
     throw e;
   }
   return *ptr;
@@ -522,11 +498,8 @@ JSONNull& JSON::null(void)
   JSONNull* ptr = dynamic_cast<JSONNull*>(this);
   if(ptr == nullptr)
   {
-    JSONException e("Requested thing is not a JSONNull");
-    if(field_name != nullptr)
-      e.push_stack("As a field with name " + *field_name);
-    if(parent != nullptr)
-      e.push_stack("In an " + parent->get_type());
+    JSONException e(std::string("This JSON instance is of type ") + get_type());
+    e.push_stack("Cannot cast to JSONNull");
     throw e;
   }
   return *ptr;
@@ -537,10 +510,16 @@ JSONNull& JSON::null(void)
 
 void test_json(void)
 {
-  char buffer[300] = {0};
-  char* str = buffer;
-  strncpy(buffer, "    {\"lolwut\"             : [\"ROFL\", [], {}, [{}]] }", 290);
-  JSON* json = JSON::parse(str);
-  json->object().get("lolwut").print();
-  delete json;
+  std::string jsonstring = "{\"asd\":\"asd\", \"qwe\":123}";
+  try
+  {
+    JSON* json = JSON::parse(jsonstring.c_str());
+    (void)json->object()["asd"].string();
+    (void)json->object()["qwe"].string();
+    delete json;
+  }
+  catch(TraceCeption& e)
+  {
+    e.printStackTrace(cout);
+  }
 }

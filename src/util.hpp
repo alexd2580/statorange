@@ -122,6 +122,7 @@ public:
   ~Logger();
 
   std::ostream& log(void);
+  void log_errno(void);
 };
 
 #endif

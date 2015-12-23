@@ -72,7 +72,7 @@ vector<StateItem*> StateItem::states;
 void StateItem::init(JSONObject& config)
 {
   //Date::settings(config["Date"].object());
-  Net::settings(config["Net"].object());
+  //Net::settings(config["Net"].object());
   CPU::settings(config["CPU"].object());
   Battery::settings(config["Battery"].object());
   Volume::settings(config["Volume"].object());
