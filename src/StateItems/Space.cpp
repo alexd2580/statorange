@@ -1,8 +1,8 @@
-#include<iostream>
+#include <iostream>
 
-#include"Space.hpp"
-#include"../output.hpp"
-#include"../util.hpp"
+#include "Space.hpp"
+#include "../output.hpp"
+#include "../util.hpp"
 
 using namespace std;
 
@@ -16,8 +16,7 @@ void Space::settings(JSONObject& section)
   get_space.assign(section["get_space"].string());
 }
 
-Space::Space(JSONObject& item) :
-  StateItem(item), Logger("[Space]", cerr)
+Space::Space(JSONObject& item) : StateItem(item), Logger("[Space]", cerr)
 {
   /*JSONArray mpoints = item["mount_points"].array();
   mpoints.
@@ -46,25 +45,25 @@ bool Space::getSpaceUsage(SpaceItem& dir)
     pos.skip_whitespace();
     char const* beg = pos.ptr();
     pos.skip_nonspace();
-    dir.size.assign(beg, pos.ptr()-beg);
+    dir.size.assign(beg, pos.ptr() - beg);
     pos.skip_whitespace();
     beg = pos.ptr();
     pos.skip_nonspace();
-    dir.used.assign(beg, pos.ptr()-beg);
+    dir.used.assign(beg, pos.ptr() - beg);
   }
   catch(TraceCeption& e)
   {
     log() << "While parsing output of " << get_space << endl;
     e.printStackTrace();
-
   }
   return true;
 }
 
 bool Space::update(void)
 {
-  for(auto i=items.begin(); i!=items.end(); i++)
-    FAIL_ON_FALSE(getSpaceUsage(*i))
+  for(auto i = items.begin(); i != items.end(); i++)
+    if(!getSpaceUsage(*i))
+      return false;
   return true;
 }
 
@@ -75,7 +74,7 @@ void Space::print(void)
     separate(Left, neutral_colors);
     auto i = items.begin();
     cout << ' ' << i->mount_point << ' ' << i->used << '/' << i->size << ' ';
-    for(i++; i!=items.end(); i++)
+    for(i++; i != items.end(); i++)
     {
       separate(Left, neutral_colors);
       cout << ' ' << i->mount_point << ' ' << i->used << '/' << i->size << ' ';

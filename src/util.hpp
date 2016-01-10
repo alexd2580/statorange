@@ -1,11 +1,11 @@
 #ifndef __STRUTIL_LOL___
 #define __STRUTIL_LOL___
 
-#include<string>
-#include<cstddef>
-#include<ostream>
-#include<iostream>
-#include<stack>
+#include <string>
+#include <cstddef>
+#include <ostream>
+#include <iostream>
+#include <stack>
 
 typedef char const cchar;
 
@@ -17,6 +17,7 @@ private:
   cchar* string;
   unsigned int line;
   unsigned int column;
+
 public:
   explicit TextPos(cchar* begin);
 
@@ -73,18 +74,14 @@ protected:
   std::stack<std::string> stacktrace;
 
 public:
-  TraceCeption(TextPos pos, std::string msg)
-    : position(pos)
+  TraceCeption(TextPos pos, std::string msg) : position(pos)
   {
     stacktrace.push(msg);
   }
 
   virtual ~TraceCeption() {}
 
-  void push_stack(std::string msg)
-  {
-    stacktrace.push(msg);
-  }
+  void push_stack(std::string msg) { stacktrace.push(msg); }
 
   void printStackTrace(std::ostream& out = std::cerr)
   {
@@ -117,6 +114,7 @@ class Logger
 private:
   std::string const logname;
   std::ostream& ostream;
+
 public:
   Logger(std::string lname, std::ostream& ostr);
   ~Logger();

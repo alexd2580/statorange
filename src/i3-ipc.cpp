@@ -1,41 +1,43 @@
 
-#include<iostream>
-#include<cstdlib>
-#include<cstring>
-#include<string>
-#include<cerrno>
+#include <iostream>
+#include <cstdlib>
+#include <cstring>
+#include <string>
+#include <cerrno>
 
-#include<sys/un.h>
-#include<arpa/inet.h>
-#include<unistd.h>
-#include<csignal>
+#include <sys/un.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <csignal>
 
-#include"i3-ipc-constants.hpp"
+#include "i3-ipc-constants.hpp"
 
 extern volatile sig_atomic_t die;
 
 using namespace std;
 
-#define CASE_RETURN(l) case l: return #l;
+#define CASE_RETURN(l)                                                         \
+  case l:                                                                      \
+    return #l;
 
 string ipc_type_to_string(unsigned int type)
 {
   switch(type)
   {
-  CASE_RETURN(I3_IPC_REPLY_TYPE_TREE)
-  CASE_RETURN(I3_IPC_REPLY_TYPE_MARKS)
-  CASE_RETURN(I3_IPC_REPLY_TYPE_COMMAND)
-  CASE_RETURN(I3_IPC_REPLY_TYPE_OUTPUTS)
-  CASE_RETURN(I3_IPC_REPLY_TYPE_VERSION)
-  CASE_RETURN(I3_IPC_REPLY_TYPE_SUBSCRIBE)
-  CASE_RETURN(I3_IPC_REPLY_TYPE_WORKSPACES)
-  CASE_RETURN(I3_IPC_REPLY_TYPE_BAR_CONFIG)
-  CASE_RETURN(I3_IPC_EVENT_MODE)
-  CASE_RETURN(I3_IPC_EVENT_OUTPUT)
-  CASE_RETURN(I3_IPC_EVENT_WINDOW)
-  CASE_RETURN(I3_IPC_EVENT_BINDING)
-  CASE_RETURN(I3_IPC_EVENT_WORKSPACE)
-  CASE_RETURN(I3_IPC_EVENT_BARCONFIG_UPDATE)
+    CASE_RETURN(I3_IPC_REPLY_TYPE_TREE)
+    CASE_RETURN(I3_IPC_REPLY_TYPE_MARKS)
+    CASE_RETURN(I3_IPC_REPLY_TYPE_COMMAND)
+    CASE_RETURN(I3_IPC_REPLY_TYPE_OUTPUTS)
+    CASE_RETURN(I3_IPC_REPLY_TYPE_VERSION)
+    CASE_RETURN(I3_IPC_REPLY_TYPE_SUBSCRIBE)
+    CASE_RETURN(I3_IPC_REPLY_TYPE_WORKSPACES)
+    CASE_RETURN(I3_IPC_REPLY_TYPE_BAR_CONFIG)
+    CASE_RETURN(I3_IPC_EVENT_MODE)
+    CASE_RETURN(I3_IPC_EVENT_OUTPUT)
+    CASE_RETURN(I3_IPC_EVENT_WINDOW)
+    CASE_RETURN(I3_IPC_EVENT_BINDING)
+    CASE_RETURN(I3_IPC_EVENT_WORKSPACE)
+    CASE_RETURN(I3_IPC_EVENT_BARCONFIG_UPDATE)
   default:
     return "unknown";
   }
@@ -48,14 +50,30 @@ void printDetailedErrno(void)
   string msg;
   switch(errno)
   {
-  case EAGAIN:      msg = "EAGAIN";       break;
-  case EBADF:       msg = "EBADF";        break;
-  case EFAULT:      msg = "EFAULT";       break;
-  case EINTR:       msg = "EINTR";        break;
-  case EINVAL:      msg = "EINVAL";       break;
-  case EIO:         msg = "EIO";          break;
-  case EISDIR:      msg = "EISDIR";       break;
-  default:          msg = "errno missing from switch"; break;
+  case EAGAIN:
+    msg = "EAGAIN";
+    break;
+  case EBADF:
+    msg = "EBADF";
+    break;
+  case EFAULT:
+    msg = "EFAULT";
+    break;
+  case EINTR:
+    msg = "EINTR";
+    break;
+  case EINVAL:
+    msg = "EINVAL";
+    break;
+  case EIO:
+    msg = "EIO";
+    break;
+  case EISDIR:
+    msg = "EISDIR";
+    break;
+  default:
+    msg = "errno missing from switch";
+    break;
   }
   cerr << msg << endl;
 }
@@ -127,7 +145,8 @@ int sendMessage(int fd, uint32_t type, char* payload)
       printDetailedErrno();
     }
     else
-      cerr << "Could not transmit full header => " << sent << "/" << HEADER_SIZE << endl;
+      cerr << "Could not transmit full header => " << sent << "/" << HEADER_SIZE
+           << endl;
     return -1;
   }
   if(header.size != 0)
@@ -141,7 +160,8 @@ int sendMessage(int fd, uint32_t type, char* payload)
         printDetailedErrno();
       }
       else
-        cerr << "Could not transmit full message => " << sent << "/" << header.size << endl;
+        cerr << "Could not transmit full message => " << sent << "/"
+             << header.size << endl;
       return -1;
     }
   }
@@ -170,7 +190,8 @@ char* readMessage(int fd, uint32_t* type)
       printDetailedErrno();
     }
     else
-      cerr << "Could not read the whole header => " << n << "/" << HEADER_SIZE << endl;
+      cerr << "Could not read the whole header => " << n << "/" << HEADER_SIZE
+           << endl;
     *type = I3_INVALID_TYPE;
     return nullptr;
   }
@@ -186,7 +207,7 @@ char* readMessage(int fd, uint32_t* type)
 
   if(header.size > 0)
   {
-    payload = (char*)malloc((header.size+1)*sizeof(char));
+    payload = (char*)malloc((header.size + 1) * sizeof(char));
     n = readall(fd, payload, header.size);
     if(n < header.size)
     {
@@ -225,7 +246,8 @@ int init_socket(char const* path)
   server_address.sun_family = AF_LOCAL;
   strcpy(server_address.sun_path, path);
 
-  int err = connect(sockfd, (struct sockaddr*)&server_address, sizeof(server_address));
+  int err = connect(
+      sockfd, (struct sockaddr*)&server_address, sizeof(server_address));
   if(err != 0)
   {
     cerr << "Connect failed" << endl;
@@ -253,7 +275,7 @@ int test_sockets(int argc, char* argv[])
   char msg[] = "[\"workspace\", \"mode\"]";
   sendMessage(fd, 2, msg);
 
-  for(int i=0; i<100; i++)
+  for(int i = 0; i < 100; i++)
   {
     uint32_t type;
     char* payload = readMessage(fd, &type);

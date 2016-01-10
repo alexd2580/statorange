@@ -1,8 +1,8 @@
-#include<cstring>
-#include<string>
+#include <cstring>
+#include <string>
 
-#include"output.hpp"
-#include"StateItem.hpp"
+#include "output.hpp"
+#include "StateItem.hpp"
 
 using namespace std;
 
@@ -10,21 +10,21 @@ using namespace std;
 /*****************************     ICONS     **********************************/
 
 // Icon glyphs from Terminusicons2
-char const* const icon_clock="Õ";          // Clock icon
-char const* const icon_cpu="Ï";            // CPU icon
-char const* const icon_mem="Þ";            // MEM icon
-char const* const icon_dl="Ð";             // Download icon
-char const* const icon_ul="Ñ";             // Upload icon
-char const* const icon_vol="Ô";            // Volume icon
-char const* const icon_hd="À";             // HD / icon
-char const* const icon_home="Æ";           // HD /home icon
-char const* const icon_mail="Ó";           // Mail icon
-char const* const icon_chat="Ò";           // IRC/Chat icon
-char const* const icon_music="Î";          // Music icon
-char const* const icon_prog="Â";           // Window icon
-char const* const icon_contact="Á";        // Contact icon
-char const* const icon_wsp="É";            // Workspace icon
-char const* const icon_wlan="Ø";           // WIFI icon 
+char const* const icon_clock = "Õ";   // Clock icon
+char const* const icon_cpu = "Ï";     // CPU icon
+char const* const icon_mem = "Þ";     // MEM icon
+char const* const icon_dl = "Ð";      // Download icon
+char const* const icon_ul = "Ñ";      // Upload icon
+char const* const icon_vol = "Ô";     // Volume icon
+char const* const icon_hd = "À";      // HD / icon
+char const* const icon_home = "Æ";    // HD /home icon
+char const* const icon_mail = "Ó";    // Mail icon
+char const* const icon_chat = "Ò";    // IRC/Chat icon
+char const* const icon_music = "Î";   // Music icon
+char const* const icon_prog = "Â";    // Window icon
+char const* const icon_contact = "Á"; // Contact icon
+char const* const icon_wsp = "É";     // Workspace icon
+char const* const icon_wlan = "Ø";    // WIFI icon
 
 /******************************************************************************/
 /*****************************     COLORS     *********************************/
@@ -37,12 +37,14 @@ void make_hex(char* dst, uint8_t a)
   dst[1] = hex_color[a % 16];
 }
 
-#define MAKE_HEX_COLOR(color, a, r, g, b) { \
-  color[0] = '#'; \
-  make_hex(color+1, a); \
-  make_hex(color+3, r); \
-  make_hex(color+5, g); \
-  make_hex(color+7, b); }
+#define MAKE_HEX_COLOR(color, a, r, g, b)                                      \
+  {                                                                            \
+    color[0] = '#';                                                            \
+    make_hex(color + 1, a);                                                    \
+    make_hex(color + 3, r);                                                    \
+    make_hex(color + 5, g);                                                    \
+    make_hex(color + 7, b);                                                    \
+  }
 
 char const* color_white = "#FFFFFFFF";
 char const* color_dwhite = "#FFCCCCCC";
@@ -58,25 +60,33 @@ char const* color_blind = "#FF8B814C";
 char const* color_crimson = "#FFDC143C";
 char const* color_black = "#FF000000";
 
-char const* white_on_black[2]; //{ color_black, color_white };
-char const* inactive_colors[2]; //{ color_dgrey, color_lgrey };
+char const* white_on_black[2];    //{ color_black, color_white };
+char const* inactive_colors[2];   //{ color_dgrey, color_lgrey };
 char const* semiactive_colors[2]; //{ color_grey, color_dwhite };
-char const* active_colors[2]; //{ color_blue, color_dwhite };
-char const* warn_colors[2]; //{ color_red, color_dwhite };
-char const* info_colors[2]; //{ color_yellow, color_black };
-char const* good_colors[2]; //{ color_green, color_black };
-char const* neutral_colors[2]; //{ color_dgreen, color_black };
+char const* active_colors[2];     //{ color_blue, color_dwhite };
+char const* warn_colors[2];       //{ color_red, color_dwhite };
+char const* info_colors[2];       //{ color_yellow, color_black };
+char const* good_colors[2];       //{ color_green, color_black };
+char const* neutral_colors[2];    //{ color_dgreen, color_black };
 
 void init_colors(void)
 {
-  white_on_black[0] = color_black; white_on_black[1] = color_white;
-  inactive_colors[0] = color_dgrey; inactive_colors[1] = color_lgrey;
-  semiactive_colors[0] = color_grey; semiactive_colors[1] = color_dwhite;
-  active_colors[0] = color_blue; active_colors[1] = color_dwhite;
-  warn_colors[0] = color_red; warn_colors[1] = color_dwhite;
-  info_colors[0] = color_yellow; info_colors[1] = color_black;
-  good_colors[0] = color_green; good_colors[1] = color_black;
-  neutral_colors[0] = color_dgreen; neutral_colors[1] = color_dwhite;
+  white_on_black[0] = color_black;
+  white_on_black[1] = color_white;
+  inactive_colors[0] = color_dgrey;
+  inactive_colors[1] = color_lgrey;
+  semiactive_colors[0] = color_grey;
+  semiactive_colors[1] = color_dwhite;
+  active_colors[0] = color_blue;
+  active_colors[1] = color_dwhite;
+  warn_colors[0] = color_red;
+  warn_colors[1] = color_dwhite;
+  info_colors[0] = color_yellow;
+  info_colors[1] = color_black;
+  good_colors[0] = color_green;
+  good_colors[1] = color_black;
+  neutral_colors[0] = color_dgreen;
+  neutral_colors[1] = color_dwhite;
   return;
 }
 
@@ -84,10 +94,10 @@ void init_colors(void)
 /**************************     SEPARATORS     ********************************/
 
 // Char glyps for powerline fonts
-char const* sep_left="";           // Powerline separator left
-char const* sep_right="";          // Powerline separator right
-char const* sep_l_left="";         // Powerline light separator left
-char const* sep_l_right="";        // Powerline light sepatator right
+char const* sep_left = "";    // Powerline separator left
+char const* sep_right = "";   // Powerline separator right
+char const* sep_l_left = "";  // Powerline light separator left
+char const* sep_l_right = ""; // Powerline light sepatator right
 
 void separate(Direction d, char const** colors, ostream& o)
 {
@@ -99,20 +109,21 @@ void separate(Direction d, char const** colors, ostream& o)
   if(d == Left)
   {
     if(colors[0] != current_set_colors[0])
-      o << "%{F" << colors[0] << '}' << sep_left << "%{R}%{F" << colors[1] << '}';
+      o << "%{F" << colors[0] << '}' << sep_left << "%{R}%{F" << colors[1]
+        << '}';
     else
       o << "%{F#FF000000}" << sep_l_left << "%{F" << colors[1] << '}';
   }
   else
   {
     if(colors[0] != current_set_colors[0])
-      o << "%{R}%{B" << colors[0] << '}' << sep_right << "%{F" << colors[1] << '}';
+      o << "%{R}%{B" << colors[0] << '}' << sep_right << "%{F" << colors[1]
+        << '}';
     else
       o << "%{F#FF000000}" << sep_l_left << "%{F" << colors[1] << '}';
   }
   current_set_colors = colors;
 }
-
 
 void dynamic_section(float value, float min, float max, ostream& o)
 {
@@ -126,9 +137,9 @@ void dynamic_section(float value, float min, float max, ostream& o)
     static char back_2[9];
     static char* back = back_1;
     back = (char*)((long)back ^ (long)back_1 ^ (long)back_2);
-      
-    uint8_t byteV = (uint8_t)((value-min)*256.0f / (max-min));
-    MAKE_HEX_COLOR(back, 255, byteV, (uint8_t)(127-byteV/2), 0)
+
+    uint8_t byteV = (uint8_t)((value - min) * 256.0f / (max - min));
+    MAKE_HEX_COLOR(back, 255, byteV, (uint8_t)(127 - byteV / 2), 0)
     static char const* colors[2];
     colors[0] = back;
     colors[1] = color_dwhite;
@@ -142,15 +153,12 @@ void dynamic_section(float value, float min, float max, ostream& o)
 void startButton(string cmd, ostream& o)
 {
   o << "%{A:";
-  for(auto i=cmd.begin(); i!=cmd.end(); i++)
+  for(auto i = cmd.begin(); i != cmd.end(); i++)
     o << (*i == ':' ? "\\" : "") << *i;
   o << ":}";
 }
 
-void stopButton(ostream& o)
-{
-  o << "%{A}";
-}
+void stopButton(ostream& o) { o << "%{A}"; }
 
 /******************************************************************************/
 /****************************     OUTPUT     **********************************/
@@ -161,16 +169,19 @@ void stopButton(ostream& o)
  */
 void echoWorkspaceButtons(I3State& i3, uint8_t disp)
 {
-  for(size_t w=0; w<i3.workspaces.size(); w++)
+  for(size_t w = 0; w < i3.workspaces.size(); w++)
   {
     Workspace& ws = i3.workspaces[w];
     if(ws.output == disp)
     {
       char const** colors = inactive_colors;
-      if(ws.urgent) colors = warn_colors;
-      else if(ws.focused) colors = active_colors;
-      else if(ws.visible) colors = semiactive_colors;
-    
+      if(ws.urgent)
+        colors = warn_colors;
+      else if(ws.focused)
+        colors = active_colors;
+      else if(ws.visible)
+        colors = semiactive_colors;
+
       startButton("i3-msg workspace " + ws.name);
       separate(Right, colors);
       cout << ' ' << ws.name << ' ';
@@ -187,7 +198,7 @@ void echoWorkspaceButtons(I3State& i3, uint8_t disp)
 
 /**
  * Prints the input to lemonbar for the main monitor
- * TODO specify main monitor in config -> fix main, not this method 
+ * TODO specify main monitor in config -> fix main, not this method
  */
 void echoPrimaryLemon(I3State& i3, uint8_t disp)
 {
@@ -203,8 +214,8 @@ void echoPrimaryLemon(I3State& i3, uint8_t disp)
   }
   cout << "%{l}";
   cout << "%{r}";
-  
-	StateItem::printState();
+
+  StateItem::printState();
 
   cout << "%{r}";
   cout << "%{S" << (int)disp << "}";

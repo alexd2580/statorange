@@ -1,15 +1,15 @@
-#include<csignal>
-#include<iostream>
-#include<cstring>
-#include<pthread.h>
-#include<sys/socket.h>
+#include <csignal>
+#include <iostream>
+#include <cstring>
+#include <pthread.h>
+#include <sys/socket.h>
 
-#include"JSON/jsonParser.hpp"
+#include "JSON/jsonParser.hpp"
 
-#include"i3state.hpp"
-#include"i3-ipc-constants.hpp"
-#include"i3-ipc.hpp"
-#include"util.hpp"
+#include "i3state.hpp"
+#include "i3-ipc-constants.hpp"
+#include "i3-ipc.hpp"
+#include "util.hpp"
 
 using namespace std;
 
@@ -24,8 +24,7 @@ extern volatile sig_atomic_t force_update;
 
 Logger evlog("[EventHandler]", cerr);
 
-#define GET_DISPLAY_NUM \
-  double n = object["current"].object()["num"].number();
+#define GET_DISPLAY_NUM double n = object["current"].object()["num"].number();
 
 void handleWorkspaceEvent(I3State& i3State, char* response)
 {
@@ -96,7 +95,7 @@ void handleWindowEvent(I3State& i3State, char* response)
   long appId = container["id"].number();
 
   /** New events are also accompanied by focus events if necessary */
-  //cLen == 3 && strncmp(cStr, "new", 3) == 0
+  // cLen == 3 && strncmp(cStr, "new", 3) == 0
 
   /**
    * On a title update check if the application is focused
@@ -104,7 +103,7 @@ void handleWindowEvent(I3State& i3State, char* response)
    */
   if(change.compare("title") == 0)
   {
-    for(auto i=i3State.workspaces.begin(); i!=i3State.workspaces.end(); i++)
+    for(auto i = i3State.workspaces.begin(); i != i3State.workspaces.end(); i++)
       if(i->focusedAppID == appId)
       {
         i->focusedApp = getWindowName(container);
@@ -125,7 +124,7 @@ void handleWindowEvent(I3State& i3State, char* response)
    */
   else if(change.compare("close") == 0)
   {
-    for(auto i=i3State.workspaces.begin(); i!=i3State.workspaces.end(); i++)
+    for(auto i = i3State.workspaces.begin(); i != i3State.workspaces.end(); i++)
     {
       if(i->focusedAppID == appId)
       {
@@ -148,7 +147,6 @@ void handleWindowEvent(I3State& i3State, char* response)
 
   delete json;
   return;
-
 }
 
 /**
@@ -167,15 +165,15 @@ void handleEvent(I3State& i3State, uint32_t type, char* response)
       die = 1;
       break;
     case I3_IPC_EVENT_MODE:
-      {
-        pthread_mutex_lock(&i3State.mutex);
-        JSON* json = JSON::parse(response);
-        JSONObject& modeEvent = json->object();
-        i3State.mode = modeEvent["change"].string();
-        delete json;
-        pthread_mutex_unlock(&i3State.mutex);
-      }
-      break;
+    {
+      pthread_mutex_lock(&i3State.mutex);
+      JSON* json = JSON::parse(response);
+      JSONObject& modeEvent = json->object();
+      i3State.mode = modeEvent["change"].string();
+      delete json;
+      pthread_mutex_unlock(&i3State.mutex);
+    }
+    break;
     case I3_IPC_EVENT_WINDOW:
       handleWindowEvent(i3State, response);
       break;
@@ -188,14 +186,16 @@ void handleEvent(I3State& i3State, uint32_t type, char* response)
       die = 1;
       break;
     default:
-      evlog.log() << "Unhandled event type: " << ipc_type_to_string(type) << endl;
+      evlog.log() << "Unhandled event type: " << ipc_type_to_string(type)
+                  << endl;
       break;
     }
   }
   catch(TraceCeption& e)
   {
     e.push_stack(std::string(response));
-    e.push_stack("While handling an event of type: " + ipc_type_to_string(type));
+    e.push_stack("While handling an event of type: " +
+                 ipc_type_to_string(type));
     throw e;
   }
 
@@ -241,10 +241,10 @@ void* event_listener(void* data)
   evlog.log() << "Entering event listener loop" << endl;
   while(!die)
   {
-    //this sleep prevents the application from dying because of SIGUSR1 spam.
-    //on the other hand, the user can now crash, or at least DOS i3 with
-    //events, which cannot be processed fast enough
-    //could be replaced with a mutex...
+    // this sleep prevents the application from dying because of SIGUSR1 spam.
+    // on the other hand, the user can now crash, or at least DOS i3 with
+    // events, which cannot be processed fast enough
+    // could be replaced with a mutex...
     struct timespec t;
     t.tv_sec = 0;
     t.tv_nsec = 10000000;
@@ -272,17 +272,17 @@ void* event_listener(void* data)
   }
   evlog.log() << "Exiting event listener loop" << endl;
 
-
   shutdown(push_socket, SHUT_RDWR);
   evlog.log() << "Stopping event listener" << endl;
 
-  //pthread_exit(0); which is better?
+  // pthread_exit(0); which is better?
   return nullptr; // this produces no warnings
 }
 
 void forkEventListener(I3State* i3, string& path)
 {
-  event_listener_data* data = (event_listener_data*)malloc(sizeof(event_listener_data));
+  event_listener_data* data =
+      (event_listener_data*)malloc(sizeof(event_listener_data));
   data->i3State = i3;
   data->push_socket = init_socket(path.c_str());
   pthread_create(&event_listener_thread, nullptr, &event_listener, (void*)data);

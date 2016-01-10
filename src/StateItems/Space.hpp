@@ -1,10 +1,10 @@
 #ifndef __PARTITIONSIZEXYZHEADER_LOL___
 #define __PARTITIONSIZEXYZHEADER_LOL___
 
-#include<string>
-#include<vector>
-#include"../StateItem.hpp"
-#include"../JSON/jsonParser.hpp"
+#include <string>
+#include <vector>
+#include "../StateItem.hpp"
+#include "../JSON/jsonParser.hpp"
 
 struct SpaceItem
 {
@@ -27,7 +27,7 @@ private:
 public:
   static void settings(JSONObject&);
   explicit Space(JSONObject& item);
-  virtual ~Space() {};
+  virtual ~Space(){};
 };
 
 #endif

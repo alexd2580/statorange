@@ -1,10 +1,10 @@
 
-#include<iostream>
-#include<cstdlib>
-#include<cstring>
+#include <iostream>
+#include <cstdlib>
+#include <cstring>
 
-#include"Net.hpp"
-#include"../output.hpp"
+#include "Net.hpp"
+#include "../output.hpp"
 
 using namespace std;
 
@@ -14,85 +14,85 @@ map<string, pair<string, string>> Net::addresses;
 /******************************************************************************/
 /******************************************************************************/
 
-#include<sys/types.h>
-#include<ifaddrs.h>
-#include<netinet/in.h>
-#include<arpa/inet.h>
+#include <sys/types.h>
+#include <ifaddrs.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 bool Net::getIpAddresses(void)
 {
-		static time_t last_updated = 0;
-		time_t now = time(nullptr);
-		if(now < last_updated + min_cooldown)
-			return true;
-
-		last_updated = now;
-
-		addresses.clear();
-
-    struct ifaddrs* base;
-    struct ifaddrs* ifa;
-    void* tmpAddrPtr;
-
-		string iface;
-		string ipv4;
-		string ipv6;
-
-    if(getifaddrs(&base) != 0)
-      return true;
-		ifa = base;
-
-    while(ifa != nullptr)
-    {
-        if(ifa->ifa_addr)
-				{
-					iface = string(ifa->ifa_name);
-
-	        if (ifa->ifa_addr->sa_family == AF_INET)
-	        {
-	            tmpAddrPtr= &((struct sockaddr_in *)ifa->ifa_addr)->sin_addr;
-	            char addressBuffer[INET_ADDRSTRLEN];
-	            inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
-							ipv4 = string(addressBuffer);
-	        }
-	        else if (ifa->ifa_addr->sa_family == AF_INET6)
-	        {
-	            tmpAddrPtr=&((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_addr;
-	            char addressBuffer[INET6_ADDRSTRLEN];
-	            inet_ntop(AF_INET6, tmpAddrPtr, addressBuffer, INET6_ADDRSTRLEN);
-							ipv6 = string(addressBuffer);
-	        }
-
-					if(ipv4.size() > 0 || ipv6.size() > 0)
-						addresses[iface] = pair<string, string>(ipv4, ipv6);
-				}
-        ifa = ifa->ifa_next;
-    }
-    if(base != nullptr)
-			freeifaddrs(base);
+  static time_t last_updated = 0;
+  time_t now = time(nullptr);
+  if(now < last_updated + min_cooldown)
     return true;
+
+  last_updated = now;
+
+  addresses.clear();
+
+  struct ifaddrs* base;
+  struct ifaddrs* ifa;
+  void* tmpAddrPtr;
+
+  string iface;
+  string ipv4;
+  string ipv6;
+
+  if(getifaddrs(&base) != 0)
+    return true;
+  ifa = base;
+
+  while(ifa != nullptr)
+  {
+    if(ifa->ifa_addr)
+    {
+      iface = string(ifa->ifa_name);
+
+      if(ifa->ifa_addr->sa_family == AF_INET)
+      {
+        tmpAddrPtr = &((struct sockaddr_in*)ifa->ifa_addr)->sin_addr;
+        char addressBuffer[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
+        ipv4 = string(addressBuffer);
+      }
+      else if(ifa->ifa_addr->sa_family == AF_INET6)
+      {
+        tmpAddrPtr = &((struct sockaddr_in6*)ifa->ifa_addr)->sin6_addr;
+        char addressBuffer[INET6_ADDRSTRLEN];
+        inet_ntop(AF_INET6, tmpAddrPtr, addressBuffer, INET6_ADDRSTRLEN);
+        ipv6 = string(addressBuffer);
+      }
+
+      if(ipv4.size() > 0 || ipv6.size() > 0)
+        addresses[iface] = pair<string, string>(ipv4, ipv6);
+    }
+    ifa = ifa->ifa_next;
+  }
+  if(base != nullptr)
+    freeifaddrs(base);
+  return true;
 }
 
-#include<cstdio>
-#include<cerrno>
-#include<sys/ioctl.h>
-#include<sys/stat.h>
-#include<sys/socket.h>
-#include<fcntl.h>
-#include<linux/wireless.h>
+#include <cstdio>
+#include <cerrno>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <sys/socket.h>
+#include <fcntl.h>
+#include <linux/wireless.h>
 
 bool Net::get_wireless_state(void)
 {
   int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
   if(sockfd == -1)
   {
-      log() << "Cannot open socket" << endl;
-			log_errno();
-      return false;
+    log() << "Cannot open socket" << endl;
+    log_errno();
+    return false;
   }
 
-	try
-	{
+  try
+  {
     struct iwreq wreq;
     memset(&wreq, 0, sizeof(struct iwreq));
     snprintf(wreq.ifr_name, 7, "wlp2s0");
@@ -105,9 +105,9 @@ bool Net::get_wireless_state(void)
 
     if(ioctl(sockfd, SIOCGIWESSID, &wreq) == -1)
     {
-        log() << "SIOCGIWESSID ioctl failed" << endl;
-        log_errno();
-        throw false;
+      log() << "SIOCGIWESSID ioctl failed" << endl;
+      log_errno();
+      throw false;
     }
 
     iface_essid.assign((char*)wreq.u.essid.pointer);
@@ -126,37 +126,37 @@ bool Net::get_wireless_state(void)
 
     if(stats.qual.updated & IW_QUAL_DBM)
     {
-        #define DBM_MIN (-100)
-        #define DBM_MAX (-20)
-        int dbm = stats.qual.level - 256;
-        iface_quality = 100*(dbm-DBM_MIN) / (DBM_MAX-DBM_MIN);
+#define DBM_MIN (-100)
+#define DBM_MAX (-20)
+      int dbm = stats.qual.level - 256;
+      iface_quality = 100 * (dbm - DBM_MIN) / (DBM_MAX - DBM_MIN);
     }
     else
     {
-        log() << "Cannot read quality" << endl;
-				iface_quality = -100;
+      log() << "Cannot read quality" << endl;
+      iface_quality = -100;
     }
 
     /*** BITRATE ***/
     if(ioctl(sockfd, SIOCGIWRATE, &wreq) == -1)
     {
       log() << "SIOCGIWRATE ioctl failed" << endl;
-			log_errno();
+      log_errno();
       throw false;
     }
 
-    iface_bitrate = wreq.u.bitrate.value/1000000;
+    iface_bitrate = wreq.u.bitrate.value / 1000000;
 
     /*cout << "ESSID: " << essid << endl;
     cout << "Quality: " << quality << "% (" << dbm << ")" << endl;
     cout << "Bitrate: " << bitrate << "Mbit" << endl;*/
-		throw true;
-	}
-	catch(bool b)
-	{
+    throw true;
+  }
+  catch(bool b)
+  {
     shutdown(sockfd, SHUT_RDWR);
-		return b;
-	}
+    return b;
+  }
 }
 
 /*
@@ -176,7 +176,7 @@ bool Net::getWirelessState(void)
     else if(strncmp(pos.ptr(), "ESSID:", 6) == 0)
     {
       pos.offset(7);
-			char const * c = pos.ptr();
+            char const * c = pos.ptr();
       char const* e = c;
       while(*e != '"')
         e++;
@@ -197,54 +197,53 @@ bool Net::getWirelessState(void)
   return false;
 }*/
 
-Net::Net(JSONObject& item) :
-  StateItem(item), Logger("[Net]", cerr)
+Net::Net(JSONObject& item) : StateItem(item), Logger("[Net]", cerr)
 {
-	iface.assign(item["interface"].string());
+  iface.assign(item["interface"].string());
 
-	string contype = item["type"].string();
-	if(contype.compare("wireless") == 0)
-		iface_type = Wireless;
-	else if(contype.compare("ethernet") == 0)
-		iface_type = Ethernet;
+  string contype = item["type"].string();
+  if(contype.compare("wireless") == 0)
+    iface_type = Wireless;
+  else if(contype.compare("ethernet") == 0)
+    iface_type = Ethernet;
 
-	string showtype = item["show"].string();
-	if(showtype.compare("ipv4") == 0)
-		iface_show = IPv4;
-	else if(showtype.compare("ipv6") == 0)
-		iface_show = IPv6;
-	else if(showtype.compare("both") == 0)
-		iface_show = Both;
-	else if(showtype.compare("none") == 0)
-		iface_show = None;
-	else if(showtype.compare("ipv6_fallback") == 0)
-		iface_show = IPv6_Fallback;
+  string showtype = item["show"].string();
+  if(showtype.compare("ipv4") == 0)
+    iface_show = IPv4;
+  else if(showtype.compare("ipv6") == 0)
+    iface_show = IPv6;
+  else if(showtype.compare("both") == 0)
+    iface_show = Both;
+  else if(showtype.compare("none") == 0)
+    iface_show = None;
+  else if(showtype.compare("ipv6_fallback") == 0)
+    iface_show = IPv6_Fallback;
 
-	time_t this_cooldown = item["cooldown"].number();
-	min_cooldown = min(min_cooldown, this_cooldown);
+  time_t this_cooldown = item["cooldown"].number();
+  min_cooldown = min(min_cooldown, this_cooldown);
 }
 
-Net::~Net()
-{
-}
+Net::~Net() {}
 
 bool Net::update(void)
 {
-	FAIL_ON_FALSE(getIpAddresses())
+  if(!getIpAddresses())
+    return false;
 
-	auto it = addresses.find(iface);
-	if(it == addresses.end())
-	{
-		iface_up = false;
-		return true;
-	}
-	iface_up = true;
+  auto it = addresses.find(iface);
+  if(it == addresses.end())
+  {
+    iface_up = false;
+    return true;
+  }
+  iface_up = true;
 
-	iface_ipv4.assign(it->second.first);
-	iface_ipv6.assign(it->second.second);
+  iface_ipv4.assign(it->second.first);
+  iface_ipv6.assign(it->second.second);
 
   if(iface_type == Wireless)
-    FAIL_ON_FALSE(get_wireless_state())
+    if(!get_wireless_state())
+      return false;
 
   return true;
 }
@@ -265,34 +264,34 @@ void Net::print(void)
       separate(Left, neutral_colors);
       break;
     default:
-			cout << " Something went wrong ";
-			return;
+      cout << " Something went wrong ";
+      return;
     }
 
-		switch(iface_show)
-		{
-		case IPv6_Fallback:
-			if(iface_ipv6.size() == 0)
-				cout << ' ' << iface_ipv4 << ' ';
-			else
-				cout << ' ' << iface_ipv6 << ' ';
-			break;
-		case Both:
-			cout << ' ' << iface_ipv4 << ' ';
-			separate(Left, neutral_colors);
-			cout << ' ' << iface_ipv6 << ' ';
-			break;
-		case IPv4:
-			cout << ' ' << iface_ipv4 << ' ';
-			break;
-		case IPv6:
-			cout << ' ' << iface_ipv6 << ' ';
-			break;
-		case None:
-		default:
-			cout << " Up ";
-			break;
-		}
+    switch(iface_show)
+    {
+    case IPv6_Fallback:
+      if(iface_ipv6.size() == 0)
+        cout << ' ' << iface_ipv4 << ' ';
+      else
+        cout << ' ' << iface_ipv6 << ' ';
+      break;
+    case Both:
+      cout << ' ' << iface_ipv4 << ' ';
+      separate(Left, neutral_colors);
+      cout << ' ' << iface_ipv6 << ' ';
+      break;
+    case IPv4:
+      cout << ' ' << iface_ipv4 << ' ';
+      break;
+    case IPv6:
+      cout << ' ' << iface_ipv6 << ' ';
+      break;
+    case None:
+    default:
+      cout << " Up ";
+      break;
+    }
     separate(Left, white_on_black);
   }
 }

@@ -1,8 +1,8 @@
 #ifndef __VOLUMEXYZHEADER__
 #define __VOLUMEXYZHEADER__
 
-#include<string>
-#include"../StateItem.hpp"
+#include <string>
+#include "../StateItem.hpp"
 
 class Volume : public StateItem
 {
@@ -11,7 +11,7 @@ private:
   std::string card;
   std::string mixer;
 
-  //VOLUME
+  // VOLUME
   bool mute;
   unsigned short volume;
 
@@ -21,7 +21,7 @@ private:
 public:
   static void settings(JSONObject&);
   Volume(JSONObject& item);
-  virtual ~Volume() {};
+  virtual ~Volume(){};
 };
 
 #endif

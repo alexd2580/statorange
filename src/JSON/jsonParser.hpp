@@ -1,13 +1,13 @@
 #ifndef __COMPACT_JSON_PARSER__
 #define __COMPACT_JSON_PARSER__
 
-#include<string>
-#include<vector>
-#include<map>
-#include<iostream>
+#include <string>
+#include <vector>
+#include <map>
+#include <iostream>
 
-#include"../util.hpp"
-#include"JSONException.hpp"
+#include "../util.hpp"
+#include "JSONException.hpp"
 
 class JSONArray;
 class JSONObject;
@@ -22,7 +22,7 @@ protected:
   static JSON* parseJSON(TextPos& string);
 
 public:
-  virtual ~JSON() {};
+  virtual ~JSON(){};
   virtual std::string get_type(void) = 0;
 
   virtual void print(size_t indention) = 0;
@@ -42,6 +42,7 @@ class JSONArray : public JSON
 {
 private:
   std::vector<JSON*> elems;
+
 public:
   JSONArray(TextPos&);
   virtual ~JSONArray();
@@ -59,6 +60,7 @@ private:
   std::map<std::string, JSON*> fields;
 
   void parseNamed(TextPos&);
+
 public:
   JSONObject(TextPos&);
   virtual ~JSONObject();
@@ -77,6 +79,7 @@ class JSONString : public JSON
 {
 private:
   std::string string;
+
 public:
   JSONString(TextPos&);
   virtual ~JSONString();
@@ -91,9 +94,10 @@ class JSONNumber : public JSON
 {
 private:
   double n;
+
 public:
   JSONNumber(TextPos&);
-  virtual ~JSONNumber() {};
+  virtual ~JSONNumber(){};
   std::string get_type(void);
 
   virtual void print(size_t);
@@ -107,9 +111,10 @@ class JSONBool : public JSON
 {
 private:
   bool b;
+
 public:
   JSONBool(TextPos&);
-  virtual ~JSONBool() {};
+  virtual ~JSONBool(){};
   std::string get_type(void);
 
   virtual void print(size_t);
@@ -120,7 +125,7 @@ class JSONNull : public JSON
 {
 public:
   JSONNull(TextPos&);
-  virtual ~JSONNull() {};
+  virtual ~JSONNull(){};
   std::string get_type(void);
 
   virtual void print(size_t);

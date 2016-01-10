@@ -1,11 +1,12 @@
 
-#include<iostream>
-#include<cstdlib>
-#include<sstream>
+#include <iostream>
+#include <cstdlib>
+#include <sstream>
+#include <cstring>
 
-#include"CPU.hpp"
-#include"../output.hpp"
-#include"../util.hpp"
+#include "CPU.hpp"
+#include "../output.hpp"
+#include "../util.hpp"
 
 using namespace std;
 
@@ -14,17 +15,16 @@ string CPU::load_file_loc = "/dev/zero";
 
 void CPU::settings(JSONObject& section)
 {
-    temp_file_loc.assign(section["temperature_file"].string());
-    load_file_loc.assign(section["load_file"].string());
+  temp_file_loc.assign(section["temperature_file"].string());
+  load_file_loc.assign(section["load_file"].string());
 }
 
-CPU::CPU(JSONObject& item) :
-  StateItem(item)
+CPU::CPU(JSONObject& item) : StateItem(item), Logger("CPU", cerr)
 {
-    print_string = "";
-    cached = false;
-    cpu_temp = 0;
-    cpu_load = 0.0f;
+  print_string = "";
+  cached = false;
+  cpu_temp = 0;
+  cpu_load = 0.0f;
 }
 
 bool CPU::update(void)
@@ -33,13 +33,21 @@ bool CPU::update(void)
   char line[11];
 
   FILE* tfile = fopen(temp_file_loc.c_str(), "r");
-  FAIL_ON_FALSE(tfile != nullptr)
+  if(tfile == nullptr)
+  {
+    log() << "Couldn't read temperature file: " << strerror(errno) << endl;
+    return false;
+  }
   fgets(line, 10, tfile);
   fclose(tfile);
   cpu_temp = (int)strtol(line, nullptr, 0) / 1000;
 
   FILE* lfile = fopen(load_file_loc.c_str(), "r");
-  FAIL_ON_FALSE(lfile != nullptr)
+  if(lfile == nullptr)
+  {
+    log() << "Couldn't read load file: " << strerror(errno) << endl;
+    return false;
+  }
   fgets(line, 10, lfile);
   fclose(lfile);
   cpu_load = strtof(line, nullptr);

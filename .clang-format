@@ -1,0 +1,10 @@
+---
+Language:        Cpp
+BasedOnStyle:  LLVM
+
+BinPackArguments: false
+BinPackParameters: false
+BreakBeforeBraces: Allman
+PointerAlignment: Left
+SpaceBeforeParens: Never
+TabWidth:        4

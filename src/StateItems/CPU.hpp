@@ -1,11 +1,12 @@
 #ifndef __CPUXYZHEADER_LOL___
 #define __CPUXYZHEADER_LOL___
 
-#include<string>
-#include"../StateItem.hpp"
-#include"../JSON/jsonParser.hpp"
+#include <string>
+#include "../StateItem.hpp"
+#include "../JSON/jsonParser.hpp"
+#include "../util.hpp"
 
-class CPU : public StateItem
+class CPU : public StateItem, public Logger
 {
 private:
   static std::string temp_file_loc;
@@ -14,7 +15,7 @@ private:
   bool cached;
   std::string print_string;
 
-  //CPU
+  // CPU
   int cpu_temp;
   float cpu_load;
 
@@ -24,7 +25,7 @@ private:
 public:
   static void settings(JSONObject&);
   CPU(JSONObject& item);
-  virtual ~CPU() {};
+  virtual ~CPU(){};
 };
 
 #endif

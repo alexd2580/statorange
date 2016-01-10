@@ -5,12 +5,12 @@
  * I WILL EVENTUALLY (MAYBE) FIX THIS!
  */
 
-#include<cstdlib>
-#include<cstring>
-#include<iostream>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
 
-#include"jsonParser.hpp"
-#include"../util.hpp"
+#include "jsonParser.hpp"
+#include "../util.hpp"
 
 using namespace std;
 
@@ -28,7 +28,7 @@ JSONArray::JSONArray(TextPos& pos)
     {
       c = *pos;
       size_t esize = elems.size();
-      if((esize == 0 && c== '[') || (esize > 0 && c == ','))
+      if((esize == 0 && c == '[') || (esize > 0 && c == ','))
       {
         (void)pos.next();
         pos.skip_whitespace();
@@ -40,7 +40,8 @@ JSONArray::JSONArray(TextPos& pos)
         }
         catch(TraceCeption& e)
         {
-          e.push_stack("While parsing array element #" + std::to_string(elems.size()));
+          e.push_stack("While parsing array element #" +
+                       std::to_string(elems.size()));
           throw e;
         }
         pos.skip_whitespace();
@@ -52,36 +53,32 @@ JSONArray::JSONArray(TextPos& pos)
       else
         throw JSONException(pos, std::string("Unexpected symbol: ") + (char)c);
     }
-    (void)pos.next(); //no need to check closing ] or \0
+    (void)pos.next(); // no need to check closing ] or \0
   }
   catch(TraceCeption& e)
   {
     e.push_stack("While parsing array");
     throw e;
   }
-
 }
 
 JSONArray::~JSONArray()
 {
-  for(auto i=elems.begin(); i!=elems.end(); i++)
+  for(auto i = elems.begin(); i != elems.end(); i++)
     delete *i;
 }
 
-std::string JSONArray::get_type(void)
-{
-  return "array";
-}
+std::string JSONArray::get_type(void) { return "array"; }
 
 void JSONArray::print(size_t indention)
 {
-  cout << '[' << endl << std::string(indention+INDENT_WIDTH, ' ');
+  cout << '[' << endl << std::string(indention + INDENT_WIDTH, ' ');
   if(elems.size() > 0)
-    elems[0]->print(indention+INDENT_WIDTH);
-  for(size_t i=1; i<elems.size(); i++)
+    elems[0]->print(indention + INDENT_WIDTH);
+  for(size_t i = 1; i < elems.size(); i++)
   {
-    cout << ',' << endl << std::string(indention+INDENT_WIDTH, ' ');
-    elems[i]->print(indention+INDENT_WIDTH);
+    cout << ',' << endl << std::string(indention + INDENT_WIDTH, ' ');
+    elems[i]->print(indention + INDENT_WIDTH);
   }
   cout << endl << std::string(indention, ' ') << ']';
 }
@@ -93,15 +90,9 @@ JSON& JSONArray::get(size_t i)
   return *elems[i];
 }
 
-JSON& JSONArray::operator[](size_t i)
-{
-  return get(i);
-}
+JSON& JSONArray::operator[](size_t i) { return get(i); }
 
-__attribute__((pure)) size_t JSONArray::length(void)
-{
-  return elems.size();
-}
+__attribute__((pure)) size_t JSONArray::length(void) { return elems.size(); }
 
 /******************************************************************************/
 
@@ -126,18 +117,19 @@ void JSONObject::parseNamed(TextPos& pos)
   {
     pos.skip_whitespace();
     JSON* something = JSON::parseJSON(pos);
-    fields.insert(std::pair<std::string,JSON*>(key, something));
+    fields.insert(std::pair<std::string, JSON*>(key, something));
   }
   catch(TraceCeption& e)
   {
-    e.push_stack("While trying to parse the field with the key \"" + key + "\".");
+    e.push_stack("While trying to parse the field with the key \"" + key +
+                 "\".");
     throw e;
   }
 }
 
 /******************************************************************************/
 
-void printNamed(map<std::string,JSON*>::iterator i, size_t indention)
+void printNamed(map<std::string, JSON*>::iterator i, size_t indention)
 {
   cout << '"' << i->first << "\" : ";
   i->second->print(indention);
@@ -155,7 +147,7 @@ JSONObject::JSONObject(TextPos& pos)
     {
       c = *pos;
       size_t field_size = fields.size();
-      if((field_size == 0 && c ==  '{') || (field_size > 0 && c ==  ','))
+      if((field_size == 0 && c == '{') || (field_size > 0 && c == ','))
       {
         pos.next();
         pos.skip_whitespace();
@@ -172,7 +164,7 @@ JSONObject::JSONObject(TextPos& pos)
         throw JSONException(pos, std::string("Unexpected symbol: ") + (char)c);
     }
 
-    (void)pos.next(); //skip closing brace
+    (void)pos.next(); // skip closing brace
   }
   catch(TraceCeption& e)
   {
@@ -183,27 +175,24 @@ JSONObject::JSONObject(TextPos& pos)
 
 JSONObject::~JSONObject()
 {
-  for(auto i=fields.begin(); i!=fields.end(); i++)
+  for(auto i = fields.begin(); i != fields.end(); i++)
     delete i->second;
 }
 
-std::string JSONObject::get_type(void)
-{
-  return "object";
-}
+std::string JSONObject::get_type(void) { return "object"; }
 
 void JSONObject::print(size_t indention)
 {
-  cout << '{' << endl << std::string(indention+INDENT_WIDTH, ' ');
+  cout << '{' << endl << std::string(indention + INDENT_WIDTH, ' ');
 
-  auto i=fields.begin();
+  auto i = fields.begin();
   size_t field_size = fields.size();
   if(field_size > 0)
-    printNamed(i, indention+INDENT_WIDTH);
-  for(; i!=fields.end(); i++)
+    printNamed(i, indention + INDENT_WIDTH);
+  for(; i != fields.end(); i++)
   {
-    cout << ',' << endl << std::string(indention+INDENT_WIDTH, ' ');
-    printNamed(i, indention+INDENT_WIDTH);
+    cout << ',' << endl << std::string(indention + INDENT_WIDTH, ' ');
+    printNamed(i, indention + INDENT_WIDTH);
   }
   cout << endl << std::string(indention, ' ') << '}';
 }
@@ -217,7 +206,7 @@ JSON* JSONObject::has(cchar* key)
 JSON* JSONObject::has(std::string& key)
 {
   auto it = fields.find(key);
-  return(it == fields.end() ? nullptr : it->second);
+  return (it == fields.end() ? nullptr : it->second);
 }
 
 JSON& JSONObject::get(cchar* key)
@@ -240,10 +229,7 @@ JSON& JSONObject::get(std::string& key)
   return *(it->second);
 }
 
-JSON& JSONObject::operator[](std::string& key)
-{
-  return get(key);
-}
+JSON& JSONObject::operator[](std::string& key) { return get(key); }
 
 /******************************************************************************/
 
@@ -260,29 +246,15 @@ JSONString::JSONString(TextPos& pos)
   }
 }
 
-JSONString::~JSONString()
-{
-}
+JSONString::~JSONString() {}
 
-std::string JSONString::get_type(void)
-{
-  return "string";
-}
+std::string JSONString::get_type(void) { return "string"; }
 
-void JSONString::print(size_t)
-{
-  cout << string;
-}
+void JSONString::print(size_t) { cout << string; }
 
-string JSONString::get(void)
-{
-  return string;
-}
+string JSONString::get(void) { return string; }
 
-__attribute__((const)) JSONString::operator std::string&()
-{
-  return string;
-}
+__attribute__((const)) JSONString::operator std::string&() { return string; }
 
 /******************************************************************************/
 
@@ -299,35 +271,17 @@ JSONNumber::JSONNumber(TextPos& pos)
   }
 }
 
-std::string JSONNumber::get_type(void)
-{
-  return "num";
-}
+std::string JSONNumber::get_type(void) { return "num"; }
 
-void JSONNumber::print(size_t)
-{
-  cout << n;
-}
+void JSONNumber::print(size_t) { cout << n; }
 
-__attribute__((pure)) JSONNumber::operator uint8_t()
-{
-  return (uint8_t)n;
-}
+__attribute__((pure)) JSONNumber::operator uint8_t() { return (uint8_t)n; }
 
-__attribute__((pure)) JSONNumber::operator int()
-{
-  return (int)n;
-}
+__attribute__((pure)) JSONNumber::operator int() { return (int)n; }
 
-__attribute__((pure)) JSONNumber::operator long()
-{
-  return (long)n;
-}
+__attribute__((pure)) JSONNumber::operator long() { return (long)n; }
 
-__attribute__((pure)) JSONNumber::operator double()
-{
-  return n;
-}
+__attribute__((pure)) JSONNumber::operator double() { return n; }
 
 /******************************************************************************/
 
@@ -351,20 +305,11 @@ JSONBool::JSONBool(TextPos& pos)
   }
 }
 
-std::string JSONBool::get_type(void)
-{
-  return "bool";
-}
+std::string JSONBool::get_type(void) { return "bool"; }
 
-void JSONBool::print(size_t)
-{
-  cout << b;
-}
+void JSONBool::print(size_t) { cout << b; }
 
-__attribute__((pure)) JSONBool::operator bool()
-{
-  return b;
-}
+__attribute__((pure)) JSONBool::operator bool() { return b; }
 
 /******************************************************************************/
 
@@ -377,15 +322,9 @@ JSONNull::JSONNull(TextPos& pos)
     throw JSONException(pos, "Could not detect null: " + std::string(str, 4));
 }
 
-std::string JSONNull::get_type(void)
-{
-  return "null";
-}
+std::string JSONNull::get_type(void) { return "null"; }
 
-void JSONNull::print(size_t)
-{
-  cout << "null";
-}
+void JSONNull::print(size_t) { cout << "null"; }
 
 /******************************************************************************/
 
@@ -504,7 +443,6 @@ JSONNull& JSON::null(void)
   }
   return *ptr;
 }
-
 
 /******************************************************************************/
 

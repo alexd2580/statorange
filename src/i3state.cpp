@@ -1,16 +1,16 @@
 
-#include<cstdlib>
-#include<cstring>
-#include<iostream>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
 
-#include<sys/socket.h>
+#include <sys/socket.h>
 
-#include"JSON/jsonParser.hpp"
+#include "JSON/jsonParser.hpp"
 
-#include"i3state.hpp"
-#include"i3-ipc.hpp"
-#include"i3-ipc-constants.hpp"
-#include"util.hpp"
+#include "i3state.hpp"
+#include "i3-ipc.hpp"
+#include "i3-ipc-constants.hpp"
+#include "util.hpp"
 
 using namespace std;
 
@@ -18,7 +18,7 @@ using namespace std;
 /******************************************************************************/
 
 /** Returns 1 iff a is at a "smaller" position */
-#define POS_LESS(a, b) \
+#define POS_LESS(a, b)                                                         \
   (a.posX < b.posX || (a.posX == b.posX && a.posY < b.posY))
 
 /**
@@ -27,7 +27,7 @@ using namespace std;
 void I3State::parseOutputs(void)
 {
   valid = false;
-  //Send query
+  // Send query
   if(sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_OUTPUTS, nullptr) != 0)
     return;
 
@@ -45,7 +45,7 @@ void I3State::parseOutputs(void)
     outputs.clear();
 
     int x, y;
-    for(uint8_t i=0; i<totalDisplays; i++)
+    for(uint8_t i = 0; i < totalDisplays; i++)
     {
       JSONObject& disp = array[i].object();
       bool active = disp["active"].boolean();
@@ -56,15 +56,15 @@ void I3State::parseOutputs(void)
         x = rect["x"].number();
         y = rect["y"].number();
 
-        outputs.push_back(Output { name, x, y } );
+        outputs.push_back(Output{name, x, y});
       }
     }
 
     Output tmp;
-    for(size_t fPos=0; fPos<outputs.size()-1; fPos++)
+    for(size_t fPos = 0; fPos < outputs.size() - 1; fPos++)
     {
       size_t minOutPos = fPos;
-      for(size_t oPos=fPos+1; oPos<outputs.size(); oPos++)
+      for(size_t oPos = fPos + 1; oPos < outputs.size(); oPos++)
       {
         if(POS_LESS(outputs[oPos], outputs[fPos]))
           minOutPos = oPos;
@@ -101,7 +101,7 @@ void I3State::parseWorkspaces(void)
 {
   valid = false;
 
-  //Send query
+  // Send query
   if(sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, nullptr) != 0)
     return;
 
@@ -119,7 +119,7 @@ void I3State::parseWorkspaces(void)
     JSONArray& array = json->array();
     size_t wsCount = array.length();
 
-    for(uint8_t i=0; i<wsCount; i++)
+    for(uint8_t i = 0; i < wsCount; i++)
     {
       Workspace ws;
       JSONObject& workspace = array[i].object();
@@ -131,7 +131,7 @@ void I3State::parseWorkspaces(void)
       ws.urgent = workspace["urgent"].boolean();
 
       string output = workspace["output"].string();
-      for(uint8_t d=0; d<outputs.size(); d++)
+      for(uint8_t d = 0; d < outputs.size(); d++)
         if(outputs[d].name.compare(output) == 0)
           ws.output = d;
 
@@ -140,7 +140,7 @@ void I3State::parseWorkspaces(void)
 
       workspaces.push_back(ws);
       if(ws.focused)
-        focusedWorkspace = workspaces.size()-1;
+        focusedWorkspace = workspaces.size() - 1;
     }
 
     delete json;
@@ -156,8 +156,7 @@ void I3State::parseWorkspaces(void)
 /******************************************************************************/
 /******************************************************************************/
 
-I3State::I3State(string path) :
-  fd(init_socket(path.c_str()))
+I3State::I3State(string path) : fd(init_socket(path.c_str()))
 {
   pthread_mutex_init(&mutex, nullptr);
   pthread_mutex_lock(&mutex);
@@ -179,7 +178,6 @@ I3State::~I3State()
   pthread_mutex_destroy(&mutex);
 }
 
-
 void I3State::updateOutputs(void)
 {
   pthread_mutex_lock(&mutex);
@@ -194,7 +192,7 @@ void I3State::workspaceInit(uint8_t num)
   pthread_mutex_lock(&mutex);
   valid = false;
 
-  //Send query
+  // Send query
   bool sent = sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, nullptr) == 0;
 
   uint32_t type;
@@ -220,7 +218,7 @@ void I3State::workspaceInit(uint8_t num)
       if(workspaces[focusedWorkspace].num > num)
         focusedWorkspace++;
 
-      for(uint8_t i=0; i<array.length(); i++)
+      for(uint8_t i = 0; i < array.length(); i++)
       {
         JSONObject& wsJSON = array[i].object();
 
@@ -238,7 +236,7 @@ void I3State::workspaceInit(uint8_t num)
           ws.focusedAppID = -1;
 
           string output = wsJSON["output"].string();
-          for(uint8_t d=0; d<outputs.size(); d++)
+          for(uint8_t d = 0; d < outputs.size(); d++)
             if(outputs[d].name.compare(output) == 0)
               ws.output = d;
 
@@ -267,7 +265,7 @@ void I3State::updateWorkspaceStatus(void)
   pthread_mutex_lock(&mutex);
   valid = false;
 
-  //Send query
+  // Send query
   bool sent = sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, nullptr) == 0;
 
   uint32_t type;
@@ -285,12 +283,12 @@ void I3State::updateWorkspaceStatus(void)
 
       size_t arrayLen = array.length();
 
-      for(size_t i=0; i<arrayLen; i++)
+      for(size_t i = 0; i < arrayLen; i++)
       {
         JSONObject& workspace = array[i].object();
         uint8_t num = workspace["num"].number();
 
-        for(size_t j=0; j<workspaces.size(); j++)
+        for(size_t j = 0; j < workspaces.size(); j++)
         {
           Workspace& ws = workspaces[j];
           if(ws.num == num)
@@ -329,7 +327,7 @@ void I3State::workspaceEmpty(uint8_t num)
 
   if(wsBefore < workspaces.size())
   {
-    workspaces.erase(workspaces.begin()+wsBefore);
+    workspaces.erase(workspaces.begin() + wsBefore);
     if(focusedWorkspace > wsBefore)
       focusedWorkspace--;
 

@@ -10,14 +10,15 @@
  */
 #pragma once
 
-#include<cstdint>
-#include<climits>
+#include <cstdint>
+#include <climits>
 
-typedef struct i3_ipc_header {
-    /* 6 = strlen(I3_IPC_MAGIC) */
-    char magic[6];
-    uint32_t size;
-    uint32_t type;
+typedef struct i3_ipc_header
+{
+  /* 6 = strlen(I3_IPC_MAGIC) */
+  char magic[6];
+  uint32_t size;
+  uint32_t type;
 } __attribute__((packed)) i3_ipc_header_t;
 
 /*
@@ -104,7 +105,6 @@ typedef struct i3_ipc_header {
 
 /** The binding event will be triggered when bindings run */
 #define I3_IPC_EVENT_BINDING ((uint32_t)(I3_IPC_EVENT_MASK | 5))
-
 
 /** The type used to indicate an invalid header */
 #define I3_INVALID_TYPE ((uint32_t)UINT_MAX)

@@ -1,15 +1,15 @@
 #define _POSIX_C_SOURCE 200809L
 
-#include<iostream>
-#include<fstream>
-#include<string>
+#include <iostream>
+#include <fstream>
+#include <string>
 
-#include<sys/time.h>
-#include<sys/types.h>
-#include<sys/wait.h>
-#include<unistd.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
-#include"util.hpp"
+#include "util.hpp"
 
 using namespace std;
 
@@ -27,36 +27,30 @@ TextPos::TextPos(cchar* begin)
   column = 1;
 }
 
-__attribute__((pure)) char TextPos::operator*(void)
-{
-  return *string;
-}
+__attribute__((pure)) char TextPos::operator*(void) { return *string; }
 
-__attribute__((pure)) cchar* TextPos::ptr(void) const
-{
-  return string;
-}
+__attribute__((pure)) cchar* TextPos::ptr(void) const { return string; }
 
 char TextPos::next(void)
 {
   string++;
   char c = *string;
   line += c == '\n' ? 1 : 0; // just to make sure
-  column = c == '\n' ? 1 : column+1;
+  column = c == '\n' ? 1 : column + 1;
   return c;
 }
 
 void TextPos::skip_whitespace(void)
 {
   char c = *string;
-  while((c==' '||c=='\n'||c=='\t') && c!='\0')
+  while((c == ' ' || c == '\n' || c == '\t') && c != '\0')
     c = next();
 }
 
 void TextPos::skip_nonspace(void)
 {
   char c = *string;
-  while(c!=' ' && c!='\n' && c!='\t' && c!='\0')
+  while(c != ' ' && c != '\n' && c != '\t' && c != '\0')
     c = next();
 }
 
@@ -89,13 +83,14 @@ double TextPos::parse_num(void)
 
 void TextPos::offset(size_t off)
 {
-  for(size_t i=0; i<off; i++)
+  for(size_t i = 0; i < off; i++)
     (void)next();
 }
 
 std::ostream& operator<<(std::ostream& out, TextPos const& pos)
 {
-  return pos.ptr() == nullptr ? out : out << ':' << pos.get_line() << ':' << pos.get_column() << ':';
+  return pos.ptr() == nullptr ? out : out << ':' << pos.get_line() << ':'
+                                          << pos.get_column() << ':';
 }
 
 string parse_escaped_string(TextPos& pos)
@@ -110,12 +105,13 @@ string parse_escaped_string(TextPos& pos)
 
   while(c != '"' && c != '\0')
   {
-    if(c == '\\') //if an escaped char is found
+    if(c == '\\') // if an escaped char is found
     {
-      res += string(start, pos.ptr()-start); // push current part
+      res += string(start, pos.ptr() - start); // push current part
       c = pos.next();
       if(c == '\0')
-        throw TraceCeption(pos, string("Unexpected EOS when parsing escaped character."));
+        throw TraceCeption(
+            pos, string("Unexpected EOS when parsing escaped character."));
       switch(c)
       {
       case 'n':
@@ -139,13 +135,12 @@ string parse_escaped_string(TextPos& pos)
   if(c == '\0')
     throw TraceCeption(pos, string("Unexpected EOS"));
 
-  res += std::string(start, (size_t)(pos.ptr()-start));
+  res += std::string(start, (size_t)(pos.ptr() - start));
 
-  //checking " not required here
+  // checking " not required here
   (void)pos.next();
   return res;
 }
-
 
 bool hasInput(int fd, int microsec)
 {
@@ -159,29 +154,25 @@ bool hasInput(int fd, int microsec)
   tv.tv_sec = 0;
   tv.tv_usec = microsec;
 
-  retval = select(fd+1, &rfds, nullptr, nullptr, &tv);
+  retval = select(fd + 1, &rfds, nullptr, nullptr, &tv);
 
   return retval > 0;
 }
 
 bool load_file(string& name, string& content)
 {
-    // We create the file object, saying I want to read it
-    fstream file(name.c_str(), fstream::in);
+  fstream file(name.c_str(), fstream::in);
+  if(file.is_open())
+  {
+    // We use the standard getline function to read the file into
+    // a std::string, stoping only at "\0"
+    getline(file, content, '\0');
+    bool ret = !file.bad();
+    file.close();
+    return ret;
+  }
 
-    // We verify if the file was successfully opened
-    if(file.is_open())
-    {
-        // We use the standard getline function to read the file into
-        // a std::string, stoping only at "\0"
-        getline(file, content, '\0');
-
-        // We return the success of the operation
-        return !file.bad();
-    }
-
-    // The file was not successfully opened, so returning false
-    return false;
+  return false;
 }
 
 string execute(string const& command)
@@ -189,18 +180,22 @@ string execute(string const& command)
   int fd[2];
   pipe(fd);
   int childpid = fork();
-  if(childpid == -1) //Fail
+  if(childpid == -1) // Fail
   {
-     cerr << "FORK failed" << endl;
-     return 0;
+    cerr << "FORK failed" << endl;
+    return 0;
   }
-  else if(childpid == 0) //I am child
+  else if(childpid == 0) // I am child
   {
-    close(1); //stdout
+    close(1); // stdout
     dup2(fd[1], 1);
     close(fd[0]);
-    execlp(shell_file_loc.c_str(), shell_file_loc.c_str(), "-c", command.c_str(), nullptr);
-    //child has been replaced by shell command
+    execlp(shell_file_loc.c_str(),
+           shell_file_loc.c_str(),
+           "-c",
+           command.c_str(),
+           nullptr);
+    // child has been replaced by shell command
   }
 
   wait(nullptr);
@@ -223,27 +218,18 @@ string execute(string const& command)
   return res;
 }
 
-string mkTerminalCmd(string s)
-{
-  return terminal_cmd + " " + s + "&";
-}
+string mkTerminalCmd(string s) { return terminal_cmd + " " + s + "&"; }
 
-Logger::Logger(string lname, std::ostream& ostr) :
-  logname(lname), ostream(ostr)
+Logger::Logger(string lname, std::ostream& ostr) : logname(lname), ostream(ostr)
 {
 }
 
-Logger::~Logger()
-{
-}
+Logger::~Logger() {}
 
-ostream& Logger::log(void)
-{
-  return ostream << logname << ' ';
-}
+ostream& Logger::log(void) { return ostream << logname << ' '; }
 
-#include<cerrno>
-#include<cstring>
+#include <cerrno>
+#include <cstring>
 void Logger::log_errno(void)
 {
   log() << "errno = " << errno << endl;

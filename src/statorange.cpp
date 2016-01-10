@@ -5,22 +5,22 @@
 
 #define _POSIX_C_SOURCE 200809L
 
-#include<cstdlib>
-#include<cstring>
-#include<iostream>
-#include<ctime>
-#include<csignal>
+#include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <ctime>
+#include <csignal>
 
-#include<unistd.h>
-#include<pthread.h>
-#include<sys/socket.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <sys/socket.h>
 
-#include"JSON/jsonParser.hpp"
+#include "JSON/jsonParser.hpp"
 
-#include"i3state.hpp"
-#include"util.hpp"
-#include"output.hpp"
-#include"StateItem.hpp"
+#include "i3state.hpp"
+#include "util.hpp"
+#include "output.hpp"
+#include "StateItem.hpp"
 
 using namespace std;
 
@@ -90,7 +90,7 @@ void register_signal_handlers(void)
   struct sigaction term_handler_action;
   term_handler_action.sa_handler = term_handler;
   sigemptyset(&term_handler_action.sa_mask);
-  //sa.sa_flags = SA_RESTART | SA_NODEFER;
+  // sa.sa_flags = SA_RESTART | SA_NODEFER;
   term_handler_action.sa_flags = 0;
   sigaction(SIGINT, &term_handler_action, nullptr);
   sigaction(SIGTERM, &term_handler_action, nullptr);
@@ -98,7 +98,7 @@ void register_signal_handlers(void)
   struct sigaction sigusr1_handler_action;
   sigusr1_handler_action.sa_handler = notify_handler;
   sigemptyset(&sigusr1_handler_action.sa_mask);
-  //sa.sa_flags = SA_RESTART | SA_NODEFER;
+  // sa.sa_flags = SA_RESTART | SA_NODEFER;
   sigusr1_handler_action.sa_flags = 0;
   sigaction(SIGUSR1, &sigusr1_handler_action, nullptr);
 }
@@ -135,18 +135,18 @@ int main(int argc, char* argv[])
     JSON* config_json_raw = JSON::parse(config_string.c_str());
     JSONObject& config_json = config_json_raw->object();
 
-    //cooldown
+    // cooldown
     cooldown = config_json["cooldown"].number();
 
-    //get the socket path to i3
+    // get the socket path to i3
     string get_socket = config_json["get_socket"].string();
     path = execute(get_socket);
     path.pop_back();
 
-    //init StateItems
+    // init StateItems
     StateItem::init(config_json);
 
-    //Now the config can be deleted
+    // Now the config can be deleted
     delete config_json_raw;
   }
   catch(TraceCeption& e)
@@ -156,10 +156,9 @@ int main(int argc, char* argv[])
     return EXIT_FAILURE;
   }
 
-  //init i3State
+  // init i3State
   I3State i3State(path);
   i3State.updateOutputs();
-
 
   /** Initialize and fork event listener */
   pthread_cond_init(&notifier, nullptr);
@@ -192,7 +191,7 @@ int main(int argc, char* argv[])
       else
       {
         echoPrimaryLemon(i3State, 0);
-        for(uint8_t i=1; i<i3State.outputs.size(); i++)
+        for(uint8_t i = 1; i < i3State.outputs.size(); i++)
           echoSecondaryLemon(i3State, i);
         cout << endl;
         cout.flush();
@@ -200,7 +199,7 @@ int main(int argc, char* argv[])
       pthread_mutex_unlock(&i3State.mutex);
 
       if(die)
-        break; //skip time delay here -> annoying
+        break; // skip time delay here -> annoying
       struct timespec abstime;
       clock_gettime(CLOCK_REALTIME, &abstime);
       abstime.tv_sec += cooldown;

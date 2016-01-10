@@ -1,13 +1,11 @@
 #ifndef __STATEITEMHEADER_LOL___
 #define __STATEITEMHEADER_LOL___
 
-#include<ctime>
-#include<vector>
-#include<string>
+#include <ctime>
+#include <vector>
+#include <string>
 
-#include"JSON/jsonParser.hpp"
-
-#define FAIL_ON_FALSE(b) if(!(b)) { return false; }
+#include "JSON/jsonParser.hpp"
 
 class StateItem
 {
@@ -24,13 +22,14 @@ private:
   void wrap_update(void);
   void force_update(void);
   void wrap_print(void);
+
 protected:
   virtual bool update(void) = 0;
   virtual void print(void) = 0;
   StateItem(JSONObject& item);
 
 public:
-  virtual ~StateItem() {};
+  virtual ~StateItem(){};
 
   static void init(JSONObject& config);
   static void updates(void);
