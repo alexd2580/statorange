@@ -109,6 +109,9 @@ std::string execute(std::string const& command);
 
 std::string mkTerminalCmd(std::string);
 
+std::ostream&
+print_time(std::ostream& out, struct tm* ptm, char const* const format);
+
 class Logger
 {
 private:

@@ -27,7 +27,7 @@ bool Date::update(void)
   time_t tt = system_clock::to_time_t(system_clock::now());
   struct tm* ptm = localtime(&tt);
   ostringstream o;
-  o << put_time(ptm, format.c_str());
+  print_time(o, ptm, format.c_str());
   time = o.str();
   return true;
 }

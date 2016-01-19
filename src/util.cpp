@@ -231,21 +231,25 @@ Logger::Logger(string lname, std::ostream& ostr) : logname(lname), ostream(ostr)
 
 using std::chrono::system_clock;
 
+ostream& print_time(ostream& out, struct tm* ptm, char const* const format)
+{
+#if __GLIBCXX__ >= 20151204
+  return out << put_time(ptm, format);
+#else
+  char str[256];
+  if(strftime(str, 256, format, ptm))
+    return ostream << str;
+  else
+    return ostream << "???";
+#endif
+}
+
 ostream& Logger::log(void)
 {
   time_t tt = system_clock::to_time_t(system_clock::now());
   struct tm* ptm = localtime(&tt);
-#if __GLIBCXX__ >= 20151204
-
   char const* const log_time_format = "%Y-%m-%d %H:%M ";
-  return ostream << put_time(ptm, log_time_format) << logname << ' ';
-#else
-  char str[256];
-  if(strftime(str, 256, log_time_format, ptm))
-    return ostream << str << ' ';
-  else
-    return ostream << "??? ";
-#endif
+  return print_time(ostream, ptm, log_time_format) << logname << ' ';
 }
 
 #include <cerrno>
