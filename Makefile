@@ -25,7 +25,7 @@ PROJNAME_RELEASE = $(PROJNAME)
 # Compiler flags
 # -----------------------------
 
-WFLAGS       = -Wall -Wextra -pedantic -Wdouble-promotion -Wformat=2 -Winit-self \
+WFLAGS       = -Wall -Wextra -Wdouble-promotion -Wformat=2 -Winit-self \
                -Wmissing-include-dirs -Wswitch-default -Wswitch-enum -Wunused-local-typedefs \
                -Wunused -Wuninitialized -Wsuggest-attribute=pure \
                -Wsuggest-attribute=const -Wsuggest-attribute=noreturn -Wfloat-equal \
@@ -43,7 +43,7 @@ UNUSED       = -Wdeclaration-after-statement -Wmissing-prototypes -Wstrict-overf
 DEBUGFLAGS   = -g3 -O0 -pthread
 RELEASEFLAGS = -g0 -O2 -pthread
 CFLAGS       = -std=c11 
-CXXFLAGS     = -std=c++11
+CXXFLAGS     = -std=c++14
 
 # ---------
 # AI-Stuff
