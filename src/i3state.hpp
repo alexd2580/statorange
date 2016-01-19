@@ -4,18 +4,12 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <map>
 
 #include <pthread.h>
 
 #define MAX_DISP_LEN 20
 #define MAX_NAME_LEN 50
-
-struct Output
-{
-  std::string name;
-  int posX;
-  int posY;
-};
 
 struct Workspace
 {
@@ -28,7 +22,7 @@ struct Workspace
   char visible;
   char focused;
   char urgent;
-  uint8_t output;
+  int output;
 
   long focusedAppID;      // -1 indicates unknown
   std::string focusedApp; // undefined when unknown
@@ -48,7 +42,7 @@ public:
 
   std::string mode;
 
-  std::vector<Output> outputs;
+  std::map<std::string, int> outputs;
   std::vector<Workspace> workspaces;
 
   size_t focusedWorkspace;

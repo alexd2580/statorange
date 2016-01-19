@@ -51,7 +51,7 @@ public:
   virtual void print(size_t indention);
   JSON& get(size_t i);
   JSON& operator[](size_t);
-  size_t length(void);
+  size_t size(void);
 };
 
 class JSONObject : public JSON
@@ -103,6 +103,7 @@ public:
   virtual void print(size_t);
   operator uint8_t();
   operator int();
+  operator unsigned int();
   operator long();
   operator double();
 };

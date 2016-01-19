@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <algorithm>
 
 #include <sys/socket.h>
 
@@ -17,13 +18,19 @@ using namespace std;
 /******************************************************************************/
 /******************************************************************************/
 
-/** Returns 1 iff a is at a "smaller" position */
-#define POS_LESS(a, b)                                                         \
-  (a.posX < b.posX || (a.posX == b.posX && a.posY < b.posY))
+struct Output
+{
+  std::string name;
+  int x;
+  int y;
+};
 
-/**
- * Returns NULL on error
- */
+/** Returns true iff a is at a "smaller" position */
+__attribute__((pure)) bool sort_by_pos(Output const& a, Output const& b)
+{
+  return a.x < b.x || (a.x == b.x && a.y < b.y);
+}
+
 void I3State::parseOutputs(void)
 {
   valid = false;
@@ -40,12 +47,10 @@ void I3State::parseOutputs(void)
   {
     JSON* json = JSON::parse(buffer);
     JSONArray& array = json->array();
-    uint8_t totalDisplays = (uint8_t)array.length();
+    uint8_t total_displays = (uint8_t)array.size();
 
-    outputs.clear();
-
-    int x, y;
-    for(uint8_t i = 0; i < totalDisplays; i++)
+    vector<Output> outputs_vec;
+    for(uint8_t i = 1; i < total_displays; i++)
     {
       JSONObject& disp = array[i].object();
       bool active = disp["active"].boolean();
@@ -53,32 +58,21 @@ void I3State::parseOutputs(void)
       {
         string name = disp["name"].string();
         JSONObject& rect = disp["rect"].object();
-        x = rect["x"].number();
-        y = rect["y"].number();
+        int x = rect["x"].number();
+        int y = rect["y"].number();
 
-        outputs.push_back(Output{name, x, y});
+        outputs_vec.push_back({name, x, y});
       }
     }
-
-    Output tmp;
-    for(size_t fPos = 0; fPos < outputs.size() - 1; fPos++)
-    {
-      size_t minOutPos = fPos;
-      for(size_t oPos = fPos + 1; oPos < outputs.size(); oPos++)
-      {
-        if(POS_LESS(outputs[oPos], outputs[fPos]))
-          minOutPos = oPos;
-      }
-
-      if(minOutPos != fPos)
-      {
-        tmp = outputs[fPos];
-        outputs[fPos] = outputs[minOutPos];
-        outputs[minOutPos] = tmp;
-      }
-    }
-
     delete json;
+
+    std::sort(outputs_vec.begin(), outputs_vec.end(), sort_by_pos);
+
+    for(unsigned int i = 0; i < outputs.size(); i++)
+    {
+      Output& o = outputs_vec[i];
+      outputs[o.name] = i;
+    }
   }
   catch(JSONException& e)
   {
@@ -117,7 +111,7 @@ void I3State::parseWorkspaces(void)
   {
     JSON* json = JSON::parse(buffer);
     JSONArray& array = json->array();
-    size_t wsCount = array.length();
+    size_t wsCount = array.size();
 
     for(uint8_t i = 0; i < wsCount; i++)
     {
@@ -131,9 +125,7 @@ void I3State::parseWorkspaces(void)
       ws.urgent = workspace["urgent"].boolean();
 
       string output = workspace["output"].string();
-      for(uint8_t d = 0; d < outputs.size(); d++)
-        if(outputs[d].name.compare(output) == 0)
-          ws.output = d;
+      ws.output = outputs[output];
 
       ws.focusedApp = "";
       ws.focusedAppID = -1;
@@ -218,7 +210,7 @@ void I3State::workspaceInit(uint8_t num)
       if(workspaces[focusedWorkspace].num > num)
         focusedWorkspace++;
 
-      for(uint8_t i = 0; i < array.length(); i++)
+      for(uint8_t i = 0; i < array.size(); i++)
       {
         JSONObject& wsJSON = array[i].object();
 
@@ -236,9 +228,7 @@ void I3State::workspaceInit(uint8_t num)
           ws.focusedAppID = -1;
 
           string output = wsJSON["output"].string();
-          for(uint8_t d = 0; d < outputs.size(); d++)
-            if(outputs[d].name.compare(output) == 0)
-              ws.output = d;
+          ws.output = outputs[output];
 
           workspaces.insert(iter, ws);
           if(ws.focused)
@@ -250,13 +240,12 @@ void I3State::workspaceInit(uint8_t num)
       }
       delete json;
     }
-    catch(JSONException& e)
+    catch(TraceCeption& e)
     {
       e.printStackTrace();
     }
     free(buffer);
   }
-
   pthread_mutex_unlock(&mutex);
 }
 
@@ -281,7 +270,7 @@ void I3State::updateWorkspaceStatus(void)
       JSON* json = JSON::parse(buffer);
       JSONArray& array = json->array();
 
-      size_t arrayLen = array.length();
+      size_t arrayLen = array.size();
 
       for(size_t i = 0; i < arrayLen; i++)
       {

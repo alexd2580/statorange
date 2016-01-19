@@ -198,6 +198,7 @@ string execute(string const& command)
     // child has been replaced by shell command
   }
 
+  close(fd[1]);
   wait(nullptr);
 
   string res = "";
@@ -215,6 +216,7 @@ string execute(string const& command)
     res += buffer;
   }
 
+  close(fd[0]);
   return res;
 }
 
@@ -224,9 +226,18 @@ Logger::Logger(string lname, std::ostream& ostr) : logname(lname), ostream(ostr)
 {
 }
 
-Logger::~Logger() {}
+#include <iomanip> // std::put_time
+#include <chrono>  // std::chrono::system_clock
 
-ostream& Logger::log(void) { return ostream << logname << ' '; }
+using std::chrono::system_clock;
+
+ostream& Logger::log(void)
+{
+  time_t tt = system_clock::to_time_t(system_clock::now());
+  struct tm* ptm = localtime(&tt);
+  char const* const log_time_format = "%Y-%m-%d %H:%M ";
+  return ostream << put_time(ptm, log_time_format) << logname << ' ';
+}
 
 #include <cerrno>
 #include <cstring>

@@ -117,7 +117,7 @@ private:
 
 public:
   Logger(std::string lname, std::ostream& ostr);
-  ~Logger();
+  virtual ~Logger(){};
 
   std::ostream& log(void);
   void log_errno(void);

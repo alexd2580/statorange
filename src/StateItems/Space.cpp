@@ -18,16 +18,16 @@ void Space::settings(JSONObject& section)
 
 Space::Space(JSONObject& item) : StateItem(item), Logger("[Space]", cerr)
 {
-  /*JSONArray mpoints = item["mount_points"].array();
-  mpoints.
+  JSONArray& mpoints = item["mount_points"].array();
+  items.clear();
   SpaceItem si;
-  for(auto i=mpoints.begin(); i!=mpoints.end(); i++)
+  for(unsigned int i = 0; i < mpoints.size(); i++)
   {
-    si.mountPoint = *i;
+    si.mount_point = mpoints[i].string();
     si.size = "";
     si.used = "";
     items.push_back(si);
-  } TODO */
+  }
 }
 
 bool Space::getSpaceUsage(SpaceItem& dir)
@@ -55,6 +55,7 @@ bool Space::getSpaceUsage(SpaceItem& dir)
   {
     log() << "While parsing output of " << get_space << endl;
     e.printStackTrace();
+    return false;
   }
   return true;
 }

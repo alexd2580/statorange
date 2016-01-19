@@ -79,7 +79,7 @@ void StateItem::init(JSONObject& config)
   Space::settings(config["Space"].object());
 
   JSONArray& order = config["order"].array();
-  size_t length = order.length();
+  size_t length = order.size();
 
   for(size_t i = 0; i < length; i++)
   {

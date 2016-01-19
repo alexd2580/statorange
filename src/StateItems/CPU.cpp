@@ -19,7 +19,7 @@ void CPU::settings(JSONObject& section)
   load_file_loc.assign(section["load_file"].string());
 }
 
-CPU::CPU(JSONObject& item) : StateItem(item), Logger("CPU", cerr)
+CPU::CPU(JSONObject& item) : StateItem(item), Logger("[CPU]", cerr)
 {
   print_string = "";
   cached = false;

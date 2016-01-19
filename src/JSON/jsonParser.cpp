@@ -92,7 +92,7 @@ JSON& JSONArray::get(size_t i)
 
 JSON& JSONArray::operator[](size_t i) { return get(i); }
 
-__attribute__((pure)) size_t JSONArray::length(void) { return elems.size(); }
+__attribute__((pure)) size_t JSONArray::size(void) { return elems.size(); }
 
 /******************************************************************************/
 
@@ -278,6 +278,11 @@ void JSONNumber::print(size_t) { cout << n; }
 __attribute__((pure)) JSONNumber::operator uint8_t() { return (uint8_t)n; }
 
 __attribute__((pure)) JSONNumber::operator int() { return (int)n; }
+
+__attribute__((pure)) JSONNumber::operator unsigned int()
+{
+  return (unsigned int)n;
+}
 
 __attribute__((pure)) JSONNumber::operator long() { return (long)n; }
 

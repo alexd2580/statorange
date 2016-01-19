@@ -19,7 +19,7 @@ map<string, pair<string, string>> Net::addresses;
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-bool Net::getIpAddresses(void)
+bool Net::get_IP_addresses(void)
 {
   static time_t last_updated = 0;
   time_t now = time(nullptr);
@@ -32,7 +32,7 @@ bool Net::getIpAddresses(void)
 
   struct ifaddrs* base;
   struct ifaddrs* ifa;
-  void* tmpAddrPtr;
+  void* addr_ptr;
 
   string iface;
   string ipv4;
@@ -50,17 +50,17 @@ bool Net::getIpAddresses(void)
 
       if(ifa->ifa_addr->sa_family == AF_INET)
       {
-        tmpAddrPtr = &((struct sockaddr_in*)ifa->ifa_addr)->sin_addr;
-        char addressBuffer[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, tmpAddrPtr, addressBuffer, INET_ADDRSTRLEN);
-        ipv4 = string(addressBuffer);
+        addr_ptr = &((struct sockaddr_in*)ifa->ifa_addr)->sin_addr;
+        char buffer[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, addr_ptr, buffer, INET_ADDRSTRLEN);
+        ipv4 = string(buffer);
       }
       else if(ifa->ifa_addr->sa_family == AF_INET6)
       {
-        tmpAddrPtr = &((struct sockaddr_in6*)ifa->ifa_addr)->sin6_addr;
-        char addressBuffer[INET6_ADDRSTRLEN];
-        inet_ntop(AF_INET6, tmpAddrPtr, addressBuffer, INET6_ADDRSTRLEN);
-        ipv6 = string(addressBuffer);
+        addr_ptr = &((struct sockaddr_in6*)ifa->ifa_addr)->sin6_addr;
+        char buffer[INET6_ADDRSTRLEN];
+        inet_ntop(AF_INET6, addr_ptr, buffer, INET6_ADDRSTRLEN);
+        ipv6 = string(buffer);
       }
 
       if(ipv4.size() > 0 || ipv6.size() > 0)
@@ -98,10 +98,11 @@ bool Net::get_wireless_state(void)
     snprintf(wreq.ifr_name, 7, "wlp2s0");
 
     /*** ESSID ***/
-    char buffer[32];
-    memset(buffer, 0, 32);
+    int const ESSID_LENGTH = 32;
+    char buffer[ESSID_LENGTH];
+    memset(buffer, 0, ESSID_LENGTH);
     wreq.u.essid.pointer = buffer;
-    wreq.u.essid.length = 32;
+    wreq.u.essid.length = ESSID_LENGTH; // with or without nulltermination?
 
     if(ioctl(sockfd, SIOCGIWESSID, &wreq) == -1)
     {
@@ -159,47 +160,9 @@ bool Net::get_wireless_state(void)
   }
 }
 
-/*
-bool Net::getWirelessState(void)
-{
-  string command = iwconfig_file_loc + ' ' + iface;
-  string output = execute(command);
-
-  iface_quality = -1;
-  TextPos pos(output.c_str());
-
-  while(true)
-  {
-    pos.skip_whitespace();
-    if(*pos == '\0')
-      return false;
-    else if(strncmp(pos.ptr(), "ESSID:", 6) == 0)
-    {
-      pos.offset(7);
-            char const * c = pos.ptr();
-      char const* e = c;
-      while(*e != '"')
-        e++;
-
-      iface_essid.assign(c, e-c);
-    }
-    else if(strncmp(pos.ptr(), "Link Quality=", 13) == 0)
-    {
-      pos.offset(13);
-      double q1 = pos.parse_num();
-      (void)pos.next();
-      double q2 = pos.parse_num();
-      iface_quality = (int)(100*q1 / q2);
-      return true;
-    }
-    pos.skip_nonspace();
-  }
-  return false;
-}*/
-
 Net::Net(JSONObject& item) : StateItem(item), Logger("[Net]", cerr)
 {
-  iface.assign(item["interface"].string());
+  iface = item["interface"].string();
 
   string contype = item["type"].string();
   if(contype.compare("wireless") == 0)
@@ -223,11 +186,9 @@ Net::Net(JSONObject& item) : StateItem(item), Logger("[Net]", cerr)
   min_cooldown = min(min_cooldown, this_cooldown);
 }
 
-Net::~Net() {}
-
 bool Net::update(void)
 {
-  if(!getIpAddresses())
+  if(!get_IP_addresses())
     return false;
 
   auto it = addresses.find(iface);
@@ -271,13 +232,16 @@ void Net::print(void)
     switch(iface_show)
     {
     case IPv6_Fallback:
-      if(iface_ipv6.size() == 0)
+      if(iface_ipv6.size() != 0)
+        cout << ' ' << iface_ipv6 << ' ';
+      else if(iface_ipv4.size() != 0)
         cout << ' ' << iface_ipv4 << ' ';
       else
-        cout << ' ' << iface_ipv6 << ' ';
+        cout << " No IPv4/IPv6 address ";
       break;
     case Both:
-      cout << ' ' << iface_ipv4 << ' ';
+      if(iface_ipv4.size() != 0)
+        cout << ' ' << iface_ipv4 << ' ';
       separate(Left, neutral_colors);
       cout << ' ' << iface_ipv6 << ' ';
       break;
