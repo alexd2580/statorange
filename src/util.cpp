@@ -238,9 +238,9 @@ ostream& print_time(ostream& out, struct tm* ptm, char const* const format)
 #else
   char str[256];
   if(strftime(str, 256, format, ptm))
-    return ostream << str;
+    return out << str;
   else
-    return ostream << "???";
+    return out << "???";
 #endif
 }
 
