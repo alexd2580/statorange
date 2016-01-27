@@ -29,20 +29,21 @@ The predefined status items use the following programs/files:
   * `/sbin/iwconfig` to get info about the wireless connection.
 
 * CPU<br>
-  * temperature: `/sys/bus/acpi/devices/LNXTHERM:00/thermal_zone/temp`
+  * temperature: `/sys/bus/acpi/devices/LNXTHERM:00/thermal_zone/temp`<br>
+      or `/sys/devices/platform/coretemp.0/hwmon/hwmon0/temp2_input`
   * load: `/proc/loadavg`
   * `htop` pops up when this section is clicked.
 
 Also, since lemonbar does not provide a trayer section something like trayer
 is advisable. You can add a shortcut to toggle_trayer.sh (i chose mod+t)
-to toggle trayer, for when you really need it (you won't use them a lot,
+to toggle trayer, for when you really need it (you won't use it a lot,
 except for nm-applet or wicd to connect to a network GRAPHICALLY).
 
 ### Required Packaged Software
 * `i3-wm`
-* `g++`
+* `g++`/`clang++`
 * `make`
-* `alsa-utils`
+* `alsa-utils`/`libasound2-dev`
 * `trayer`
 * `htop`
 * `x-terminal-emulator` (e.g. `terminator`)
@@ -93,7 +94,6 @@ The config (`config.json`) is written in JSON. An example configuration can be f
 * `get_socket` - retrieve i3 un*x socket path.
 * `cooldown` - delay between bar updates in seconds.
 * static settings for the state items (CPU, Battery, Volume, Space, Date, Net).
-Check if the `/sbin/iwconfig` executable is present.
 * `order` - as the name implies, the order is important.
 The objects in this list specify the sections on the right side of the bar.
 Each object has the following fields:
