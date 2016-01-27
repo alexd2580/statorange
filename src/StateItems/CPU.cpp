@@ -31,25 +31,36 @@ bool CPU::update(void)
 {
   cached = false;
   char line[11];
+  char* res;
 
   FILE* tfile = fopen(temp_file_loc.c_str(), "r");
   if(tfile == nullptr)
   {
-    log() << "Couldn't read temperature file: " << strerror(errno) << endl;
+    log() << "Couldn't read temperature file [" << temp_file_loc << "]:" << endl << strerror(errno) << endl;
     return false;
   }
-  fgets(line, 10, tfile);
+  res = fgets(line, 10, tfile);
   fclose(tfile);
+  if(res != line)
+  {
+    log() << "Couldn't read temperature file [" << temp_file_loc << "]:" << endl << strerror(errno) << endl;
+    return false;
+  }
   cpu_temp = (int)strtol(line, nullptr, 0) / 1000;
 
   FILE* lfile = fopen(load_file_loc.c_str(), "r");
   if(lfile == nullptr)
   {
-    log() << "Couldn't read load file: " << strerror(errno) << endl;
+    log() << "Couldn't read load file [" << load_file_loc << "]:" << endl << strerror(errno) << endl;
     return false;
   }
-  fgets(line, 10, lfile);
+  res = fgets(line, 10, lfile);
   fclose(lfile);
+  if(res != line)
+  {
+    log() << "Couldn't read load file [" << load_file_loc << "]:" << endl << strerror(errno) << endl;
+    return false;
+  }
   cpu_load = strtof(line, nullptr);
 
   return true;

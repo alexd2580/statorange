@@ -1,14 +1,14 @@
 
-#include <iostream>
+#include <cerrno>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <string>
-#include <cerrno>
 
-#include <sys/un.h>
 #include <arpa/inet.h>
-#include <unistd.h>
 #include <csignal>
+#include <sys/un.h>
+#include <unistd.h>
 
 #include "i3-ipc-constants.hpp"
 
@@ -41,44 +41,9 @@ string ipc_type_to_string(unsigned int type)
   default:
     return "unknown";
   }
-  return "";
 }
 
-void printDetailedErrno(void)
-{
-  cerr << "errno = " << errno << ": ";
-  string msg;
-  switch(errno)
-  {
-  case EAGAIN:
-    msg = "EAGAIN";
-    break;
-  case EBADF:
-    msg = "EBADF";
-    break;
-  case EFAULT:
-    msg = "EFAULT";
-    break;
-  case EINTR:
-    msg = "EINTR";
-    break;
-  case EINVAL:
-    msg = "EINVAL";
-    break;
-  case EIO:
-    msg = "EIO";
-    break;
-  case EISDIR:
-    msg = "EISDIR";
-    break;
-  default:
-    msg = "errno missing from switch";
-    break;
-  }
-  cerr << msg << endl;
-}
-
-ssize_t writeall(int fd, void* buf, size_t count)
+ssize_t writeall(int fd, void* buf, size_t count, bool& die)
 {
   size_t written = 0;
 
@@ -101,7 +66,7 @@ ssize_t writeall(int fd, void* buf, size_t count)
   return (ssize_t)written;
 }
 
-ssize_t readall(int fd, void* buf, size_t count)
+ssize_t readall(int fd, void* buf, size_t count, bool& die)
 {
   size_t raed = 0;
 
@@ -126,9 +91,13 @@ ssize_t readall(int fd, void* buf, size_t count)
   return (ssize_t)raed;
 }
 
+auto kofn = [](auto k, auto n) {
+  return string(std::to_string(k) + "/" + std::to_string(n));
+};
+
 #define HEADER_SIZE (sizeof(i3_ipc_header_t))
 
-int sendMessage(int fd, uint32_t type, char* payload)
+int sendMessage(int fd, uint32_t type, char* payload, bool& die)
 {
   i3_ipc_header_t header;
   memcpy(header.magic, I3_IPC_MAGIC, 6);
@@ -136,32 +105,30 @@ int sendMessage(int fd, uint32_t type, char* payload)
   header.size = payload == nullptr ? 0 : (uint32_t)strlen(payload);
 
   ssize_t sent = 0;
-  sent = writeall(fd, &header, HEADER_SIZE);
+  sent = writeall(fd, &header, HEADER_SIZE, die);
   if(sent < (ssize_t)HEADER_SIZE)
   {
     if(sent == -1)
-    {
-      cerr << "Could not transmit header" << endl;
-      printDetailedErrno();
-    }
+      perror("Could not transmit header");
     else
-      cerr << "Could not transmit full header => " << sent << "/" << HEADER_SIZE
-           << endl;
+    {
+      string msg("Could not transmit header " + kofn(sent, HEADER_SIZE));
+      perror(msg.c_str());
+    }
     return -1;
   }
   if(header.size != 0)
   {
-    sent = writeall(fd, payload, header.size);
+    sent = writeall(fd, payload, header.size, die);
     if(sent < (int)header.size)
     {
       if(sent == -1)
-      {
-        cerr << "Could not transmit message" << endl;
-        printDetailedErrno();
-      }
+        perror("Could not transmit message");
       else
-        cerr << "Could not transmit full message => " << sent << "/"
-             << header.size << endl;
+      {
+        string msg("Could not transmit message " + kofn(sent, header.size));
+        perror(msg.c_str());
+      }
       return -1;
     }
   }
@@ -175,23 +142,22 @@ int sendMessage(int fd, uint32_t type, char* payload)
  * The type of the message is written to *type;
  * If there was an error, *type is set to I3_INVALID_TYPE
  */
-char* readMessage(int fd, uint32_t* type)
+char* readMessage(int fd, uint32_t* type, bool& die)
 {
   i3_ipc_header_t header;
   ssize_t n = 0;
-  n = readall(fd, &header, HEADER_SIZE);
+  n = readall(fd, &header, HEADER_SIZE, die);
   *type = header.type;
 
   if(n < (ssize_t)HEADER_SIZE)
   {
     if(n == -1)
-    {
-      cerr << "Could not read header" << endl;
-      printDetailedErrno();
-    }
+      perror("Could not read header");
     else
-      cerr << "Could not read the whole header => " << n << "/" << HEADER_SIZE
-           << endl;
+    {
+      string msg("Could not read header " + kofn(n, HEADER_SIZE));
+      perror(msg.c_str());
+    }
     *type = I3_INVALID_TYPE;
     return nullptr;
   }
@@ -208,17 +174,16 @@ char* readMessage(int fd, uint32_t* type)
   if(header.size > 0)
   {
     payload = (char*)malloc((header.size + 1) * sizeof(char));
-    n = readall(fd, payload, header.size);
+    n = readall(fd, payload, header.size, die);
     if(n < header.size)
     {
       if(n == -1)
-      {
-        cerr << "Could not read message" << endl;
-        printDetailedErrno();
-      }
+        perror("Could not read message");
       else
-        cerr << "Could not read the whole message" << endl;
-
+      {
+        string msg("Could not read message " + kofn(n, header.size));
+        perror(msg.c_str());
+      }
       *type = I3_INVALID_TYPE;
       free(payload);
       return nullptr;
@@ -236,7 +201,7 @@ int init_socket(char const* path)
   int sockfd = socket(AF_LOCAL, SOCK_STREAM, 0);
   if(sockfd < 0)
   {
-    cerr << "Error when opening socket" << endl;
+    perror("Error when opening socket");
     return 1;
   }
   //(void)fcntl(sockfd, F_SETFD, FD_CLOEXEC); // WTF
@@ -250,7 +215,7 @@ int init_socket(char const* path)
       sockfd, (struct sockaddr*)&server_address, sizeof(server_address));
   if(err != 0)
   {
-    cerr << "Connect failed" << endl;
+    perror("Connect failed");
     return 1;
   }
   return sockfd;
@@ -264,7 +229,8 @@ int test_sockets(int argc, char* argv[])
   (void)argv;
 
   char path[100];
-  fgets(path, 100, stdin);
+  if(fgets(path, 100, stdin) != path)
+    return 1;
   char* p = path;
   while(*p != '\n')
     p++;
@@ -273,12 +239,13 @@ int test_sockets(int argc, char* argv[])
   int fd = init_socket(path);
 
   char msg[] = "[\"workspace\", \"mode\"]";
-  sendMessage(fd, 2, msg);
+  bool yay = false;
+  sendMessage(fd, 2, msg, yay);
 
   for(int i = 0; i < 100; i++)
   {
     uint32_t type;
-    char* payload = readMessage(fd, &type);
+    char* payload = readMessage(fd, &type, yay);
     cout << "Type " << type << ": " << payload << endl << endl;
     free(payload);
   }

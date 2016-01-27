@@ -2,8 +2,8 @@
 #define __STATEITEMHEADER_LOL___
 
 #include <ctime>
-#include <vector>
 #include <string>
+#include <vector>
 
 #include "JSON/jsonParser.hpp"
 
@@ -29,7 +29,7 @@ protected:
   StateItem(JSONObject& item);
 
 public:
-  virtual ~StateItem(){};
+  virtual ~StateItem() {}
 
   static void init(JSONObject& config);
   static void updates(void);

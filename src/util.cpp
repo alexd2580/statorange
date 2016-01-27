@@ -1,7 +1,5 @@
-#define _POSIX_C_SOURCE 200809L
-
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <string>
 
 #include <sys/time.h>
@@ -17,8 +15,8 @@ extern volatile sig_atomic_t die;
 
 int const EXIT_RESTART = 4;
 
-string shell_file_loc = "/bin/sh";
-string terminal_cmd = "x-terminal-emulator -e";
+string const shell_file_loc = "/bin/sh";
+string const terminal_cmd = "x-terminal-emulator -e";
 
 TextPos::TextPos(cchar* begin)
 {
@@ -107,7 +105,7 @@ string parse_escaped_string(TextPos& pos)
   {
     if(c == '\\') // if an escaped char is found
     {
-      res += string(start, pos.ptr() - start); // push current part
+      res += string(start, (size_t)(pos.ptr() - start)); // push current part
       c = pos.next();
       if(c == '\0')
         throw TraceCeption(
@@ -175,15 +173,20 @@ bool load_file(string& name, string& content)
   return false;
 }
 
-string execute(string const& command)
+bool execute(string const& command, string& res, bool& die)
 {
   int fd[2];
-  pipe(fd);
+  if(pipe(fd) != 0)
+  {
+    perror("PIPE failed");
+    return false;
+  }
+
   int childpid = fork();
   if(childpid == -1) // Fail
   {
-    cerr << "FORK failed" << endl;
-    return 0;
+    perror("FORK failed");
+    return false;
   }
   else if(childpid == 0) // I am child
   {
@@ -201,7 +204,7 @@ string execute(string const& command)
   close(fd[1]);
   wait(nullptr);
 
-  string res = "";
+  res = "";
   char buffer[500];
 
   errno = EINTR;
@@ -217,7 +220,7 @@ string execute(string const& command)
   }
 
   close(fd[0]);
-  return res;
+  return true;
 }
 
 string mkTerminalCmd(string s) { return terminal_cmd + " " + s + "&"; }
@@ -226,8 +229,8 @@ Logger::Logger(string lname, std::ostream& ostr) : logname(lname), ostream(ostr)
 {
 }
 
-#include <iomanip> // std::put_time
 #include <chrono>  // std::chrono::system_clock
+#include <iomanip> // std::put_time
 
 using std::chrono::system_clock;
 

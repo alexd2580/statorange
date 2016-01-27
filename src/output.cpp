@@ -1,8 +1,8 @@
 #include <cstring>
 #include <string>
 
-#include "output.hpp"
 #include "StateItem.hpp"
+#include "output.hpp"
 
 using namespace std;
 
@@ -29,7 +29,7 @@ char const* const icon_wlan = "Ø";    // WIFI icon
 /******************************************************************************/
 /*****************************     COLORS     *********************************/
 
-char const* hex_color = "0123456789ABCDEF";
+static char const* hex_color = "0123456789ABCDEF";
 
 void make_hex(char* dst, uint8_t a)
 {
@@ -46,19 +46,19 @@ void make_hex(char* dst, uint8_t a)
     make_hex(color + 7, b);                                                    \
   }
 
-char const* color_white = "#FFFFFFFF";
-char const* color_dwhite = "#FFCCCCCC";
-char const* color_lgrey = "#FF707070";
-char const* color_grey = "#FF454545";
-char const* color_dgrey = "#FF2A2A2A";
-char const* color_red = "#FFFF0000";
-char const* color_blue = "#FF1010D0";
-char const* color_green = "#FF10D010";
-char const* color_dgreen = "#FF008000";
-char const* color_yellow = "#FFCDCD00";
-char const* color_blind = "#FF8B814C";
-char const* color_crimson = "#FFDC143C";
-char const* color_black = "#FF000000";
+static char const* color_white = "#FFFFFFFF";
+static char const* color_dwhite = "#FFCCCCCC";
+static char const* color_lgrey = "#FF707070";
+static char const* color_grey = "#FF454545";
+static char const* color_dgrey = "#FF2A2A2A";
+static char const* color_red = "#FFFF0000";
+static char const* color_blue = "#FF1010D0";
+static char const* color_green = "#FF10D010";
+static char const* color_dgreen = "#FF008000";
+static char const* color_yellow = "#FFCDCD00";
+static char const* color_blind = "#FF8B814C";
+static char const* color_crimson = "#FFDC143C";
+static char const* color_black = "#FF000000";
 
 char const* white_on_black[2];    //{ color_black, color_white };
 char const* inactive_colors[2];   //{ color_dgrey, color_lgrey };
@@ -94,10 +94,10 @@ void init_colors(void)
 /**************************     SEPARATORS     ********************************/
 
 // Char glyps for powerline fonts
-char const* sep_left = "";    // Powerline separator left
-char const* sep_right = "";   // Powerline separator right
-char const* sep_l_left = "";  // Powerline light separator left
-char const* sep_l_right = ""; // Powerline light sepatator right
+static char const* sep_left = "";    // Powerline separator left
+static char const* sep_right = "";   // Powerline separator right
+static char const* sep_l_left = "";  // Powerline light separator left
+static char const* sep_l_right = ""; // Powerline light sepatator right
 
 void separate(Direction d, char const** colors, ostream& o)
 {
@@ -167,11 +167,11 @@ void stopButton(ostream& o) { o << "%{A}"; }
  * Prints the buttons for switching workspaces
  * align them to the left side
  */
-void echoWorkspaceButtons(I3State& i3, uint8_t disp)
+void echoWorkspaceButtons(I3State const& i3, uint8_t disp)
 {
   for(size_t w = 0; w < i3.workspaces.size(); w++)
   {
-    Workspace& ws = i3.workspaces[w];
+    Workspace const& ws = i3.workspaces[w];
     if(ws.output == disp)
     {
       char const** colors = inactive_colors;
@@ -197,44 +197,33 @@ void echoWorkspaceButtons(I3State& i3, uint8_t disp)
 }
 
 /**
- * Prints the input to lemonbar for the main monitor
+ * Prints the input to lemonbar
  * TODO specify main monitor in config -> fix main, not this method
  */
-void echoPrimaryLemon(I3State& i3, uint8_t disp)
+void echo_lemon(I3State const& i3)
 {
-  cout << "%{S" << (int)disp << "}";
-  cout << "%{l}";
-  echoWorkspaceButtons(i3, disp);
-  if(i3.mode.compare("default") != 0)
+  for(uint8_t i = 0; i < i3.outputs.size(); i++)
   {
-    cout << ' ';
-    separate(Left, info_colors);
-    cout << ' ' << i3.mode << ' ';
-    separate(Right, white_on_black);
+    cout << "%{S" << (int)i << "}";
+    cout << "%{l}";
+    echoWorkspaceButtons(i3, i);
+    if(i3.mode.compare("default") != 0)
+    {
+      cout << ' ';
+      separate(Left, info_colors);
+      cout << ' ' << i3.mode << ' ';
+      separate(Right, white_on_black);
+    }
+    cout << "%{l}";
+    cout << "%{r}";
+
+    StateItem::printState();
+
+    cout << "%{r}";
+    cout << "%{S" << (int)i << "}";
   }
-  cout << "%{l}";
-  cout << "%{r}";
 
-  StateItem::printState();
-
-  cout << "%{r}";
-  cout << "%{S" << (int)disp << "}";
-  return;
-}
-
-/**
- * Prints the input to lemonbar for a secondary monitor
- */
-void echoSecondaryLemon(I3State& i3, uint8_t disp)
-{
-  cout << "%{S" << (int)disp << "}";
-  cout << "%{l}";
-  echoWorkspaceButtons(i3, disp);
-  cout << "%{l}";
-  cout << "%{r}";
-  cout << "%{r}";
-  cout << "%{S" << (int)disp << "}";
-  return;
+  cout << endl;
 }
 
 /* ************************************************************************** */

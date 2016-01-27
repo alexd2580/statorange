@@ -25,7 +25,7 @@ private:
 public:
   static void settings(JSONObject&);
   CPU(JSONObject& item);
-  virtual ~CPU(){};
+  virtual ~CPU(){}
 };
 
 #endif

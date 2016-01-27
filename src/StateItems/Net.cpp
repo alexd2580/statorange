@@ -1,10 +1,10 @@
 
-#include <iostream>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 
-#include "Net.hpp"
 #include "../output.hpp"
+#include "Net.hpp"
 
 using namespace std;
 
@@ -14,10 +14,10 @@ map<string, pair<string, string>> Net::addresses;
 /******************************************************************************/
 /******************************************************************************/
 
-#include <sys/types.h>
+#include <arpa/inet.h>
 #include <ifaddrs.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
+#include <sys/types.h>
 
 bool Net::get_IP_addresses(void)
 {
@@ -73,13 +73,13 @@ bool Net::get_IP_addresses(void)
   return true;
 }
 
-#include <cstdio>
 #include <cerrno>
-#include <sys/ioctl.h>
-#include <sys/stat.h>
-#include <sys/socket.h>
+#include <cstdio>
 #include <fcntl.h>
 #include <linux/wireless.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
 
 bool Net::get_wireless_state(void)
 {
@@ -224,9 +224,6 @@ void Net::print(void)
       cout << ' ' << iface_essid << '(' << iface_quality << "%%) ";
       separate(Left, neutral_colors);
       break;
-    default:
-      cout << " Something went wrong ";
-      return;
     }
 
     switch(iface_show)
@@ -252,7 +249,6 @@ void Net::print(void)
       cout << ' ' << iface_ipv6 << ' ';
       break;
     case None:
-    default:
       cout << " Up ";
       break;
     }

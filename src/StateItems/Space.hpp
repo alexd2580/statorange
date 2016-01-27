@@ -27,7 +27,7 @@ private:
 public:
   static void settings(JSONObject&);
   explicit Space(JSONObject& item);
-  virtual ~Space(){};
+  virtual ~Space(){}
 };
 
 #endif

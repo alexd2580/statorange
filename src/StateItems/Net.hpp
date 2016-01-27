@@ -55,7 +55,7 @@ private:
 public:
   static void settings(JSONObject& section);
   explicit Net(JSONObject&);
-  virtual ~Net(){};
+  virtual ~Net(){}
 };
 
 #endif

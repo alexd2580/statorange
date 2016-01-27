@@ -34,7 +34,7 @@ bool Volume::update(void)
 {
   long min, max;
   snd_mixer_t* handle;
-  snd_mixer_selem_id_t* sid;
+  snd_mixer_selem_id_t* sid = (snd_mixer_selem_id_t*)calloc(1, snd_mixer_selem_id_sizeof());
   // const char *card = "default";
   // const char *selem_name = "Master";
 
@@ -43,7 +43,8 @@ bool Volume::update(void)
   snd_mixer_selem_register(handle, NULL, NULL);
   snd_mixer_load(handle);
 
-  snd_mixer_selem_id_alloca(&sid);
+//  snd_mixer_selem_id_alloca(&sid);
+  
   snd_mixer_selem_id_set_index(sid, 0);
   snd_mixer_selem_id_set_name(sid, mixer.c_str()); // selem_name
   snd_mixer_elem_t* elem = snd_mixer_find_selem(handle, sid);
@@ -51,6 +52,7 @@ bool Volume::update(void)
   if(elem == nullptr)
   {
     snd_mixer_close(handle);
+    free(sid);
     return false;
   }
 
@@ -70,6 +72,7 @@ bool Volume::update(void)
   snd_mixer_close(handle);
 
   volume = (unsigned short)(100 * vol_val / max);
+  free(sid);
   return true;
 }
 

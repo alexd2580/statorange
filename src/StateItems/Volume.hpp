@@ -21,7 +21,7 @@ private:
 public:
   static void settings(JSONObject&);
   Volume(JSONObject& item);
-  virtual ~Volume(){};
+  virtual ~Volume(){}
 };
 
 #endif

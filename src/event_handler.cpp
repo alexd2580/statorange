@@ -1,32 +1,30 @@
 #include <csignal>
-#include <iostream>
 #include <cstring>
-#include <pthread.h>
+#include <iostream>
 #include <sys/socket.h>
+
+#include "event_handler.hpp"
 
 #include "JSON/jsonParser.hpp"
 
-#include "i3state.hpp"
 #include "i3-ipc-constants.hpp"
 #include "i3-ipc.hpp"
+#include "i3state.hpp"
 #include "util.hpp"
 
 using namespace std;
 
 /******************************************************************************/
 
-extern pthread_t event_listener_thread;
-extern pthread_cond_t notifier;
-
-extern volatile sig_atomic_t die;
-extern volatile sig_atomic_t exit_status;
-extern volatile sig_atomic_t force_update;
-
-Logger evlog("[EventHandler]", cerr);
+EventHandler::EventHandler(I3State& i3, int fd, GlobalData& global_)
+    : Logger("[EventHandler]", cerr), i3State(i3), push_socket(fd),
+      global(global_)
+{
+}
 
 #define GET_DISPLAY_NUM double n = object["current"].object()["num"].number();
 
-void handleWorkspaceEvent(I3State& i3State, char* response)
+void EventHandler::workspace_event(char* response)
 {
   JSON* json = JSON::parse(response);
   JSONObject& object = json->object();
@@ -48,7 +46,7 @@ void handleWorkspaceEvent(I3State& i3State, char* response)
       i3State.workspaceEmpty((uint8_t)n);
     }
     else
-      evlog.log() << "Unhandled workspace event type: " << change << endl;
+      log() << "Unhandled workspace event type: " << change << endl;
   }
   catch(TraceCeption& e)
   {
@@ -58,7 +56,7 @@ void handleWorkspaceEvent(I3State& i3State, char* response)
   delete json;
 }
 
-string getWindowName(JSONObject& container)
+string EventHandler::getWindowName(JSONObject& container)
 {
   try
   {
@@ -79,13 +77,13 @@ string getWindowName(JSONObject& container)
   }
   catch(TraceCeption& e)
   {
-    evlog.log() << "Exception when trying to get window name/class" << endl;
+    log() << "Exception when trying to get window name/class" << endl;
     e.printStackTrace();
     return "ERROR";
   }
 }
 
-void handleWindowEvent(I3State& i3State, char* response)
+void EventHandler::window_event(char* response)
 {
   JSON* json = JSON::parse(response);
   JSONObject& windowEvent = json->object();
@@ -136,58 +134,53 @@ void handleWindowEvent(I3State& i3State, char* response)
   }
   else if(change.compare("fullscreen_mode") == 0)
   {
-    evlog.log() << "Fullscreen mode TODO if anything at all..." << endl;
+    log() << "Fullscreen mode TODO if anything at all..." << endl;
   }
   else if(change.compare("move") == 0)
   {
-    evlog.log() << "Move event TODO update titles" << endl;
+    log() << "Move event TODO update titles" << endl;
   }
   else
-    evlog.log() << "Unhandled window event type: " << change << endl;
+    log() << "Unhandled window event type: " << change << endl;
 
   delete json;
   return;
 }
 
-/**
- * Handles the incoming event. response is NOT freed.
- * returns 1 if event is relevant
- */
-void handleEvent(I3State& i3State, uint32_t type, char* response)
+void EventHandler::handle_event(uint32_t type, char* response)
 {
   try
   {
     switch(type)
     {
     case I3_INVALID_TYPE:
-      if(!die)
-        evlog.log() << "Invalid packet received. Aborting" << endl;
-      die = 1;
+      if(!global.die)
+        log() << "Invalid packet received. Aborting" << endl;
+      global.die = 1;
       break;
     case I3_IPC_EVENT_MODE:
     {
-      pthread_mutex_lock(&i3State.mutex);
+      i3State.mutex.lock();
       JSON* json = JSON::parse(response);
       JSONObject& modeEvent = json->object();
       i3State.mode = modeEvent["change"].string();
       delete json;
-      pthread_mutex_unlock(&i3State.mutex);
+      i3State.mutex.unlock();
     }
     break;
     case I3_IPC_EVENT_WINDOW:
-      handleWindowEvent(i3State, response);
+      window_event(response);
       break;
     case I3_IPC_EVENT_WORKSPACE:
-      handleWorkspaceEvent(i3State, response);
+      workspace_event(response);
       break;
     case I3_IPC_EVENT_OUTPUT:
-      evlog.log() << "Output event - Restarting application" << endl;
-      exit_status = EXIT_RESTART;
-      die = 1;
+      log() << "Output event - Restarting application" << endl;
+      global.exit_status = EXIT_RESTART;
+      global.die = 1;
       break;
     default:
-      evlog.log() << "Unhandled event type: " << ipc_type_to_string(type)
-                  << endl;
+      log() << "Unhandled event type: " << ipc_type_to_string(type) << endl;
       break;
     }
   }
@@ -201,89 +194,77 @@ void handleEvent(I3State& i3State, uint32_t type, char* response)
 
   if(i3State.valid == 0) // is this necessary?
   {
-    evlog.log() << "Invalid change after event " << type << " occured" << endl;
+    log() << "Invalid change after event " << type << " occured" << endl;
     if(response != NULL)
-      evlog.log() << response << endl;
-    die = 1;
+      log() << response << endl;
+    global.die = 1;
   }
 
   if(response != NULL)
     free(response);
 }
 
-struct event_listener_data
-{
-  I3State* i3State;
-  int push_socket;
-};
+void EventHandler::start(EventHandler* instance) { instance->run(); }
 
-void* event_listener(void* data)
+void EventHandler::run(void)
 {
-  evlog.log() << "Launching event listener" << endl;
-  event_listener_data* eldp = (event_listener_data*)data;
-  int push_socket = eldp->push_socket;
-  I3State& i3State = *eldp->i3State;
-  free(eldp);
+  log() << "Forked event handler" << endl;
   char abonnements[] = "[\"workspace\",\"mode\",\"output\",\"window\"]";
-  sendMessage(push_socket, I3_IPC_MESSAGE_TYPE_SUBSCRIBE, abonnements);
-  uint32_t type;
-  char* response = readMessage(push_socket, &type);
-  try
-  {
-    handleEvent(i3State, type, response);
-  }
-  catch(TraceCeption& e)
-  {
-    evlog.log() << "Could not subscribe to events:" << endl;
-    e.printStackTrace();
-  }
+  sendMessage(
+      push_socket, I3_IPC_MESSAGE_TYPE_SUBSCRIBE, abonnements, global.die);
 
-  evlog.log() << "Entering event listener loop" << endl;
-  while(!die)
+  struct timespec t;
+  t.tv_sec = 0;
+  t.tv_nsec = 10000000;
+
+  log() << "Entering event handler loop" << endl;
+  while(!global.die)
   {
     // this sleep prevents the application from dying because of SIGUSR1 spam.
     // on the other hand, the user can now crash, or at least DOS i3 with
     // events, which cannot be processed fast enough
     // could be replaced with a mutex...
-    struct timespec t;
-    t.tv_sec = 0;
-    t.tv_nsec = 10000000;
-    nanosleep(&t, NULL);
+    nanosleep(&t, nullptr);
 
-    response = readMessage(push_socket, &type);
+    uint32_t type;
+    char* response = readMessage(push_socket, &type, global.die);
     try
     {
-      handleEvent(i3State, type, response);
+      handle_event(type, response);
 
-      while(!die && hasInput(push_socket, 1000))
+      while(!global.die && hasInput(push_socket, 1000))
       {
-        response = readMessage(push_socket, &type);
-        handleEvent(i3State, type, response);
+        response = readMessage(push_socket, &type, global.die);
+        handle_event(type, response);
       }
     }
     catch(TraceCeption& e)
     {
-      evlog.log() << "Catched JSONException" << endl;
+      log() << "Catched TraceCeption" << endl;
       e.printStackTrace();
-      evlog.log() << "Retrying" << endl;
+      // TODO open new socket?
+      log() << "Retrying" << endl;
     }
-
-    pthread_cond_signal(&notifier);
+    unique_lock<std::mutex> lock(mutex);
+    global.notifier.notify_one();
   }
-  evlog.log() << "Exiting event listener loop" << endl;
-
-  shutdown(push_socket, SHUT_RDWR);
-  evlog.log() << "Stopping event listener" << endl;
-
-  // pthread_exit(0); which is better?
-  return nullptr; // this produces no warnings
+  log() << "Exiting event handler loop" << endl;
 }
 
-void forkEventListener(I3State* i3, string& path)
+void EventHandler::fork(void)
 {
-  event_listener_data* data =
-      (event_listener_data*)malloc(sizeof(event_listener_data));
-  data->i3State = i3;
-  data->push_socket = init_socket(path.c_str());
-  pthread_create(&event_listener_thread, nullptr, &event_listener, (void*)data);
+  log() << "Forking EventHandler" << endl;
+  event_handler_thread = thread(start, this);
+}
+
+void EventHandler::join(void)
+{
+  log() << "Joining EventHandler" << endl;
+  if(event_handler_thread.joinable())
+  {
+    event_handler_thread.join();
+    log() << "EventHandler joined" << endl;
+  }
+  else
+    log() << "Cannot join thread" << endl;
 }

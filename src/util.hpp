@@ -1,11 +1,11 @@
 #ifndef __STRUTIL_LOL___
 #define __STRUTIL_LOL___
 
-#include <string>
 #include <cstddef>
-#include <ostream>
 #include <iostream>
+#include <ostream>
 #include <stack>
+#include <string>
 
 typedef char const cchar;
 
@@ -79,6 +79,8 @@ public:
     stacktrace.push(msg);
   }
 
+  // TODO copy constr
+
   virtual ~TraceCeption() {}
 
   void push_stack(std::string msg) { stacktrace.push(msg); }
@@ -105,7 +107,7 @@ void store_string(char* dst, size_t dst_size, char* src, size_t src_size);
 
 bool load_file(std::string& name, std::string& content);
 
-std::string execute(std::string const& command);
+bool execute(std::string const& command, std::string& res, bool& die);
 
 std::string mkTerminalCmd(std::string);
 
@@ -120,7 +122,7 @@ private:
 
 public:
   Logger(std::string lname, std::ostream& ostr);
-  virtual ~Logger(){};
+  virtual ~Logger() {}
 
   std::ostream& log(void);
   void log_errno(void);

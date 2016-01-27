@@ -1,8 +1,8 @@
 #include <iostream>
 
-#include "Space.hpp"
 #include "../output.hpp"
 #include "../util.hpp"
+#include "Space.hpp"
 
 using namespace std;
 
@@ -33,7 +33,13 @@ Space::Space(JSONObject& item) : StateItem(item), Logger("[Space]", cerr)
 bool Space::getSpaceUsage(SpaceItem& dir)
 {
   string cmd = get_space + " " + dir.mount_point;
-  string output = execute(cmd);
+  string output;
+  bool yay = false; // broken architecture.
+  if(!execute(cmd, output, yay))
+  {
+    log() << "Couldn't execute " << cmd << endl;
+    return false;
+  }
 
   try
   {
@@ -45,11 +51,11 @@ bool Space::getSpaceUsage(SpaceItem& dir)
     pos.skip_whitespace();
     char const* beg = pos.ptr();
     pos.skip_nonspace();
-    dir.size.assign(beg, pos.ptr() - beg);
+    dir.size.assign(beg, (size_t)(pos.ptr() - beg));
     pos.skip_whitespace();
     beg = pos.ptr();
     pos.skip_nonspace();
-    dir.used.assign(beg, pos.ptr() - beg);
+    dir.used.assign(beg, (size_t)(pos.ptr() - beg));
   }
   catch(TraceCeption& e)
   {

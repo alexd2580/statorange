@@ -1,16 +1,16 @@
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
-#include <algorithm>
 
 #include <sys/socket.h>
 
 #include "JSON/jsonParser.hpp"
 
-#include "i3state.hpp"
-#include "i3-ipc.hpp"
 #include "i3-ipc-constants.hpp"
+#include "i3-ipc.hpp"
+#include "i3state.hpp"
 #include "util.hpp"
 
 using namespace std;
@@ -35,11 +35,11 @@ void I3State::parseOutputs(void)
 {
   valid = false;
   // Send query
-  if(sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_OUTPUTS, nullptr) != 0)
+  if(sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_OUTPUTS, nullptr, die) != 0)
     return;
 
   uint32_t type;
-  char* buffer = readMessage(fd, &type);
+  char* buffer = readMessage(fd, &type, die);
   if(type == I3_INVALID_TYPE)
     return;
 
@@ -48,9 +48,9 @@ void I3State::parseOutputs(void)
     JSON* json = JSON::parse(buffer);
     JSONArray& array = json->array();
     uint8_t total_displays = (uint8_t)array.size();
-
+    log() << "Total outputs: " << (int)total_displays << endl;
     vector<Output> outputs_vec;
-    for(uint8_t i = 1; i < total_displays; i++)
+    for(uint8_t i = 0; i < total_displays; i++)
     {
       JSONObject& disp = array[i].object();
       bool active = disp["active"].boolean();
@@ -68,10 +68,12 @@ void I3State::parseOutputs(void)
 
     std::sort(outputs_vec.begin(), outputs_vec.end(), sort_by_pos);
 
-    for(unsigned int i = 0; i < outputs.size(); i++)
+    log() << "Outputs" << endl;
+    for(uint8_t i = 0; i < outputs_vec.size(); i++)
     {
       Output& o = outputs_vec[i];
       outputs[o.name] = i;
+      log() << "\t" << (int)i << ": " << o.name << endl;
     }
   }
   catch(JSONException& e)
@@ -96,11 +98,11 @@ void I3State::parseWorkspaces(void)
   valid = false;
 
   // Send query
-  if(sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, nullptr) != 0)
+  if(sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, nullptr, die) != 0)
     return;
 
   uint32_t type;
-  char* buffer = readMessage(fd, &type);
+  char* buffer = readMessage(fd, &type, die);
   if(type == I3_INVALID_TYPE)
     return;
 
@@ -148,49 +150,49 @@ void I3State::parseWorkspaces(void)
 /******************************************************************************/
 /******************************************************************************/
 
-I3State::I3State(string path) : fd(init_socket(path.c_str()))
+I3State::I3State(string path, bool& die_)
+    : Logger("[I3State]", cerr), fd(init_socket(path.c_str())), die(die_)
 {
-  pthread_mutex_init(&mutex, nullptr);
-  pthread_mutex_lock(&mutex);
+  mutex.lock();
 
   focusedWorkspace = 0;
   mode = "default";
   valid = false;
 
-  pthread_mutex_unlock(&mutex);
+  mutex.unlock();
 }
 
 I3State::~I3State()
 {
-  pthread_mutex_lock(&mutex);
+  mutex.lock();
 
   shutdown(fd, SHUT_RDWR);
 
-  pthread_mutex_unlock(&mutex);
-  pthread_mutex_destroy(&mutex);
+  mutex.unlock();
 }
 
 void I3State::updateOutputs(void)
 {
-  pthread_mutex_lock(&mutex);
+  mutex.lock();
   parseOutputs();
   if(valid)
     parseWorkspaces();
-  pthread_mutex_unlock(&mutex);
+  mutex.unlock();
 }
 
 void I3State::workspaceInit(uint8_t num)
 {
-  pthread_mutex_lock(&mutex);
+  mutex.lock();
   valid = false;
 
   // Send query
-  bool sent = sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, nullptr) == 0;
+  bool sent =
+      sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, nullptr, die) == 0;
 
-  uint32_t type;
+  uint32_t type = I3_INVALID_TYPE;
   char* buffer = nullptr;
   if(sent)
-    buffer = readMessage(fd, &type);
+    buffer = readMessage(fd, &type, die);
 
   if(sent && type != I3_INVALID_TYPE)
   {
@@ -246,21 +248,22 @@ void I3State::workspaceInit(uint8_t num)
     }
     free(buffer);
   }
-  pthread_mutex_unlock(&mutex);
+  mutex.unlock();
 }
 
 void I3State::updateWorkspaceStatus(void)
 {
-  pthread_mutex_lock(&mutex);
+  mutex.lock();
   valid = false;
 
   // Send query
-  bool sent = sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, nullptr) == 0;
+  bool sent =
+      sendMessage(fd, I3_IPC_MESSAGE_TYPE_GET_WORKSPACES, nullptr, die) == 0;
 
-  uint32_t type;
+  uint32_t type = I3_INVALID_TYPE;
   char* buffer = nullptr;
   if(sent)
-    buffer = readMessage(fd, &type);
+    buffer = readMessage(fd, &type, die);
 
   if(sent && type != I3_INVALID_TYPE)
   {
@@ -302,12 +305,12 @@ void I3State::updateWorkspaceStatus(void)
     }
     free(buffer);
   }
-  pthread_mutex_unlock(&mutex);
+  mutex.unlock();
 }
 
 void I3State::workspaceEmpty(uint8_t num)
 {
-  pthread_mutex_lock(&mutex);
+  mutex.lock();
   valid = false;
 
   uint8_t wsBefore = 0;
@@ -322,5 +325,5 @@ void I3State::workspaceEmpty(uint8_t num)
 
     valid = true;
   }
-  pthread_mutex_unlock(&mutex);
+  mutex.unlock();
 }

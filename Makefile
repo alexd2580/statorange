@@ -8,9 +8,9 @@ MAKEFLAGS=
 # Compiler settings
 # -----------------------------
 
-CC  = gcc
-CXX = g++
-LD  = g++
+CC  = clang
+CXX = clang++
+LD  = clang++
 RM  = rm
 
 # -----------------------------
@@ -25,24 +25,36 @@ PROJNAME_RELEASE = $(PROJNAME)
 # Compiler flags
 # -----------------------------
 
-WFLAGS       = -Wall -Wextra -Wdouble-promotion -Wformat=2 -Winit-self \
-               -Wmissing-include-dirs -Wswitch-default -Wswitch-enum -Wunused-local-typedefs \
-               -Wunused -Wuninitialized -Wsuggest-attribute=pure \
-               -Wsuggest-attribute=const -Wsuggest-attribute=noreturn -Wfloat-equal \
-               -Wundef -Wshadow -Wunsafe-loop-optimizations \
-               -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings \
-               -Wconversion -Wlogical-op \
-               -Wmissing-field-initializers \
-               -Wmissing-format-attribute -Wpacked -Wredundant-decls \
-               -Wvector-operation-performance -Wdisabled-optimization \
-               -Wstack-protector
-CWFLAGS      = -Wc++-compat -Wbad-function-cast -Wstrict-prototypes \
-               -Wnested-externs -Wunsuffixed-float-constants
-UNUSED       = -Wdeclaration-after-statement -Wmissing-prototypes -Wstrict-overflow=5 -Winline
-#-Wzero-as-null-pointer-constant -Wpadded
+
+
+GCCWARNINGS  = all extra double-promotion format=2 init-self \
+               missing-include-dirs switch-default switch-enum \
+               unused-local-typedefs unused uninitialized \
+               suggest-attribute=pure suggest-attribute=const \
+               suggest-attribute=noreturn float-equal undef shadow \
+               unsafe-loop-optimizations pointer-arith cast-qual cast-align \
+               write-strings conversion logical-op missing-field-initializers \
+               missing-format-attribute packed redundant-decls \
+               vector-operation-performance disabled-optimization \
+               stack-protector
+GPPWARNINGS  = c++-compat bad-function-cast strict-prototypes nested-externs \
+               unsuffixed-float-constants
+GPPUNUSED    = declaration-after-statement missing-prototypes inline \
+               zero-as-null-pointer-constant strict-overflow=5 padded
+
+CLANGENABLE  = everything
+CLANGDISABLE = padded c++98-compat old-style-cast missing-prototypes \
+               reserved-id-macro weak-vtables global-constructors \
+               exit-time-destructors disabled-macro-expansion
+CLANGWFLAGS  = $(foreach warning,$(CLANGENABLE),-W$(warning)) \
+               $(foreach warning,$(CLANGDISABLE),-Wno-$(warning))
+
+CWFLAGS      = $(CLANGWFLAGS)
+CXXWFLAGS    = $(CLANGWFLAGS)
+
 DEBUGFLAGS   = -g3 -O0 -pthread
 RELEASEFLAGS = -g0 -O2 -pthread
-CFLAGS       = -std=c11 
+CFLAGS       = -std=c11
 CXXFLAGS     = -std=c++14
 
 # ---------
@@ -120,21 +132,21 @@ debug/%.o: %.c Makefile
 	@echo "  [ Compiling $< ]" && \
 	mkdir debug/$(dir $<) -p && \
 	$(CC) $(CFLAGS) $(WFLAGS) $(CWFLAGS) $(DEBUGFLAGS) -MMD -MP -c $< -o $@
-	
+
 debug/%.o: %.cpp Makefile
 	@echo "  [ Compiling $< ]" && \
 	mkdir debug/$(dir $<) -p && \
-	$(CXX) $(CXXFLAGS) $(WFLAGS) $(DEBUGFLAGS) -MMD -MP -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(CXXWFLAGS) $(DEBUGFLAGS) -MMD -MP -c $< -o $@
 
 release/%.o: %.c Makefile
 	@echo "  [ Compiling $< ]" && \
 	mkdir release/$(dir $<) -p && \
-	$(CC) $(CFLAGS) $(WFLAGS) $(CWFLAGS) $(RELEASEFLAGS) -MMD -MP -c $< -o $@
-	
+	$(CC) $(CFLAGS) $(CWFLAGS) $(RELEASEFLAGS) -MMD -MP -c $< -o $@
+
 release/%.o: %.cpp Makefile
 	@echo "  [ Compiling $< ]" && \
 	mkdir release/$(dir $<) -p && \
-	$(CXX) $(CXXFLAGS) $(WFLAGS) $(RELEASEFLAGS) -MMD -MP -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(CXXWFLAGS) $(RELEASEFLAGS) -MMD -MP -c $< -o $@
 
 clean:
 	-@$(RM) -f $(wildcard $(OBJFILES_DEBUG) $(OBJFILES_RELEASE) $(DEPFILES_DEBUG) $(DEPFILES_RELEASE) $(PROJNAME_DEBUG) $(PROJNAME_RELEASE)) && \
@@ -144,4 +156,3 @@ clean:
 cleangedit:
 	@$(RM) -rfv `find ./ -name "*~"` && \
 	echo "  [ Clean gedit~ done ]"
-

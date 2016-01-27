@@ -2,11 +2,13 @@
 #define __I3STATE_HEADER___
 
 #include <cstdint>
+#include <map>
 #include <string>
 #include <vector>
-#include <map>
 
-#include <pthread.h>
+#include <mutex>
+
+#include "util.hpp"
 
 #define MAX_DISP_LEN 20
 #define MAX_NAME_LEN 50
@@ -28,21 +30,22 @@ struct Workspace
   std::string focusedApp; // undefined when unknown
 };
 
-class I3State
+class I3State : public Logger
 {
 private:
   int fd;
+  bool& die;
 
 public:
-  pthread_mutex_t mutex; // TODO private
+  std::mutex mutex; // TODO private
 
-  explicit I3State(std::string path);
+  explicit I3State(std::string path, bool& die);
   ~I3State();
   bool valid;
 
   std::string mode;
 
-  std::map<std::string, int> outputs;
+  std::map<std::string, uint8_t> outputs;
   std::vector<Workspace> workspaces;
 
   size_t focusedWorkspace;

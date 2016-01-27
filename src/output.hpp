@@ -58,12 +58,11 @@ void dynamic_section(float value,
 void startButton(std::string cmd, std::ostream& = std::cout);
 void stopButton(std::ostream& = std::cout);
 
-#include <cstdint>
 #include "i3state.hpp"
+#include <cstdint>
 
 void init_colors(void);
 
-void echoPrimaryLemon(I3State& i3, uint8_t disp);
-void echoSecondaryLemon(I3State& i3, uint8_t disp);
+void echo_lemon(I3State const& i3);
 
 #endif

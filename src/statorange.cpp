@@ -2,80 +2,107 @@
  * ONLY FOR PRIVATE USE!
  * NEITHER VALIDATED, NOR EXCESSIVELY TESTED
  */
+//#define _POSIX_C_SOURCE 200809L
 
-#define _POSIX_C_SOURCE 200809L
-
+#include <csignal>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
-#include <ctime>
-#include <csignal>
 
-#include <unistd.h>
+#include <chrono>
+#include <condition_variable>
+#include <functional>
+#include <mutex>
 #include <pthread.h>
+#include <thread>
+
 #include <sys/socket.h>
+#include <unistd.h>
 
 #include "JSON/jsonParser.hpp"
 
-#include "i3state.hpp"
-#include "util.hpp"
-#include "output.hpp"
 #include "StateItem.hpp"
+#include "event_handler.hpp"
+#include "i3-ipc.hpp"
+#include "i3state.hpp"
+#include "output.hpp"
+#include "util.hpp"
 
 using namespace std;
 
 /******************************************************************************/
 /********************************** GLOBALS ***********************************/
 
-pthread_t main_thread;
-pthread_t event_listener_thread;
-pthread_cond_t notifier;
-pthread_mutex_t mutex;
+/**
+ * Long story short - C++ std::threads do not support killing each other. LOL
+ * This hack works as long as
+ *  std::thread::native_handle_type == __gthread == pthread_t
+ * if it fails, it should do so at compile-time.
+ */
+static pthread_t main_thread_id;
+static pthread_t handler_thread_id;
 
-volatile sig_atomic_t die = 0;
-volatile sig_atomic_t exit_status = EXIT_SUCCESS;
-volatile sig_atomic_t force_update = 1;
-
-void forkEventListener(I3State* i3, string& path);
+static GlobalData* global;
 
 /******************************************************************************/
 
-Logger term("[Term handler]", cerr);
+typedef struct sigaction Sigaction;
+Sigaction mk_handler(sighandler_t handler)
+{
+  Sigaction handler_action;
+  handler_action.sa_handler = handler;
+  sigemptyset(&handler_action.sa_mask);
+  // sa.sa_flags = SA_RESTART | SA_NODEFER;
+  handler_action.sa_flags = 0;
+  return handler_action;
+}
+
+void register_handler(int sig, Sigaction& handler)
+{
+  sigaction(sig, &handler, nullptr);
+}
+
+/**
+ * Handler for sigint and sigterm.
+ */
 void term_handler(int signum)
 {
-  die = 1;
+  static Logger term("[Term handler]", cerr);
 
-  pthread_t this_ = pthread_self();
-  if(this_ == main_thread)
+  global->die = 1;
+
+  pthread_t this_id = pthread_self();
+  if(this_id == main_thread_id)
   {
     term.log() << "main() received signal " << signum << endl;
     term.log() << "Interrupting event_listener()" << endl;
-    pthread_kill(event_listener_thread, SIGINT);
+    pthread_kill(handler_thread_id, SIGINT);
   }
   else
   {
     term.log() << "event_listener() received signal " << signum << endl;
     term.log() << "Notifying main()" << endl;
-    pthread_cond_signal(&notifier);
+    global->notifier.notify_one();
   }
   return;
 }
 
 /**
- * Used to force a systemstate update
+ * Used to force a systemstate update (sigusr1)
  */
-Logger nlog("[Notify handler]", cerr);
 void notify_handler(int signum)
 {
-  force_update = 1;
-  pthread_cond_signal(&notifier);
+  static Logger nlog("[Notify handler]", cerr);
 
-  pthread_t this_ = pthread_self();
-  if(this_ == event_listener_thread)
+  global->force_update = 1;
+  global->notifier.notify_one();
+
+  pthread_t this_id = pthread_self();
+  if(this_id == handler_thread_id)
   {
     nlog.log() << "event_listener() received signal " << signum << endl;
     nlog.log() << "Interrupting main()" << endl;
-    pthread_kill(main_thread, SIGUSR1);
+    pthread_kill(main_thread_id, SIGUSR1);
   }
   else
   {
@@ -85,28 +112,13 @@ void notify_handler(int signum)
   return;
 }
 
-void register_signal_handlers(void)
-{
-  struct sigaction term_handler_action;
-  term_handler_action.sa_handler = term_handler;
-  sigemptyset(&term_handler_action.sa_mask);
-  // sa.sa_flags = SA_RESTART | SA_NODEFER;
-  term_handler_action.sa_flags = 0;
-  sigaction(SIGINT, &term_handler_action, nullptr);
-  sigaction(SIGTERM, &term_handler_action, nullptr);
-
-  struct sigaction sigusr1_handler_action;
-  sigusr1_handler_action.sa_handler = notify_handler;
-  sigemptyset(&sigusr1_handler_action.sa_mask);
-  // sa.sa_flags = SA_RESTART | SA_NODEFER;
-  sigusr1_handler_action.sa_flags = 0;
-  sigaction(SIGUSR1, &sigusr1_handler_action, nullptr);
-}
-
 /******************************************************************************/
 
 int main(int argc, char* argv[])
 {
+  GlobalData global_data;
+  global = &global_data;
+
   Logger l("[Main]", cerr);
   l.log() << "Launching Statorange" << endl;
 
@@ -126,7 +138,7 @@ int main(int argc, char* argv[])
 
   init_colors();
 
-  time_t cooldown;
+  chrono::seconds cooldown;
   string path;
 
   try
@@ -136,11 +148,18 @@ int main(int argc, char* argv[])
     JSONObject& config_json = config_json_raw->object();
 
     // cooldown
-    cooldown = config_json["cooldown"].number();
+    int cooldown_int = config_json["cooldown"].number();
+    cooldown = chrono::seconds(cooldown_int);
 
     // get the socket path to i3
     string get_socket = config_json["get_socket"].string();
-    path = execute(get_socket);
+    if(!execute(get_socket, path, global_data.die))
+    {
+      l.log() << "Could not get i3 socket path" << endl;
+      delete config_json_raw;
+      return EXIT_FAILURE;
+    }
+    l.log() << "Socket path: " << path << endl;
     path.pop_back();
 
     // init StateItems
@@ -157,72 +176,62 @@ int main(int argc, char* argv[])
   }
 
   // init i3State
-  I3State i3State(path);
+  I3State i3State(path, global_data.die);
   i3State.updateOutputs();
 
-  /** Initialize and fork event listener */
-  pthread_cond_init(&notifier, nullptr);
-  pthread_mutex_init(&mutex, nullptr);
+  // signal handlers and event handlers
+  Sigaction term = mk_handler(term_handler);
+  register_handler(SIGINT, term);
+  register_handler(SIGTERM, term);
 
-  forkEventListener(&i3State, path);
-  main_thread = pthread_self();
+  Sigaction notify = mk_handler(notify_handler);
+  register_handler(SIGUSR1, notify);
 
-  register_signal_handlers();
+  int push_socket = init_socket(path.c_str());
+  EventHandler event_handler(i3State, push_socket, global_data);
+  event_handler.fork();
 
+  // main loop
   l.log() << "Entering main loop" << endl;
-  pthread_mutex_lock(&mutex);
-
+  std::unique_lock<std::mutex> lock(global_data.mutex); // TODO
   try
   {
 
-    while(!die)
+    while(!global_data.die) // <- volatile
     {
-      if(force_update)
+      if(global_data.force_update)
       {
         StateItem::forceUpdates();
-        force_update = 0;
+        global_data.force_update = 0;
       }
       else
         StateItem::updates();
 
-      pthread_mutex_lock(&i3State.mutex);
+      i3State.mutex.lock();
       if(!i3State.valid)
-        die = 1;
-      else
-      {
-        echoPrimaryLemon(i3State, 0);
-        for(uint8_t i = 1; i < i3State.outputs.size(); i++)
-          echoSecondaryLemon(i3State, i);
-        cout << endl;
-        cout.flush();
-      }
-      pthread_mutex_unlock(&i3State.mutex);
-
-      if(die)
-        break; // skip time delay here -> annoying
-      struct timespec abstime;
-      clock_gettime(CLOCK_REALTIME, &abstime);
-      abstime.tv_sec += cooldown;
-      pthread_cond_timedwait(&notifier, &mutex, &abstime);
+        break;
+      echo_lemon(i3State);
+      i3State.mutex.unlock();
+      global_data.notifier.wait_for(lock, std::chrono::seconds(5));
     }
   }
   catch(TraceCeption& e)
   {
     l.log() << "Exception catched:" << endl;
     e.printStackTrace();
-    exit_status = EXIT_FAILURE;
+    global_data.exit_status = EXIT_FAILURE;
   }
 
-  pthread_mutex_unlock(&mutex);
+  global_data.die = 1;
+  i3State.mutex.unlock(); // returns error if already unlocked (ignore)
+  lock.unlock();
   l.log() << "Exiting main loop" << endl;
 
-  pthread_join(event_listener_thread, nullptr);
+  shutdown(push_socket, SHUT_RDWR);
+  event_handler.join();
 
   StateItem::close();
 
-  pthread_mutex_destroy(&mutex);
-  pthread_cond_destroy(&notifier);
-
   l.log() << "Stopping Statorange" << endl;
-  return exit_status;
+  return global_data.exit_status;
 }

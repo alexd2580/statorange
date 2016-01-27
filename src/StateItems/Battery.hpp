@@ -33,7 +33,7 @@ private:
 public:
   static void settings(JSONObject&);
   Battery(JSONObject&);
-  virtual ~Battery(){};
+  virtual ~Battery(){}
 };
 
 #endif
