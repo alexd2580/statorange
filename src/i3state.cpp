@@ -150,7 +150,7 @@ void I3State::parseWorkspaces(void)
 /******************************************************************************/
 /******************************************************************************/
 
-I3State::I3State(string path, bool& die_)
+I3State::I3State(string& path, bool& die_)
     : Logger("[I3State]", cerr), fd(init_socket(path.c_str())), die(die_)
 {
   mutex.lock();

@@ -39,7 +39,7 @@ private:
 public:
   std::mutex mutex; // TODO private
 
-  explicit I3State(std::string path, bool& die);
+  explicit I3State(std::string& path, bool& die);
   ~I3State();
   bool valid;
 

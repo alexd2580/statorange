@@ -11,8 +11,6 @@
 
 using namespace std;
 
-extern volatile sig_atomic_t die;
-
 int const EXIT_RESTART = 4;
 
 string const shell_file_loc = "/bin/sh";

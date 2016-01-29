@@ -12,8 +12,6 @@
 
 #include "i3-ipc-constants.hpp"
 
-extern volatile sig_atomic_t die;
-
 using namespace std;
 
 #define CASE_RETURN(l)                                                         \

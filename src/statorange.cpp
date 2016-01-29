@@ -117,6 +117,7 @@ void notify_handler(int signum)
 int main(int argc, char* argv[])
 {
   GlobalData global_data;
+  global_data.die = false;
   global = &global_data;
 
   Logger l("[Main]", cerr);
