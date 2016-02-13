@@ -9,8 +9,9 @@
 struct SpaceItem
 {
   std::string mount_point;
-  std::string size;
-  std::string used;
+  float size;
+  float used;
+  std::string unit;
 };
 
 class Space : public StateItem, public Logger

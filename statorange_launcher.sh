@@ -1,23 +1,24 @@
 #!/bin/sh
 
-echo `date`
-
 this_path=`dirname "$0"`
-
+log_path=$this_path"/log"
+mkdir -p $log_path
 exit_value=4
-
-#transparency_cmd=xcompmgr
+echo `date`
 
 normal_font="-f -misc-fixed-medium-r-normal--13-120-75-75-C-70-iso10646-1"
 powerline_font="-f -xos4-terminesspowerline-bold-r-normal--12-120-72-72-c-60-iso10646-1"
 powerline_icons="-f -xos4-terminusicons2mono-medium-r-normal--12-120-72-72-m-60-iso8859-1"
-lemonbar_cmd="lemonbar $normal_font $powerline_font $powerline_icons"
-lemonbar_log=$this_path"/lemonbar.log"
 
+#transparency_cmd=xcompmgr
+lemonbar_cmd="lemonbar $normal_font $powerline_font $powerline_icons"
 statorange_cmd=$this_path"/statorange"
 statorange_config=$this_path"/config.json"
 statorange_fifo=$this_path"/statorange.fifo"
-statorange_log=$this_path"/statorange.log"
+
+lemonbar_log=$log_path"/lemonbar.log"
+statorange_log=$log_path"/statorange.log"
+command_log=$log_path"/command.log"
 
 rm -f $statorange_log $lemonbar_log
 echo `date` > $statorange_log
@@ -42,7 +43,7 @@ do
   echo $statorange_pid
 
   echo -n "Launching lemonbar ... "
-  cat $statorange_fifo | $lemonbar_cmd | tee -a $lemonbar_log | $SHELL &
+  cat $statorange_fifo | $lemonbar_cmd | tee -a $lemonbar_log | $SHELL >> $command_log&
   echo $!
 
   wait $statorange_pid

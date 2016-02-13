@@ -40,7 +40,7 @@ except for nm-applet or wicd to connect to a network GRAPHICALLY).
 * `alsa-utils`/`libasound2-dev`
 * `trayer`
 * `htop`
-* `x-terminal-emulator` (e.g. `terminator`)
+* `terminator` or another terminal emulator (for certain features)
 
 ### Found on GitHub
 * <a href=https://github.com/LemonBoy/bar>`bar` (`lemonbar`)</a> : https://github.com/LemonBoy/bar.git

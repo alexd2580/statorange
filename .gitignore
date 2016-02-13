@@ -2,7 +2,7 @@ release
 debug
 *.d
 *.o
-*.log
+log
 other
 *.fifo
 statorange

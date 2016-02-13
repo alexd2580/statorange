@@ -19,39 +19,11 @@ Space::Space(JSONObject& item) : StateItem(item), Logger("[Space]", cerr)
   for(unsigned int i = 0; i < mpoints.size(); i++)
   {
     si.mount_point = mpoints[i].string();
-    si.size = "";
-    si.used = "";
+    si.size = 0;
+    si.used = 0;
+    si.unit = "B";
     items.push_back(si);
   }
-}
-
-string make2DecFloat(float f)
-{
-  float mp = floor(f);
-  float fp = round((f - mp) * 100);
-  return std::to_string((int)mp) + '.' + std::to_string((int)fp);
-}
-
-string makeHumanReadable(unsigned long bytes)
-{
-  if(bytes < 1024)
-    return std::to_string(bytes) + "B";
-  float fbytes = bytes / 1024.0f;
-  if(fbytes < 1024.0f)
-    return make2DecFloat(fbytes) + "KiB";
-  fbytes /= 1024.0f;
-  if(fbytes < 1024.0f)
-    return make2DecFloat(fbytes) + "MiB";
-  fbytes /= 1024.0f;
-  if(fbytes < 1024.0f)
-    return make2DecFloat(fbytes) + "GiB";
-  fbytes /= 1024.0f;
-  if(fbytes < 1024.0f)
-    return make2DecFloat(fbytes) + "TiB";
-  fbytes /= 1024.0f;
-  if(fbytes < 1024.0f)
-    return make2DecFloat(fbytes) + "EiB";
-  return "TOO LARGE";
 }
 
 bool Space::getSpaceUsage(SpaceItem& dir)
@@ -59,11 +31,38 @@ bool Space::getSpaceUsage(SpaceItem& dir)
   struct statvfs s;
   statvfs(dir.mount_point.c_str(), &s);
 
-  unsigned long total_size = s.f_frsize * s.f_blocks;
-  unsigned long used_size = total_size - s.f_bfree * s.f_bsize;
+  dir.size = s.f_frsize * s.f_blocks;
+  dir.used = dir.size - s.f_bfree * s.f_bsize;
 
-  dir.size = makeHumanReadable(total_size);
-  dir.used = makeHumanReadable(used_size);
+  unsigned short u = 0;
+  while(dir.size > 1024.0f && u < 5)
+  {
+    dir.used /= 1024.0f;
+    dir.size /= 1024.0f;
+    u++;
+  }
+
+  switch(u)
+  {
+  case 0:
+    dir.unit = "B";
+    break;
+  case 1:
+    dir.unit = "KiB";
+    break;
+  case 2:
+    dir.unit = "MiB";
+    break;
+  case 3:
+    dir.unit = "GiB";
+    break;
+  case 4:
+    dir.unit = "TiB";
+    break;
+  default:
+    dir.unit = "PiB";
+    break;
+  }
   return true;
 }
 
@@ -75,17 +74,21 @@ bool Space::update(void)
   return true;
 }
 
+#include <iomanip>
+
 void Space::print(void)
 {
   if(items.size() > 0)
   {
     separate(Left, neutral_colors);
     auto i = items.begin();
-    cout << ' ' << i->mount_point << ' ' << i->used << '/' << i->size << ' ';
+    cout << setprecision(2) << std::setfill('0') << ' ' << i->mount_point << ' '
+         << i->used << '/' << i->size << i->unit << ' ';
     for(i++; i != items.end(); i++)
     {
       separate(Left, neutral_colors);
-      cout << ' ' << i->mount_point << ' ' << i->used << '/' << i->size << ' ';
+      cout << setprecision(2) << std::setfill('0') << ' ' << i->mount_point
+           << ' ' << i->used << '/' << i->size << i->unit << ' ';
     }
     separate(Left, white_on_black);
   }

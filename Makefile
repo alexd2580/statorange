@@ -115,7 +115,7 @@ rebuild:
 	make clean && \
 	make all
 
-cleanall: clean cleangedit
+cleanall: clean
 
 -include $(DEPFILES_DEBUG)
 -include $(DEPFILES_RELEASE)
@@ -150,9 +150,5 @@ release/%.o: %.cpp Makefile
 
 clean:
 	-@$(RM) -f $(wildcard $(OBJFILES_DEBUG) $(OBJFILES_RELEASE) $(DEPFILES_DEBUG) $(DEPFILES_RELEASE) $(PROJNAME_DEBUG) $(PROJNAME_RELEASE)) && \
-	$(RM) -rf debug release && \
-	echo "  [ Clean main done ]"
-
-cleangedit:
-	@$(RM) -rfv `find ./ -name "*~"` && \
-	echo "  [ Clean gedit~ done ]"
+	$(RM) -rf debug release log && \
+	echo "  [ Clean done ]"

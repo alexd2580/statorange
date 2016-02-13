@@ -16,7 +16,7 @@
     {
       "item" : "Volume",
       "cooldown" : 300,
-      "button" : "x-terminal-emulator -e alsamixer &",
+      "button" : "terminator -e alsamixer &",
       "card" : "default",
       "mixer" : "Master"
     },
@@ -41,7 +41,7 @@
     {
       "item" : "CPU",
       "cooldown" : 5,
-      "button" : "x-terminal-emulator -e htop &"
+      "button" : "terminator -e htop &"
     },
     {
       "item" : "Space",
