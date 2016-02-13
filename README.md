@@ -22,12 +22,6 @@ The predefined status items use the following programs/files:
 * Volume<br>
   * `alsamixer`, which opens when you click the volume section.
 
-* Space<br>
-  * `df -h` which _should_ be available from the get-go.
-
-* Network<br>
-  * `/sbin/iwconfig` to get info about the wireless connection.
-
 * CPU<br>
   * temperature: `/sys/bus/acpi/devices/LNXTHERM:00/thermal_zone/temp`<br>
       or `/sys/devices/platform/coretemp.0/hwmon/hwmon0/temp2_input`
@@ -60,13 +54,11 @@ is fed to lemonbar).
 ## Installing fonts
 
 The fonts used in statorange_launcher.sh have to be regustered. Copy the fonts from res to ~/.fonts.
-Also these commands must be run on sartup (put them in ~/.xsession):
+Also these commands must be run on startup (put them in ~/.xsession):
 
 ```shell
 xset fp+ $HOME/.fonts/misc
-xset fp+ $HOME/.fonts/ohsnap
 xset fp+ $HOME/.fonts/terminesspowerline
-xset fp+ $HOME/.fonts/tewi
 ```
 
 ## Launching
@@ -91,7 +83,6 @@ exec PATHTOSTATORANGE/statorange_launcher.sh > PATHTOSTATORANGE/statorange_launc
 
 The config (`config.json`) is written in JSON. An example configuration can be found in `config.example.json`.
 
-* `get_socket` - retrieve i3 un*x socket path.
 * `cooldown` - delay between bar updates in seconds.
 * static settings for the state items (CPU, Battery, Volume, Space, Date, Net).
 * `order` - as the name implies, the order is important.
@@ -149,7 +140,7 @@ which can and will be redirected to a shell.
 
 To define other state items (like a VLC section which displays the currently playing song)
 take a look at the existing items in `src/StateItems/`. The items are instantiated in
-`src/SrareItem.cpp:init()`. Include your .hpp, set the static settings, and add an if
+`src/StareItem.cpp:init()`. Include your .hpp, set the static settings, and add an if
 to the loop below. Put the settings into the config.
 
 ## Author

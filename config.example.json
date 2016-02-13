@@ -1,5 +1,4 @@
 {
-  "get_socket" : "i3 --get-socketpath",
   "cooldown" : 5,
 
   "Battery" : {
@@ -11,12 +10,6 @@
   },
   "Volume" : {
     "deprecated_get_volume" : "amixer get Master"
-  },
-  "Space" : {
-    "get_space" : "df -h"
-  },
-  "Date" : {
-    "deprecated_get_date" : "date"
   },
 
   "order" : [

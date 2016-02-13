@@ -171,56 +171,6 @@ bool load_file(string& name, string& content)
   return false;
 }
 
-bool execute(string const& command, string& res, bool& die)
-{
-  int fd[2];
-  if(pipe(fd) != 0)
-  {
-    perror("PIPE failed");
-    return false;
-  }
-
-  int childpid = fork();
-  if(childpid == -1) // Fail
-  {
-    perror("FORK failed");
-    return false;
-  }
-  else if(childpid == 0) // I am child
-  {
-    close(1); // stdout
-    dup2(fd[1], 1);
-    close(fd[0]);
-    execlp(shell_file_loc.c_str(),
-           shell_file_loc.c_str(),
-           "-c",
-           command.c_str(),
-           nullptr);
-    // child has been replaced by shell command
-  }
-
-  close(fd[1]);
-  wait(nullptr);
-
-  res = "";
-  char buffer[500];
-
-  errno = EINTR;
-  while((errno == EAGAIN || errno == EINTR) && !die)
-  {
-    errno = 0;
-    ssize_t n = 0;
-    n = read(fd[0], buffer, 500);
-    if(n == 0)
-      break;
-    buffer[n] = '\0';
-    res += buffer;
-  }
-
-  close(fd[0]);
-  return true;
-}
-
 string mkTerminalCmd(string s) { return terminal_cmd + " " + s + "&"; }
 
 Logger::Logger(string lname, std::ostream& ostr) : logname(lname), ostream(ostr)

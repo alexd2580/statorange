@@ -16,8 +16,6 @@ struct SpaceItem
 class Space : public StateItem, public Logger
 {
 private:
-  static std::string get_space;
-
   std::vector<SpaceItem> items;
   bool getSpaceUsage(SpaceItem& dir);
 
@@ -25,9 +23,9 @@ private:
   void print(void);
 
 public:
-  static void settings(JSONObject&);
+  static void settings(JSONObject&) {}
   explicit Space(JSONObject& item);
-  virtual ~Space(){}
+  virtual ~Space() {}
 };
 
 #endif

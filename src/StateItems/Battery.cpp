@@ -97,7 +97,6 @@ void Battery::print(void)
         break;
       }
       case NotFound:
-      default:
         break;
       }
       separate(Left, white_on_black, o);

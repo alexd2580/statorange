@@ -116,20 +116,22 @@ void notify_handler(int signum)
 
 int main(int argc, char* argv[])
 {
+  Logger l("[Main]", cerr);
+  l.log() << "Launching Statorange" << endl;
+
+  if(argc < 3)
+  {
+    cout << "Please supply the socket and config paths." << endl;
+    return EXIT_FAILURE;
+  }
+
   GlobalData global_data;
   global_data.die = false;
   global = &global_data;
 
-  Logger l("[Main]", cerr);
-  l.log() << "Launching Statorange" << endl;
+  string socket_path(argv[1]);
+  string config_name(argv[2]);
 
-  if(argc < 2)
-  {
-    cout << "Please supply the config path." << endl;
-    return EXIT_FAILURE;
-  }
-
-  string config_name(argv[1]);
   string config_string;
   if(!load_file(config_name, config_string))
   {
@@ -140,7 +142,6 @@ int main(int argc, char* argv[])
   init_colors();
 
   chrono::seconds cooldown;
-  string path;
 
   try
   {
@@ -151,17 +152,6 @@ int main(int argc, char* argv[])
     // cooldown
     int cooldown_int = config_json["cooldown"].number();
     cooldown = chrono::seconds(cooldown_int);
-
-    // get the socket path to i3
-    string get_socket = config_json["get_socket"].string();
-    if(!execute(get_socket, path, global_data.die))
-    {
-      l.log() << "Could not get i3 socket path" << endl;
-      delete config_json_raw;
-      return EXIT_FAILURE;
-    }
-    l.log() << "Socket path: " << path << endl;
-    path.pop_back();
 
     // init StateItems
     StateItem::init(config_json);
@@ -177,7 +167,7 @@ int main(int argc, char* argv[])
   }
 
   // init i3State
-  I3State i3State(path, global_data.die);
+  I3State i3State(socket_path, global_data.die);
   i3State.updateOutputs();
 
   // signal handlers and event handlers
@@ -188,7 +178,7 @@ int main(int argc, char* argv[])
   Sigaction notify = mk_handler(notify_handler);
   register_handler(SIGUSR1, notify);
 
-  int push_socket = init_socket(path.c_str());
+  int push_socket = init_socket(socket_path.c_str());
   EventHandler event_handler(i3State, push_socket, global_data);
   event_handler.fork();
 
@@ -213,7 +203,7 @@ int main(int argc, char* argv[])
         break;
       echo_lemon(i3State);
       i3State.mutex.unlock();
-      global_data.notifier.wait_for(lock, std::chrono::seconds(5));
+      global_data.notifier.wait_for(lock, cooldown);
     }
   }
   catch(TraceCeption& e)

@@ -32,9 +32,12 @@ do
   #$transparency_cmd &
   #transparency_pid=$!
   #echo $transparency_pid
-  
+
+  socket_path=`i3 --get-socketpath`
+  echo "Socket path: $socket_path"
+
   echo -n "Launching statorange ... "
-  $statorange_cmd $statorange_config 2>> $statorange_log 1> $statorange_fifo &
+  $statorange_cmd $socket_path $statorange_config 2>> $statorange_log 1> $statorange_fifo &
   statorange_pid=$!
   echo $statorange_pid
 
@@ -44,10 +47,12 @@ do
 
   wait $statorange_pid
   exit_value=$?
-  echo "$statorange_cmd terminated with exit value $exit_value"
+  dt=`date`
+  echo "[$dt] $statorange_cmd terminated with exit value $exit_value"
   #kill $transparency_pid
 done
 
 rm -f $statorange_fifo
 
-echo "statorange_launcher.sh exiting"
+dt=`date`
+echo "[$dt] statorange_launcher.sh exiting"

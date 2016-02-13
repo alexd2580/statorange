@@ -1,20 +1,15 @@
 #include <iostream>
-
+#include <string.h>
+#include <sys/statvfs.h>
+#include <cmath>
 #include "../output.hpp"
 #include "../util.hpp"
 #include "Space.hpp"
 
 using namespace std;
 
-string Space::get_space = "";
-
 /******************************************************************************/
 /******************************************************************************/
-
-void Space::settings(JSONObject& section)
-{
-  get_space.assign(section["get_space"].string());
-}
 
 Space::Space(JSONObject& item) : StateItem(item), Logger("[Space]", cerr)
 {
@@ -30,39 +25,45 @@ Space::Space(JSONObject& item) : StateItem(item), Logger("[Space]", cerr)
   }
 }
 
+string make2DecFloat(float f)
+{
+  float mp = floor(f);
+  float fp = round((f - mp) * 100);
+  return std::to_string((int)mp) + '.' + std::to_string((int)fp);
+}
+
+string makeHumanReadable(unsigned long bytes)
+{
+  if(bytes < 1024)
+    return std::to_string(bytes) + "B";
+  float fbytes = bytes / 1024.0f;
+  if(fbytes < 1024.0f)
+    return make2DecFloat(fbytes) + "KiB";
+  fbytes /= 1024.0f;
+  if(fbytes < 1024.0f)
+    return make2DecFloat(fbytes) + "MiB";
+  fbytes /= 1024.0f;
+  if(fbytes < 1024.0f)
+    return make2DecFloat(fbytes) + "GiB";
+  fbytes /= 1024.0f;
+  if(fbytes < 1024.0f)
+    return make2DecFloat(fbytes) + "TiB";
+  fbytes /= 1024.0f;
+  if(fbytes < 1024.0f)
+    return make2DecFloat(fbytes) + "EiB";
+  return "TOO LARGE";
+}
+
 bool Space::getSpaceUsage(SpaceItem& dir)
 {
-  string cmd = get_space + " " + dir.mount_point;
-  string output;
-  bool yay = false; // broken architecture.
-  if(!execute(cmd, output, yay))
-  {
-    log() << "Couldn't execute " << cmd << endl;
-    return false;
-  }
+  struct statvfs s;
+  statvfs(dir.mount_point.c_str(), &s);
 
-  try
-  {
-    TextPos pos(output.c_str());
-    while(*pos != '\n')
-      (void)pos.next();
-    (void)pos.next();
-    pos.skip_nonspace();
-    pos.skip_whitespace();
-    char const* beg = pos.ptr();
-    pos.skip_nonspace();
-    dir.size.assign(beg, (size_t)(pos.ptr() - beg));
-    pos.skip_whitespace();
-    beg = pos.ptr();
-    pos.skip_nonspace();
-    dir.used.assign(beg, (size_t)(pos.ptr() - beg));
-  }
-  catch(TraceCeption& e)
-  {
-    log() << "While parsing output of " << get_space << endl;
-    e.printStackTrace();
-    return false;
-  }
+  unsigned long total_size = s.f_frsize * s.f_blocks;
+  unsigned long used_size = total_size - s.f_bfree * s.f_bsize;
+
+  dir.size = makeHumanReadable(total_size);
+  dir.used = makeHumanReadable(used_size);
   return true;
 }
 

@@ -1,4 +1,3 @@
-
 #include <iostream>
 #include "output.hpp"
 
@@ -76,7 +75,6 @@ void StateItem::init(JSONObject& config)
   CPU::settings(config["CPU"].object());
   Battery::settings(config["Battery"].object());
   Volume::settings(config["Volume"].object());
-  Space::settings(config["Space"].object());
 
   JSONArray& order = config["order"].array();
   size_t length = order.size();

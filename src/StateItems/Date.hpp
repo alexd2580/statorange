@@ -16,9 +16,8 @@ private:
   void print(void);
 
 public:
-  // static void settings(JSONObject& section);
   Date(JSONObject& item);
-  virtual ~Date(){}
+  virtual ~Date() {}
 };
 
 #endif

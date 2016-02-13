@@ -11,10 +11,6 @@
 
 using namespace std;
 
-/*void Date::settings(JSONObject&)
-{
-}*/
-
 Date::Date(JSONObject& item) : StateItem(item)
 {
   format = item["format"].string();
