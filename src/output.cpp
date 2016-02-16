@@ -9,6 +9,9 @@ using namespace std;
 /******************************************************************************/
 /*****************************     ICONS     **********************************/
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
+
 // Icon glyphs from Terminusicons2
 char const* const icon_clock = "Õ";   // Clock icon
 char const* const icon_cpu = "Ï";     // CPU icon
@@ -98,6 +101,8 @@ static char const* sep_left = "";    // Powerline separator left
 static char const* sep_right = "";   // Powerline separator right
 static char const* sep_l_left = "";  // Powerline light separator left
 static char const* sep_l_right = ""; // Powerline light sepatator right
+
+#pragma clang diagnostic pop
 
 void separate(Direction d, char const** colors, ostream& o)
 {
