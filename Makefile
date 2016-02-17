@@ -67,7 +67,7 @@ CXXFLAGS     = -std=c++14
 # Linker flags
 # -----------------------------
 
-LIBS = pthread m dl asound
+LIBS = pthread m dl asound ssl crypto
 
 # -----------------------------
 # Some automatic stuff

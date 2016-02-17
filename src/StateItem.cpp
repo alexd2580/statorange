@@ -116,7 +116,7 @@ void StateItem::printState(void)
     (*i)->wrap_print();
 }
 
-void StateItem::close(void)
+void StateItem::deinit(void)
 {
   for(auto i = states.begin(); i != states.end(); i++)
     delete(*i);

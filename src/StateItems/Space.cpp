@@ -82,13 +82,14 @@ void Space::print(void)
   {
     separate(Left, neutral_colors);
     auto i = items.begin();
-    cout << setprecision(2) << std::setfill('0') << ' ' << i->mount_point << ' '
-         << i->used << '/' << i->size << i->unit << ' ';
+    cout.precision(1);
+    cout << std::fixed << ' ' << i->mount_point << ' ' << i->used << '/'
+         << i->size << i->unit << ' ';
     for(i++; i != items.end(); i++)
     {
       separate(Left, neutral_colors);
-      cout << setprecision(2) << std::setfill('0') << ' ' << i->mount_point
-           << ' ' << i->used << '/' << i->size << i->unit << ' ';
+      cout << std::fixed << ' ' << i->mount_point << ' ' << i->used << '/'
+           << i->size << i->unit << ' ';
     }
     separate(Left, white_on_black);
   }

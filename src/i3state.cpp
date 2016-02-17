@@ -166,7 +166,7 @@ I3State::~I3State()
 {
   mutex.lock();
 
-  shutdown(fd, SHUT_RDWR);
+  close(fd);
 
   mutex.unlock();
 }

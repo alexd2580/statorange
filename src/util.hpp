@@ -107,8 +107,6 @@ void store_string(char* dst, size_t dst_size, char* src, size_t src_size);
 
 bool load_file(std::string& name, std::string& content);
 
-bool execute(std::string const& command, std::string& res, bool& die);
-
 std::string mkTerminalCmd(std::string);
 
 std::ostream&

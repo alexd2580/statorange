@@ -80,6 +80,7 @@ bool Net::get_IP_addresses(void)
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 bool Net::get_wireless_state(void)
 {
@@ -155,7 +156,7 @@ bool Net::get_wireless_state(void)
   }
   catch(bool b)
   {
-    shutdown(sockfd, SHUT_RDWR);
+    close(sockfd);
     return b;
   }
 }

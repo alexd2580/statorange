@@ -218,10 +218,10 @@ int main(int argc, char* argv[])
   lock.unlock();
   l.log() << "Exiting main loop" << endl;
 
-  shutdown(push_socket, SHUT_RDWR);
+  close(push_socket);
   event_handler.join();
 
-  StateItem::close();
+  StateItem::deinit();
 
   l.log() << "Stopping Statorange" << endl;
   return global_data.exit_status;

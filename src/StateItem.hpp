@@ -35,7 +35,7 @@ public:
   static void updates(void);
   static void forceUpdates(void);
   static void printState(void);
-  static void close(void);
+  static void deinit(void);
 };
 
 #endif
