@@ -19,6 +19,8 @@ map<string, pair<string, string>> Net::addresses;
 #include <netinet/in.h>
 #include <sys/types.h>
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-align"
 bool Net::get_IP_addresses(void)
 {
   static time_t last_updated = 0;
@@ -72,6 +74,7 @@ bool Net::get_IP_addresses(void)
     freeifaddrs(base);
   return true;
 }
+#pragma clang diagnostic pop
 
 #include <cerrno>
 #include <cstdio>
