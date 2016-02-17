@@ -1,10 +1,11 @@
 #include <string>
-
 #include <netdb.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 
-class Address
+#include "util.hpp"
+
+class Address : public Logger
 {
 
 private:
@@ -24,10 +25,12 @@ private:
  };*/
 
 public:
+  Address(void);
   Address(std::string hostname, unsigned int port);
   virtual ~Address() {}
 
-  int openTCPSocket(void);
+  bool run_DNS_lookup(void);
+  int open_TCP_socket(void);
 
   static void print_sockaddr(struct sockaddr& addr);
   static void print_sockaddr_in(struct sockaddr_in& addr);

@@ -11,8 +11,21 @@
   "Volume" : {
     "deprecated_get_volume" : "amixer get Master"
   },
+  "GMail" : {
+      "ca_file" : "GeoTrust_Global_CA.pem",
+      "you_can_also_specify" : "ca_path",
+      "hostname" : "imap.google.com",
+      "port" : 993
+  },
 
   "order" : [
+    {
+      "item" : "GMail",
+      "cooldown" : 900,
+      "button" : "chromium www.gmail.com",
+      "username" : "your_mail@gmail.com",
+      "password" : "your_password"
+    },
     {
       "item" : "Volume",
       "cooldown" : 300,

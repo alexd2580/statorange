@@ -9,8 +9,14 @@
 
 using namespace std;
 
+Address::Address(void) : Address("localhost", 1337) {}
+
 Address::Address(std::string hostname_, unsigned int port_)
-    : hostname(hostname_), port(port_)
+    : Logger("[Address]", cerr), hostname(hostname_), port(port_)
+{
+}
+
+bool Address::run_DNS_lookup(void)
 {
   struct addrinfo hints;
   memset(&hints, 0, sizeof(struct addrinfo));
@@ -30,43 +36,50 @@ Address::Address(std::string hostname_, unsigned int port_)
 
   if(res != 0)
   {
-    cerr << gai_strerror(res);
-    return;
+    log() << gai_strerror(res);
+    return false;
   }
 
-  memset(&addrinfo, 0, sizeof(struct addrinfo));
+  if(addresses == nullptr)
+  {
+    log() << "Empty list" << endl;
+    return false;
+  }
+
   int i = 0;
-  cout << "Lookup of " << hostname << ":" << port
-       << " returned the following addresses" << endl;
+  log() << "Lookup of " << hostname << ":" << port
+        << " returned the following addresses" << endl;
   for(struct addrinfo* addr_ptr = addresses; addr_ptr != nullptr;
       addr_ptr = addr_ptr->ai_next)
   {
-    cout << i << ": ";
+    log() << i << ": ";
     print_sockaddr(*(addr_ptr->ai_addr));
     i++;
   }
 
-  cout << "Choosing the first one" << endl;
+  log() << "Choosing the first one" << endl;
+  memset(&addrinfo, 0, sizeof(struct addrinfo));
   memcpy(&addrinfo, addresses, sizeof(struct addrinfo));
   addrinfo.ai_next = nullptr;
 
   freeaddrinfo(addresses);
+  return true;
 }
 
-int Address::openTCPSocket(void)
+int Address::open_TCP_socket(void)
 {
   int fd =
       socket(addrinfo.ai_family, addrinfo.ai_socktype, addrinfo.ai_protocol);
   if(fd == -1)
   {
-    perror("Could not create socket");
+    log() << "Could not create socket: " << strerror(errno) << endl;
     return -1;
   }
 
   int res = connect(fd, addrinfo.ai_addr, addrinfo.ai_addrlen);
   if(res != 0)
   {
-    perror("Could not connect to server");
+    log() << "Could not connect to server: " << strerror(errno) << endl;
     return -1;
   }
   return fd;
