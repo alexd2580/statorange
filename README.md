@@ -42,6 +42,7 @@ except for nm-applet or wicd to connect to a network GRAPHICALLY).
 * `make`
 * `alsa-utils`/`libasound2-dev`
 * `libssl-dev`
+
 ### (Optional)
 * `chromium` or any other browser
 * `trayer`
@@ -59,7 +60,7 @@ is fed to lemonbar).
 
 ## Installing fonts
 
-The fonts used in statorange_launcher.sh have to be regustered. Copy the fonts from res to ~/.fonts.
+The fonts used in statorange_launcher.sh have to be registered. Copy the fonts from res to ~/.fonts.
 Also these commands must be run on startup (put them in ~/.xsession):
 
 ```shell
