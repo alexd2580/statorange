@@ -28,6 +28,9 @@ The predefined status items use the following programs/files:
   * load: `/proc/loadavg`
   * `htop` pops up when this section is clicked.
 
+* GMail<br>
+  * `chromium`, for viewing g-mails upon clicking.
+
 Also, since lemonbar does not provide a trayer section something like trayer
 is advisable. You can add a shortcut to toggle_trayer.sh (i chose mod+t)
 to toggle trayer, for when you really need it (you won't use it a lot,
@@ -38,6 +41,9 @@ except for nm-applet or wicd to connect to a network GRAPHICALLY).
 * `g++`/`clang++`
 * `make`
 * `alsa-utils`/`libasound2-dev`
+* `libssl-dev`
+### (Optional)
+* `chromium` or any other browser
 * `trayer`
 * `htop`
 * `terminator` or another terminal emulator (for certain features)
@@ -75,7 +81,7 @@ Instead place these two lines at the end of the config:
 # TRAYER
 bindsym $mod+t exec PATHTOSTATORANGE/toggle_trayer.sh
 # STATORANGE
-exec PATHTOSTATORANGE/statorange_launcher.sh > PATHTOSTATORANGE/statorange_launcher.log
+exec PATHTOSTATORANGE/statorange_launcher.sh > PATHTOSTATORANGE/log/statorange_launcher.log
 ```
 (Don't forget to replace _PATHTOSTATORANGE_)
 
@@ -84,7 +90,7 @@ exec PATHTOSTATORANGE/statorange_launcher.sh > PATHTOSTATORANGE/statorange_launc
 The config (`config.json`) is written in JSON. An example configuration can be found in `config.example.json`.
 
 * `cooldown` - delay between bar updates in seconds.
-* static settings for the state items (CPU, Battery, Volume, Space, Date, Net).
+* static settings for the state items (CPU, Battery, Volume, Space, Date, Net, GMail).
 * `order` - as the name implies, the order is important.
 The objects in this list specify the sections on the right side of the bar.
 Each object has the following fields:
@@ -105,6 +111,11 @@ Available mount points can be queried with `df -h`.
   * `mixer` - probably you want to put "Master" there
 * Date
   * `format` - <a href=http://www.cplusplus.com/reference/iomanip/put_time/>the format in which to print the date.</a>
+* GMail
+  * `username` - Your GMail account name (with or without the @...)
+  * `password` - Unfortunately, your password in plaintext. Don't worry, it's only transmitted to certified servers via SSL.
+  * `mailbox` - The name of the mailbox to watch. "INBOX" is THE inbox.
+  * Also you probably shouldn't set the update interval of GMail to less than 10 minutes, or you might get blocked.
 
 After configuring the configuration perform a relogin.
 
@@ -112,9 +123,9 @@ After configuring the configuration perform a relogin.
 
 The logs are saved in these files:
 ```shell
-lemonbar.log #from lemonbar
-statorange.log #err stream from statorange
-statorange_launcher.log #err stream from statorange_launcher.sh
+log/lemonbar.log #from lemonbar
+log/statorange.log #err stream from statorange
+log/statorange_launcher.log #err stream from statorange_launcher.sh
 ```
 
 ## Inner structure

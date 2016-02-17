@@ -1,10 +1,11 @@
-#include <iostream>
 #include "output.hpp"
+#include <iostream>
 
 #include "StateItem.hpp"
 #include "StateItems/Battery.hpp"
 #include "StateItems/CPU.hpp"
 #include "StateItems/Date.hpp"
+#include "StateItems/GMail.hpp"
 #include "StateItems/Net.hpp"
 #include "StateItems/Space.hpp"
 #include "StateItems/Volume.hpp"
@@ -75,6 +76,7 @@ void StateItem::init(JSONObject& config)
   CPU::settings(config["CPU"].object());
   Battery::settings(config["Battery"].object());
   Volume::settings(config["Volume"].object());
+  GMail::settings(config["GMail"].object());
 
   JSONArray& order = config["order"].array();
   size_t length = order.size();
@@ -85,16 +87,18 @@ void StateItem::init(JSONObject& config)
     string item = section["item"].string();
     if(item.compare("CPU") == 0)
       states.push_back(new CPU(section));
-    if(item.compare("Battery") == 0)
+    else if(item.compare("Battery") == 0)
       states.push_back(new Battery(section));
-    if(item.compare("Net") == 0)
+    else if(item.compare("Net") == 0)
       states.push_back(new Net(section));
-    if(item.compare("Date") == 0)
+    else if(item.compare("Date") == 0)
       states.push_back(new Date(section));
-    if(item.compare("Volume") == 0)
+    else if(item.compare("Volume") == 0)
       states.push_back(new Volume(section));
-    if(item.compare("Space") == 0)
+    else if(item.compare("Space") == 0)
       states.push_back(new Space(section));
+    else if(item.compare("GMail") == 0)
+      states.push_back(new GMail(section));
   }
 }
 

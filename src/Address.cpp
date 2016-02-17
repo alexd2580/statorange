@@ -16,6 +16,13 @@ Address::Address(std::string hostname_, unsigned int port_)
 {
 }
 
+Address& Address::operator=(Address const& rvalue)
+{
+  hostname = rvalue.hostname;
+  port = rvalue.port;
+  return *this;
+}
+
 bool Address::run_DNS_lookup(void)
 {
   struct addrinfo hints;
@@ -32,11 +39,14 @@ bool Address::run_DNS_lookup(void)
 
   struct addrinfo* addresses = nullptr;
   string service = std::to_string(port);
+
+  log() << "Running DNS lookup of " << hostname << " " << service << endl;
+
   int res = getaddrinfo(hostname.c_str(), service.c_str(), &hints, &addresses);
 
   if(res != 0)
   {
-    log() << gai_strerror(res);
+    log() << gai_strerror(res) << endl;
     return false;
   }
 
@@ -52,7 +62,7 @@ bool Address::run_DNS_lookup(void)
   for(struct addrinfo* addr_ptr = addresses; addr_ptr != nullptr;
       addr_ptr = addr_ptr->ai_next)
   {
-    log() << i << ": ";
+    log() << i << ": " << endl;
     print_sockaddr(*(addr_ptr->ai_addr));
     i++;
   }
@@ -103,7 +113,7 @@ void Address::print_sockaddr(struct sockaddr& addr)
     print_sockaddr_in6(*(struct sockaddr_in6*)&addr);
     break;
   default:
-    cout << "Unknown address family " << (int)addr.sa_family;
+    log() << "Unknown address family " << (int)addr.sa_family << endl;
     break;
   }
 }
@@ -118,8 +128,8 @@ void Address::print_sockaddr_in(struct sockaddr_in& addr)
     struct in_addr sin_addr;     // Internet address
     unsigned char sin_zero[8];   // Same size as struct sockaddr
   };*/
-  cout << "IPv4 address" << endl;
-  cout << "Port: " << ntohs(addr.sin_port) << endl;
+  log() << "IPv4 address" << endl;
+  log() << "Port: " << ntohs(addr.sin_port) << endl;
   print_addr(AF_INET, &addr.sin_addr);
 }
 
@@ -138,10 +148,10 @@ void Address::print_addr(int af, void* addr)
   const char* res = inet_ntop(af, addr, buf, 100);
   if(res == nullptr)
   {
-    perror("Failed to print address");
+    log() << "Failed to print address: " << strerror(errno) << endl;
     return;
   }
-  cout << "Address: " << res << endl;
+  log() << "Address: " << res << endl;
 }
 
 void Address::print_sockaddr_in6(struct sockaddr_in6& addr)
@@ -154,22 +164,9 @@ void Address::print_sockaddr_in6(struct sockaddr_in6& addr)
     struct in6_addr sin6_addr; // IPv6 address
     u_int32_t sin6_scope_id;   // Scope ID
   };*/
-  cout << "IPv6 address" << endl;
-  cout << "Port: " << ntohs(addr.sin6_port) << endl;
+  log() << "IPv6 address" << endl;
+  log() << "Port: " << ntohs(addr.sin6_port) << endl;
   print_addr(AF_INET6, &addr.sin6_addr);
-}
-
-char to_hex_digit(uint8_t a)
-{
-  if(a < 10)
-    return (char)('0' + a);
-  else
-    return (char)('A' + a - 10);
-}
-
-void print_hex_byte(uint8_t a)
-{
-  cout << to_hex_digit(a / 16) << to_hex_digit(a % 16);
 }
 
 /*int main(void)

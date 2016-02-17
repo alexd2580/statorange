@@ -1,5 +1,5 @@
-#include <string>
 #include <netdb.h>
+#include <string>
 #include <sys/socket.h>
 #include <sys/types.h>
 
@@ -27,13 +27,14 @@ private:
 public:
   Address(void);
   Address(std::string hostname, unsigned int port);
+  Address& operator=(Address const& rvalue);
   virtual ~Address() {}
 
   bool run_DNS_lookup(void);
   int open_TCP_socket(void);
 
-  static void print_sockaddr(struct sockaddr& addr);
-  static void print_sockaddr_in(struct sockaddr_in& addr);
-  static void print_addr(int af, void* addr);
-  static void print_sockaddr_in6(struct sockaddr_in6& addr);
+  void print_sockaddr(struct sockaddr& addr);
+  void print_sockaddr_in(struct sockaddr_in& addr);
+  void print_addr(int af, void* addr);
+  void print_sockaddr_in6(struct sockaddr_in6& addr);
 };
