@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 this_path=`dirname "$0"`
 log_path=$this_path"/log"
@@ -11,7 +11,7 @@ powerline_font="-f -xos4-terminesspowerline-bold-r-normal--12-120-72-72-c-60-iso
 powerline_icons="-f -xos4-terminusicons2mono-medium-r-normal--12-120-72-72-m-60-iso8859-1"
 
 #transparency_cmd=xcompmgr
-lemonbar_cmd="lemonbar $normal_font $powerline_font $powerline_icons"
+lemonbar_cmd="lemonbar $normal_font $powerline_font $powerline_icons -u -1 -a 30"
 statorange_cmd=$this_path"/statorange"
 statorange_config=$this_path"/config.json"
 statorange_fifo=$this_path"/statorange.fifo"
@@ -43,7 +43,7 @@ do
   echo $statorange_pid
 
   echo -n "Launching lemonbar ... "
-  cat $statorange_fifo | $lemonbar_cmd | tee -a $lemonbar_log | $SHELL >> $command_log&
+  cat $statorange_fifo | $lemonbar_cmd 2>> $lemonbar_log | $SHELL -v 2>> $command_log &
   echo $!
 
   wait $statorange_pid
