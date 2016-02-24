@@ -1,4 +1,5 @@
 #include <cstring>
+#include <map>
 #include <string>
 
 #include "StateItem.hpp"
@@ -12,148 +13,192 @@ using namespace std;
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-variable"
 
-// Icon glyphs from Terminusicons2
-char const* const icon_clock = "Õ";   // Clock icon
-char const* const icon_cpu = "Ï";     // CPU icon
-char const* const icon_mem = "Þ";     // MEM icon
-char const* const icon_dl = "Ð";      // Download icon
-char const* const icon_ul = "Ñ";      // Upload icon
-char const* const icon_vol = "Ô";     // Volume icon
-char const* const icon_hd = "À";      // HD / icon
-char const* const icon_home = "Æ";    // HD /home icon
-char const* const icon_mail = "Ó";    // Mail icon
-char const* const icon_chat = "Ò";    // IRC/Chat icon
-char const* const icon_music = "Î";   // Music icon
-char const* const icon_prog = "Â";    // Window icon
-char const* const icon_contact = "Á"; // Contact icon
-char const* const icon_wsp = "É";     // Workspace icon
-char const* const icon_wlan = "Ø";    // WIFI icon
+static map<Icon, string> icons{
+    {Icon::clock, "Õ"},   // Clock icon
+    {Icon::cpu, "Ï"},     // CPU icon
+    {Icon::mem, "Þ"},     // MEM icon
+    {Icon::dl, "Ð"},      // Download icon
+    {Icon::ul, "Ñ"},      // Upload icon
+    {Icon::vol, "Ô"},     // Volume icon
+    {Icon::hd, "À"},      // HD / icon
+    {Icon::home, "Æ"},    // HD /home icon
+    {Icon::mail, "Ó"},    // Mail icon
+    {Icon::chat, "Ò"},    // IRC/Chat icon
+    {Icon::music, "Î"},   // Music icon
+    {Icon::prog, "Â"},    // Window icon
+    {Icon::contact, "Á"}, // Contact icon
+    {Icon::wsp, "É"},     // Workspace icon
+    {Icon::wlan, "Ø"},    // WIFI icon
+    {Icon::no_icon, ""},
+};
 
-/******************************************************************************/
-/*****************************     COLORS     *********************************/
+#define ICON_CASE(icon)                                                        \
+  if(s == #icon)                                                               \
+    return Icon::icon;
 
-static char const* hex_color = "0123456789ABCDEF";
-
-void make_hex(char* dst, uint8_t a)
+Icon parse_icon(std::string& s)
 {
-  dst[0] = hex_color[a / 16];
-  dst[1] = hex_color[a % 16];
+  ICON_CASE(clock)
+  ICON_CASE(cpu)
+  ICON_CASE(mem)
+  ICON_CASE(dl)
+  ICON_CASE(ul)
+  ICON_CASE(vol)
+  ICON_CASE(hd)
+  ICON_CASE(home)
+  ICON_CASE(mail)
+  ICON_CASE(chat)
+  ICON_CASE(music)
+  ICON_CASE(prog)
+  ICON_CASE(contact)
+  ICON_CASE(wsp)
+  ICON_CASE(wlan)
+  return Icon::no_icon;
 }
 
-#define MAKE_HEX_COLOR(color, a, r, g, b)                                      \
-  {                                                                            \
-    color[0] = '#';                                                            \
-    make_hex(color + 1, a);                                                    \
-    make_hex(color + 3, r);                                                    \
-    make_hex(color + 5, g);                                                    \
-    make_hex(color + 7, b);                                                    \
-  }
-
-static char const* color_white = "#FFFFFFFF";
-static char const* color_dwhite = "#FFCCCCCC";
-static char const* color_lgrey = "#FF707070";
-static char const* color_grey = "#FF454545";
-static char const* color_dgrey = "#FF2A2A2A";
-static char const* color_red = "#FFFF0000";
-static char const* color_blue = "#FF1010D0";
-static char const* color_green = "#FF10D010";
-static char const* color_dgreen = "#FF008000";
-static char const* color_yellow = "#FFCDCD00";
-static char const* color_blind = "#FF8B814C";
-static char const* color_crimson = "#FFDC143C";
-static char const* color_black = "#FF000000";
-
-char const* white_on_black[2];    //{ color_black, color_white };
-char const* inactive_colors[2];   //{ color_dgrey, color_lgrey };
-char const* semiactive_colors[2]; //{ color_grey, color_dwhite };
-char const* active_colors[2];     //{ color_blue, color_dwhite };
-char const* warn_colors[2];       //{ color_red, color_dwhite };
-char const* info_colors[2];       //{ color_yellow, color_black };
-char const* good_colors[2];       //{ color_green, color_black };
-char const* neutral_colors[2];    //{ color_dgreen, color_black };
-
-void init_colors(void)
+std::ostream& operator<<(std::ostream& o, Icon i)
 {
-  white_on_black[0] = color_black;
-  white_on_black[1] = color_white;
-  inactive_colors[0] = color_dgrey;
-  inactive_colors[1] = color_lgrey;
-  semiactive_colors[0] = color_grey;
-  semiactive_colors[1] = color_dwhite;
-  active_colors[0] = color_blue;
-  active_colors[1] = color_dwhite;
-  warn_colors[0] = color_red;
-  warn_colors[1] = color_dwhite;
-  info_colors[0] = color_yellow;
-  info_colors[1] = color_black;
-  good_colors[0] = color_green;
-  good_colors[1] = color_black;
-  neutral_colors[0] = color_dgreen;
-  neutral_colors[1] = color_dwhite;
-  return;
+  return o << "%{T3}" << icons[i] << "%{T1}";
 }
 
 /******************************************************************************/
-/**************************     SEPARATORS     ********************************/
+/*****************************     COLORS   ***********************************/
+
+static string const hex_color = "0123456789ABCDEF";
+
+void make_hex(std::string::iterator dst, uint8_t a)
+{
+  *dst = hex_color[a / 16];
+  *(dst + 1) = hex_color[a % 16];
+}
+
+string make_hex_color(uint8_t a, uint8_t r, uint8_t g, uint8_t b)
+{
+  string res{"123456789"};
+  auto it = res.begin();
+  *it = '#';
+  make_hex(it + 1, a);
+  make_hex(it + 3, r);
+  make_hex(it + 5, g);
+  make_hex(it + 7, b);
+  return res;
+}
+
+enum class ColorComponent
+{
+  white,
+  dwhite,
+  lgrey,
+  grey,
+  dgrey,
+  red,
+  green,
+  dgreen,
+  blue,
+  yellow,
+  blind,
+  crimson,
+  black,
+  custom_bg,
+  custom_fg,
+  current_bg,
+  current_fg
+};
+
+static map<ColorComponent, string> color_components{
+    {ColorComponent::white, "#FFFFFFFF"},
+    {ColorComponent::dwhite, "#FFCCCCCC"},
+    {ColorComponent::lgrey, "#FF707070"},
+    {ColorComponent::grey, "#FF454545"},
+    {ColorComponent::dgrey, "#FF2A2A2A"},
+    {ColorComponent::red, "#FFFF0000"},
+    {ColorComponent::blue, "#FF1010D0"},
+    {ColorComponent::green, "#FF10D010"},
+    {ColorComponent::dgreen, "#FF008000"},
+    {ColorComponent::yellow, "#FFCDCD00"},
+    {ColorComponent::blind, "#FF8B814C"},
+    {ColorComponent::crimson, "#FFDC143C"},
+    {ColorComponent::black, "#FF000000"},
+    {ColorComponent::custom_bg, "#00000000"},
+    {ColorComponent::custom_fg, "#00000000"},
+    {ColorComponent::current_bg, "#00000000"},
+    {ColorComponent::current_fg, "#00000000"},
+};
+
+/******************************************************************************/
+
+static map<Color, pair<ColorComponent, ColorComponent> const> color_pairs{
+    {Color::white_on_black, {ColorComponent::black, ColorComponent::white}},
+    {Color::inactive, {ColorComponent::dgrey, ColorComponent::lgrey}},
+    {Color::semiactive, {ColorComponent::grey, ColorComponent::dwhite}},
+    {Color::active, {ColorComponent::blue, ColorComponent::dwhite}},
+    {Color::warn, {ColorComponent::red, ColorComponent::dwhite}},
+    {Color::info, {ColorComponent::yellow, ColorComponent::black}},
+    {Color::good, {ColorComponent::green, ColorComponent::black}},
+    {Color::neutral, {ColorComponent::dgreen, ColorComponent::dwhite}},
+    {Color::current, {ColorComponent::current_bg, ColorComponent::current_fg}},
+    {Color::custom, {ColorComponent::custom_bg, ColorComponent::custom_fg}},
+};
+/**************************     SEPARATORS ********************************/
 
 // Char glyps for powerline fonts
-static char const* sep_left = "";    // Powerline separator left
-static char const* sep_right = "";   // Powerline separator right
-static char const* sep_l_left = "";  // Powerline light separator left
-static char const* sep_l_right = ""; // Powerline light sepatator right
+static string const sep_left{""};    // Powerline separator left
+static string const sep_right{""};   // Powerline separator right
+static string const sep_l_left{""};  // Powerline light separator left
+static string const sep_l_right{""}; // Powerline light sepatator right
 
 #pragma clang diagnostic pop
 
-void separate(Direction d, char const** colors, ostream& o)
+template <typename T> class TD;
+
+void separate(Direction d, ostream& o) { separate(d, Color::current, o); }
+
+void separate(Direction d, Color color, ostream& o)
 {
-  static char const** current_set_colors = white_on_black;
+  auto const& bg_cur = color_components[ColorComponent::current_bg];
+  auto const& color_pair = color_pairs[color];
+  auto const& bg_col = color_components[color_pair.first];
+  auto const& fg_col = color_components[color_pair.second];
 
-  if(colors == nullptr)
-    colors = current_set_colors;
-
-  if(d == Left)
+  if(d == Direction::left)
   {
-    if(colors[0] != current_set_colors[0])
-      o << "%{F" << colors[0] << '}' << sep_left << "%{R}%{F" << colors[1]
-        << '}';
+    if(bg_col != bg_cur)
+      o << "%{F" << bg_col << '}' << sep_left << "%{R}%{F" << fg_col << '}';
     else
-      o << "%{F#FF000000}" << sep_l_left << "%{F" << colors[1] << '}';
+      o << "%{F#FF000000}" << sep_l_left << "%{F" << fg_col << '}';
   }
   else
   {
-    if(colors[0] != current_set_colors[0])
-      o << "%{R}%{B" << colors[0] << '}' << sep_right << "%{F" << colors[1]
-        << '}';
+    if(bg_col != bg_cur)
+      o << "%{R}%{B" << bg_col << '}' << sep_right << "%{F" << fg_col << '}';
     else
-      o << "%{F#FF000000}" << sep_l_left << "%{F" << colors[1] << '}';
+      o << "%{F#FF000000}" << sep_l_right << "%{F" << fg_col << '}';
   }
-  current_set_colors = colors;
+
+  color_components[ColorComponent::current_bg] = bg_col;
+  color_components[ColorComponent::current_fg] = fg_col;
 }
 
 void dynamic_section(float value, float min, float max, ostream& o)
 {
   if(value <= min)
-    separate(Left, neutral_colors, o);
+    separate(Direction::left, Color::neutral, o);
   else if(value >= max)
-    separate(Left, warn_colors, o);
+    separate(Direction::left, Color::warn, o);
   else
   {
-    static char back_1[9];
-    static char back_2[9];
-    static char* back = back_1;
-    back = (char*)((long)back ^ (long)back_1 ^ (long)back_2);
-
     uint8_t byteV = (uint8_t)((value - min) * 256.0f / (max - min));
-    MAKE_HEX_COLOR(back, 255, byteV, (uint8_t)(127 - byteV / 2), 0)
-    static char const* colors[2];
-    colors[0] = back;
-    colors[1] = color_dwhite;
-    separate(Left, colors, o);
+    string res = make_hex_color(255, byteV, (uint8_t)(127 - byteV / 2), 0);
+
+    color_components[ColorComponent::custom_bg] = res;
+    auto const& fg_color = color_components[ColorComponent::dwhite];
+    color_components[ColorComponent::custom_fg] = fg_color;
+    separate(Direction::left, Color::custom, o);
   }
 }
 
 /******************************************************************************/
-/***************************     BUTTONS     **********************************/
+/***************************     BUTTONS **********************************/
 
 void startButton(string cmd, ostream& o)
 {
@@ -166,7 +211,7 @@ void startButton(string cmd, ostream& o)
 void stopButton(ostream& o) { o << "%{A}"; }
 
 /******************************************************************************/
-/****************************     OUTPUT     **********************************/
+/****************************     OUTPUT **********************************/
 
 /**
  * Prints the buttons for switching workspaces
@@ -179,23 +224,23 @@ void echoWorkspaceButtons(I3State const& i3, uint8_t disp)
     Workspace const& ws = i3.workspaces[w];
     if(ws.output == disp)
     {
-      char const** colors = inactive_colors;
+      Color color = Color::inactive;
       if(ws.urgent)
-        colors = warn_colors;
+        color = Color::warn;
       else if(ws.focused)
-        colors = active_colors;
+        color = Color::active;
       else if(ws.visible)
-        colors = semiactive_colors;
+        color = Color::semiactive;
 
       startButton("i3-msg workspace " + ws.name);
-      separate(Right, colors);
+      separate(Direction::right, color);
       cout << ' ' << ws.name << ' ';
       if(ws.focusedApp.size() != 0)
       {
-        separate(Right, colors);
+        separate(Direction::right, color);
         cout << ' ' << ws.focusedApp << ' ';
       }
-      separate(Right, white_on_black);
+      separate(Direction::right, Color::white_on_black);
       stopButton();
     }
   }
@@ -215,9 +260,9 @@ void echo_lemon(I3State const& i3)
     if(i3.mode.compare("default") != 0)
     {
       cout << ' ';
-      separate(Left, info_colors);
+      separate(Direction::left, Color::info);
       cout << ' ' << i3.mode << ' ';
-      separate(Right, white_on_black);
+      separate(Direction::right, Color::white_on_black);
     }
     cout << "%{l}";
     cout << "%{r}";

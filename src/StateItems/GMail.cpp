@@ -237,10 +237,9 @@ void GMail::print(void)
 {
   if(unseen_mails != 0)
   {
-    separate(Left, neutral_colors, cout);
-    print_icon(icon_mail, cout);
-    cout << " You have " << unseen_mails << " unseen mails ";
-    separate(Left, white_on_black, cout);
+    separate(Direction::left, Color::neutral, cout);
+    cout << Icon::mail << " You have " << unseen_mails << " unseen mails ";
+    separate(Direction::left, Color::white_on_black, cout);
   }
 }
 

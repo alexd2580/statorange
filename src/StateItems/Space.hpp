@@ -3,12 +3,15 @@
 
 #include <string>
 #include <vector>
-#include "../StateItem.hpp"
+
 #include "../JSON/jsonParser.hpp"
+#include "../StateItem.hpp"
+#include "../output.hpp"
 
 struct SpaceItem
 {
   std::string mount_point;
+  Icon icon;
   float size;
   float used;
   std::string unit;

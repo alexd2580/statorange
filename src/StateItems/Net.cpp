@@ -217,16 +217,16 @@ void Net::print(void)
 {
   if(iface_up)
   {
-    separate(Left, neutral_colors);
+    separate(Direction::left, Color::neutral);
     switch(iface_type)
     {
     case Ethernet:
       cout << ' ' << iface;
       break;
     case Wireless:
-      print_icon(icon_wlan);
-      cout << ' ' << iface_essid << '(' << iface_quality << "%%) ";
-      separate(Left, neutral_colors);
+      cout << Icon::wlan << ' ' << iface_essid << '(' << iface_quality
+           << "%%) ";
+      separate(Direction::left, Color::neutral);
       break;
     }
 
@@ -243,7 +243,7 @@ void Net::print(void)
     case Both:
       if(iface_ipv4.size() != 0)
         cout << ' ' << iface_ipv4 << ' ';
-      separate(Left, neutral_colors);
+      separate(Direction::left, Color::neutral);
       cout << ' ' << iface_ipv6 << ' ';
       break;
     case IPv4:
@@ -256,6 +256,6 @@ void Net::print(void)
       cout << " Up ";
       break;
     }
-    separate(Left, white_on_black);
+    separate(Direction::left, Color::white_on_black);
   }
 }

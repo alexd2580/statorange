@@ -56,9 +56,9 @@ void StateItem::wrap_print(void)
   }
   else
   {
-    separate(Left, warn_colors);
+    separate(Direction::left, Color::warn);
     cout << " Module " << module_name << " failed ";
-    separate(Left, white_on_black);
+    separate(Direction::left, Color::white_on_black);
   }
 }
 
@@ -79,9 +79,9 @@ void StateItem::init(JSONObject& config)
   GMail::settings(config["GMail"].object());
 
   JSONArray& order = config["order"].array();
-  size_t length = order.size();
+  auto length = order.size();
 
-  for(size_t i = 0; i < length; i++)
+  for(decltype(length) i = 0; i < length; i++)
   {
     JSONObject& section = order[i].object();
     string item = section["item"].string();

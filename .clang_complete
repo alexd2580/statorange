@@ -2,6 +2,7 @@
 -Weverything
 -Wno-padded
 -Wno-c++98-compat
+-Wno-c++98-compat-pedantic
 -Wno-old-style-cast
 -Wno-missing-prototypes
 -Wno-reserved-id-macro

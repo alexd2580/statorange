@@ -1,11 +1,11 @@
 
-#include <iostream>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <sstream>
 
-#include "Battery.hpp"
 #include "../output.hpp"
+#include "Battery.hpp"
 
 using namespace std;
 
@@ -71,11 +71,11 @@ void Battery::print(void)
       switch(status)
       {
       case Charging:
-        separate(Left, neutral_colors, o);
+        separate(Direction::left, Color::neutral, o);
         o << " BAT charging " << 100 * currentLevel / maxCapacity << "%% ";
         break;
       case Full:
-        separate(Left, info_colors, o);
+        separate(Direction::left, Color::info, o);
         o << " BAT full ";
         break;
       case Discharging:
@@ -86,7 +86,7 @@ void Battery::print(void)
         else { SEP_LEFT(neutral_colors); }*/
         dynamic_section((float)-rem_minutes, -60.0f, -10.0f, o);
         o << " BAT " << (int)(100 * currentLevel / maxCapacity) << "%% ";
-        separate(Left, nullptr, o);
+        separate(Direction::left, o);
 
         long rem_hrOnly = rem_minutes / 60;
         o << (rem_hrOnly < 10 ? " 0" : " ") << rem_hrOnly;
@@ -99,7 +99,7 @@ void Battery::print(void)
       case NotFound:
         break;
       }
-      separate(Left, white_on_black, o);
+      separate(Direction::left, Color::white_on_black, o);
     }
     printString = o.str();
     cached = true;

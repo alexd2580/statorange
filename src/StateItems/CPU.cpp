@@ -1,12 +1,12 @@
 
-#include <iostream>
 #include <cstdlib>
-#include <sstream>
 #include <cstring>
+#include <iostream>
+#include <sstream>
 
-#include "CPU.hpp"
 #include "../output.hpp"
 #include "../util.hpp"
+#include "CPU.hpp"
 
 using namespace std;
 
@@ -36,14 +36,16 @@ bool CPU::update(void)
   FILE* tfile = fopen(temp_file_loc.c_str(), "r");
   if(tfile == nullptr)
   {
-    log() << "Couldn't read temperature file [" << temp_file_loc << "]:" << endl << strerror(errno) << endl;
+    log() << "Couldn't read temperature file [" << temp_file_loc << "]:" << endl
+          << strerror(errno) << endl;
     return false;
   }
   res = fgets(line, 10, tfile);
   fclose(tfile);
   if(res != line)
   {
-    log() << "Couldn't read temperature file [" << temp_file_loc << "]:" << endl << strerror(errno) << endl;
+    log() << "Couldn't read temperature file [" << temp_file_loc << "]:" << endl
+          << strerror(errno) << endl;
     return false;
   }
   cpu_temp = (int)strtol(line, nullptr, 0) / 1000;
@@ -51,14 +53,16 @@ bool CPU::update(void)
   FILE* lfile = fopen(load_file_loc.c_str(), "r");
   if(lfile == nullptr)
   {
-    log() << "Couldn't read load file [" << load_file_loc << "]:" << endl << strerror(errno) << endl;
+    log() << "Couldn't read load file [" << load_file_loc << "]:" << endl
+          << strerror(errno) << endl;
     return false;
   }
   res = fgets(line, 10, lfile);
   fclose(lfile);
   if(res != line)
   {
-    log() << "Couldn't read load file [" << load_file_loc << "]:" << endl << strerror(errno) << endl;
+    log() << "Couldn't read load file [" << load_file_loc << "]:" << endl
+          << strerror(errno) << endl;
     return false;
   }
   cpu_load = strtof(line, nullptr);
@@ -72,12 +76,11 @@ void CPU::print(void)
   {
     ostringstream o;
     dynamic_section(cpu_load, 0.7f, 3.0f, o);
-    print_icon(icon_cpu, o);
-    o << ' ' << cpu_load << ' ';
+    o << Icon::cpu << ' ' << cpu_load << ' ';
 
     dynamic_section((float)cpu_temp, 50.0f, 90.0f, o);
     o << ' ' << cpu_temp << "°C ";
-    separate(Left, white_on_black, o);
+    separate(Direction::left, Color::white_on_black, o);
 
     print_string = o.str();
     cached = true;

@@ -1,7 +1,8 @@
+#include <cmath>
 #include <iostream>
 #include <string.h>
 #include <sys/statvfs.h>
-#include <cmath>
+
 #include "../output.hpp"
 #include "../util.hpp"
 #include "Space.hpp"
@@ -16,9 +17,11 @@ Space::Space(JSONObject& item) : StateItem(item), Logger("[Space]", cerr)
   JSONArray& mpoints = item["mount_points"].array();
   items.clear();
   SpaceItem si;
-  for(unsigned int i = 0; i < mpoints.size(); i++)
+  for(decltype(mpoints.size()) i = 0; i < mpoints.size(); i++)
   {
-    si.mount_point = mpoints[i].string();
+    JSONObject& mpt = mpoints[i].object();
+    si.mount_point = mpt["file"].string();
+    si.icon = parse_icon(mpt["icon"].string());
     si.size = 0;
     si.used = 0;
     si.unit = "B";
@@ -80,17 +83,17 @@ void Space::print(void)
 {
   if(items.size() > 0)
   {
-    separate(Left, neutral_colors);
+    separate(Direction::left, Color::neutral);
     auto i = items.begin();
     cout.precision(1);
-    cout << std::fixed << ' ' << i->mount_point << ' ' << i->used << '/'
-         << i->size << i->unit << ' ';
+    cout << std::fixed << i->icon << ' ' << i->mount_point << ' ' << i->used
+         << '/' << i->size << i->unit << ' ';
     for(i++; i != items.end(); i++)
     {
-      separate(Left, neutral_colors);
-      cout << std::fixed << ' ' << i->mount_point << ' ' << i->used << '/'
-           << i->size << i->unit << ' ';
+      separate(Direction::left, Color::neutral);
+      cout << std::fixed << i->icon << ' ' << i->mount_point << ' ' << i->used
+           << '/' << i->size << i->unit << ' ';
     }
-    separate(Left, white_on_black);
+    separate(Direction::left, Color::white_on_black);
   }
 }

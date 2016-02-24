@@ -6,48 +6,59 @@
 
 #include <iostream>
 
-static inline void print_icon(char const* const icon,
-                              std::ostream& o = std::cout)
-{
-  o << "%{T3}" << icon << "%{T1}";
-}
-
 // Icon glyphs from Terminusicons2
-extern char const* const icon_clock;   // Clock icon
-extern char const* const icon_cpu;     // CPU icon
-extern char const* const icon_mem;     // MEM icon
-extern char const* const icon_dl;      // Download icon
-extern char const* const icon_ul;      // Upload icon
-extern char const* const icon_vol;     // Volume icon
-extern char const* const icon_hd;      // HD / icon
-extern char const* const icon_home;    // HD /home icon
-extern char const* const icon_mail;    // Mail icon
-extern char const* const icon_chat;    // IRC/Chat icon
-extern char const* const icon_music;   // Music icon
-extern char const* const icon_prog;    // Window icon
-extern char const* const icon_contact; // Contact icon
-extern char const* const icon_wsp;     // Workspace icon
-extern char const* const icon_wlan;    // WIFI icon
+enum class Icon
+{
+  clock,   // Clock
+  cpu,     // CPU
+  mem,     // MEM
+  dl,      // Download
+  ul,      // Upload
+  vol,     // Volume
+  hd,      // HD /
+  home,    // HD /home
+  mail,    // Mail
+  chat,    // IRC/Chat
+  music,   // Music
+  prog,    // Window
+  contact, // Contact
+  wsp,     // Workspace
+  wlan,    // WIFI
+  no_icon
+};
+
+Icon parse_icon(std::string& s);
+std::ostream& operator<<(std::ostream&, Icon);
 
 /******************************************************************************/
 /*****************************     COLORS     *********************************/
 
-extern char const* white_on_black[2];    //{ color_black, color_white };
-extern char const* inactive_colors[2];   //{ color_dgrey, color_lgrey };
-extern char const* semiactive_colors[2]; //{ color_grey, color_dwhite };
-extern char const* active_colors[2];     //{ color_blue, color_dwhite };
-extern char const* warn_colors[2];       //{ color_red, color_dwhite };
-extern char const* info_colors[2];       //{ color_yellow, color_black };
-extern char const* good_colors[2];       //{ color_green, color_black };
-extern char const* neutral_colors[2];    //{ color_dgreen, color_black };
-
-enum Direction
+enum class Color
 {
-  Left,
-  Right
+  white_on_black,
+  inactive,
+  semiactive,
+  active,
+  warn,
+  info,
+  good,
+  neutral,
+  current,
+  custom
 };
 
-void separate(Direction d, char const** colors, std::ostream& = std::cout);
+enum class Direction
+{
+  left,
+  right
+};
+
+/** Matches al 4 cases **/
+void separate(Direction d, std::ostream& o);
+void separate(Direction d,
+              Color colors = Color::current,
+              std::ostream& = std::cout);
+
 void dynamic_section(float value,
                      float min,
                      float max,
@@ -59,9 +70,6 @@ void startButton(std::string cmd, std::ostream& = std::cout);
 void stopButton(std::ostream& = std::cout);
 
 #include "i3state.hpp"
-#include <cstdint>
-
-void init_colors(void);
 
 void echo_lemon(I3State const& i3);
 

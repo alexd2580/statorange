@@ -1,10 +1,10 @@
 
-#include <iostream>
+#include "Date.hpp"
+#include <chrono> // std::chrono::system_clock
 #include <ctime>
 #include <iomanip> // std::put_time
-#include <chrono>  // std::chrono::system_clock
+#include <iostream>
 #include <sstream>
-#include "Date.hpp"
 
 #include "../output.hpp"
 #include "../util.hpp"
@@ -30,8 +30,7 @@ bool Date::update(void)
 
 void Date::print(void)
 {
-  separate(Left, active_colors);
-  print_icon(icon_clock);
-  cout << ' ' << time << ' ';
-  separate(Left, white_on_black);
+  separate(Direction::left, Color::active);
+  cout << Icon::clock << ' ' << time << ' ';
+  separate(Direction::left, Color::white_on_black);
 }
