@@ -2,6 +2,8 @@
 #define __CPUXYZHEADER_LOL___
 
 #include <string>
+#include <vector>
+
 #include "../StateItem.hpp"
 #include "../JSON/jsonParser.hpp"
 #include "../util.hpp"
@@ -9,23 +11,22 @@
 class CPU : public StateItem, public Logger
 {
 private:
-  static std::string temp_file_loc;
-  static std::string load_file_loc;
+  std::vector<std::string> temp_file_paths;
+  std::string load_file_path;
 
   bool cached;
   std::string print_string;
 
   // CPU
-  int cpu_temp;
+  std::vector<int> cpu_temps;
   float cpu_load;
 
   bool update(void);
   void print(void);
 
 public:
-  static void settings(JSONObject&);
   CPU(JSONObject& item);
-  virtual ~CPU(){}
+  virtual ~CPU() {}
 };
 
 #endif

@@ -10,20 +10,21 @@
 
 using namespace std;
 
-string CPU::temp_file_loc = "/dev/zero";
-string CPU::load_file_loc = "/dev/zero";
-
-void CPU::settings(JSONObject& section)
-{
-  temp_file_loc.assign(section["temperature_file"].string());
-  load_file_loc.assign(section["load_file"].string());
-}
-
 CPU::CPU(JSONObject& item) : StateItem(item), Logger("[CPU]", cerr)
 {
+  JSONArray& temp_paths = item["temperature_files"].array();
+  auto num_temps = temp_paths.size();
+  for(decltype(num_temps) i = 0; i < num_temps; i++)
+  {
+    JSONString& temp_path = temp_paths[i].string();
+    temp_file_paths.push_back(temp_path);
+  }
+
+  load_file_path = item["load_file"].string();
+
   print_string = "";
   cached = false;
-  cpu_temp = 0;
+  cpu_temps.clear();
   cpu_load = 0.0f;
 }
 
@@ -33,40 +34,49 @@ bool CPU::update(void)
   char line[11];
   char* res;
 
-  FILE* tfile = fopen(temp_file_loc.c_str(), "r");
-  if(tfile == nullptr)
+  cpu_temps.clear();
+  auto n = temp_file_paths.size();
+  for(decltype(n) i = 0; i < temp_file_paths.size(); i++)
   {
-    log() << "Couldn't read temperature file [" << temp_file_loc << "]:" << endl
-          << strerror(errno) << endl;
-    return false;
+    auto path = temp_file_paths[i].c_str();
+    FILE* tfile = fopen(path, "r");
+    if(tfile == nullptr)
+    {
+      log() << "Couldn't read temperature file [" << path << "]:" << endl
+            << strerror(errno) << endl;
+      cpu_temps.push_back(999);
+      continue;
+    }
+    res = fgets(line, 10, tfile);
+    fclose(tfile);
+    if(res != line)
+    {
+      log() << "Couldn't read temperature file [" << path << "]:" << endl
+            << strerror(errno) << endl;
+      cpu_temps.push_back(999);
+      continue;
+    }
+    cpu_temps.push_back((int)strtol(line, nullptr, 0) / 1000);
   }
-  res = fgets(line, 10, tfile);
-  fclose(tfile);
-  if(res != line)
-  {
-    log() << "Couldn't read temperature file [" << temp_file_loc << "]:" << endl
-          << strerror(errno) << endl;
-    return false;
-  }
-  cpu_temp = (int)strtol(line, nullptr, 0) / 1000;
 
-  FILE* lfile = fopen(load_file_loc.c_str(), "r");
+  FILE* lfile = fopen(load_file_path.c_str(), "r");
   if(lfile == nullptr)
   {
-    log() << "Couldn't read load file [" << load_file_loc << "]:" << endl
+    log() << "Couldn't read load file [" << load_file_path << "]:" << endl
           << strerror(errno) << endl;
-    return false;
+    cpu_load = 999.0f;
+    return true;
   }
   res = fgets(line, 10, lfile);
   fclose(lfile);
   if(res != line)
   {
-    log() << "Couldn't read load file [" << load_file_loc << "]:" << endl
+    log() << "Couldn't read load file [" << load_file_path << "]:" << endl
           << strerror(errno) << endl;
-    return false;
+    cpu_load = 999.0f;
+    return true;
   }
   cpu_load = strtof(line, nullptr);
-
   return true;
 }
 
@@ -76,10 +86,15 @@ void CPU::print(void)
   {
     ostringstream o;
     dynamic_section(cpu_load, 0.7f, 3.0f, o);
-    o << Icon::cpu << ' ' << cpu_load << ' ';
+    o.precision(2);
+    o << std::fixed << Icon::cpu << ' ' << cpu_load << ' ';
 
-    dynamic_section((float)cpu_temp, 50.0f, 90.0f, o);
-    o << ' ' << cpu_temp << "°C ";
+    auto n = temp_file_paths.size();
+    for(decltype(n) i = 0; i < n; i++)
+    {
+      dynamic_section((float)cpu_temps[i], 50.0f, 90.0f, o);
+      o << ' ' << cpu_temps[i] << "°C ";
+    }
     separate(Direction::left, Color::white_on_black, o);
 
     print_string = o.str();

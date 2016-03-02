@@ -6,6 +6,7 @@
 #include <ostream>
 #include <stack>
 #include <string>
+#include <memory>
 
 typedef char const cchar;
 
@@ -71,33 +72,52 @@ class TraceCeption
 {
 protected:
   TextPos const position;
-  std::stack<std::string> stacktrace;
+  using StringStack = std::stack<std::string>;
+  std::unique_ptr<StringStack> stacktrace_ptr;
 
 public:
-  TraceCeption(TextPos pos, std::string msg) : position(pos)
+  TraceCeption(TextPos& pos, std::string msg)
+      : position(pos), stacktrace_ptr(std::make_unique<StringStack>())
   {
-    stacktrace.push(msg);
+    stacktrace_ptr->push(msg);
   }
 
-  // TODO copy constr
+  TraceCeption(TextPos&& pos, std::string msg)
+      : position(pos), stacktrace_ptr(std::make_unique<StringStack>())
+  {
+    stacktrace_ptr->push(msg);
+  }
+
+  TraceCeption(TraceCeption& rhs)
+      : position(rhs.position), stacktrace_ptr(std::move(rhs.stacktrace_ptr))
+  {
+  }
+
+  TraceCeption(TraceCeption&& rhs)
+      : position(rhs.position), stacktrace_ptr(std::move(rhs.stacktrace_ptr))
+  {
+  }
+
+  TraceCeption& operator=(TraceCeption& rhs) = delete;
+  TraceCeption& operator=(TraceCeption&& rhs) = delete;
 
   virtual ~TraceCeption() {}
 
-  void push_stack(std::string msg) { stacktrace.push(msg); }
+  void push_stack(std::string msg) { stacktrace_ptr->push(msg); }
 
   void printStackTrace(std::ostream& out = std::cerr)
   {
-    while(!stacktrace.empty())
+    while(!stacktrace_ptr->empty())
     {
-      out << position << stacktrace.top() << std::endl;
-      stacktrace.pop();
+      out << position << stacktrace_ptr->top() << std::endl;
+      stacktrace_ptr->pop();
     }
   }
 };
 
 /**
  * Given a pointer to the starting " of the string, returns a C++ string
- * and offsets the pointer to the next character after the
+ * and offsets the pointer to the next character after the "
  */
 std::string parse_escaped_string(TextPos& pos);
 

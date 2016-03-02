@@ -7,19 +7,11 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "../output.hpp"
-#include "GMail.hpp"
+#include "IMAPMail.hpp"
 
 using namespace std;
 
-string GMail::ca_cert = "";
-string GMail::ca_path = "";
-
-string GMail::hostname = "localhost";
-unsigned int GMail::port = 993;
-Address GMail::address;
-
-bool GMail::connect_tcp(void)
+bool IMAPMail::connect_tcp(void)
 {
   if(!address.run_DNS_lookup())
     return false;
@@ -27,7 +19,7 @@ bool GMail::connect_tcp(void)
   return server_fd != -1;
 }
 
-void GMail::log_SSL_errors(void)
+void IMAPMail::log_SSL_errors(void)
 {
   unsigned long err = ERR_get_error();
   while(err != 0)
@@ -38,7 +30,7 @@ void GMail::log_SSL_errors(void)
   }
 }
 
-bool GMail::init_SSL(void)
+bool IMAPMail::init_SSL(void)
 {
   log() << "Initializing SSL" << endl;
   OpenSSL_add_ssl_algorithms();
@@ -72,7 +64,7 @@ bool GMail::init_SSL(void)
   return true;
 }
 
-bool GMail::connect_ssl(void)
+bool IMAPMail::connect_ssl(void)
 {
   ssl = SSL_new(ctx);
   SSL_set_fd(ssl, server_fd);
@@ -89,9 +81,8 @@ bool GMail::connect_ssl(void)
   }
 }
 
-bool GMail::show_certs(void)
+bool IMAPMail::show_certs(void)
 {
-
   X509* cert = SSL_get_peer_certificate(ssl);
   if(cert != nullptr)
   {
@@ -111,7 +102,7 @@ bool GMail::show_certs(void)
   return false;
 }
 
-bool GMail::send_cmd(string id, string cmd)
+bool IMAPMail::send_cmd(string id, string cmd)
 {
   cmd = id + " " + cmd + "\r\n";
   log() << "-> " << cmd.substr(0, 10) << "..." << endl;
@@ -129,7 +120,7 @@ bool GMail::send_cmd(string id, string cmd)
   return true;
 }
 
-bool GMail::read_resp(string& res)
+bool IMAPMail::read_resp(string& res)
 {
   if(read_line_queue.size() == 0)
   {
@@ -166,46 +157,50 @@ bool GMail::read_resp(string& res)
   return true;
 }
 
-bool GMail::expect_resp(string id, string& res)
+bool IMAPMail::expect_resp(string id, string& res)
 {
   bool b = read_resp(res);
   if(!b)
     return false;
   string prefix = res.substr(0, id.length());
-  log() << "Prefix: \"" << prefix << "\"; Expected: \"" << id << '"' << endl;
   if(prefix == id)
   {
+    log() << "Prefix match: \"" << prefix << '"' << endl;
     res = res.substr(id.length() + 1);
     return true;
   }
   else
+  {
+    log() << "Prefix: \"" << prefix << "\"; Expected: \"" << id << '"' << endl;
     return expect_resp(id, res);
+  }
 }
 
-void GMail::disconnect_ssl(void)
+void IMAPMail::disconnect_ssl(void)
 {
   SSL_free(ssl);
   ssl = nullptr;
 }
 
-void GMail::disconnect_tcp(void)
+void IMAPMail::disconnect_tcp(void)
 {
   close(server_fd);
   server_fd = -1;
 }
 
-bool GMail::update(void)
+bool IMAPMail::update(void)
 {
+  success = false;
   if(ctx == nullptr)
     if(!init_SSL())
-      return false;
+      return false; // failed to initialize ssl, which is mandatory
 
   if(!connect_tcp())
-    return false;
+    return true; // just no internet
   if(!connect_ssl())
   {
     disconnect_tcp();
-    return false;
+    return false; // could not securely connect
   }
 
   bool done = true;
@@ -216,59 +211,93 @@ bool GMail::update(void)
   cmd = "STATUS " + mailbox + " (UNSEEN)";
   done &= send_cmd("a002", cmd);
   done &= expect_resp("* STATUS", result);
-  if(result.substr(1, mailbox.length()) != mailbox)
-    done = false;
-  //"INBOX" (UNSEEN 1)
-  unsigned long index = 1 + mailbox.length() + 1 + 1 + 1 + 6;
+  // the length of the mailbox-name word w/wo quotes
+  auto mb_length = mailbox.length();
+  string mb_name = result.substr(0, mb_length);
+  if(mb_name != mailbox)
+  {
+    mb_name = result.substr(1, mb_length);
+    if(mb_name != mailbox)
+    {
+      log() << "Mailbox name mismatch: " << mb_name << " <-> " << mailbox
+            << endl;
+      done = false;
+    }
+    else
+    {
+      mb_length += 2;
+      log() << "Mailbox name match" << endl;
+    }
+  }
+  // MAILBOXNAME (UNSEEN 1)
+  unsigned long index = mb_length + 1 + 1 + 6;
   string unseen = result.substr(index);
-  unseen_mails = std::stoi(unseen);
-  log() << "You have " << unseen_mails << " unseen mails" << endl;
+
+  try
+  {
+    unseen_mails = std::stoi(unseen);
+    success = true;
+    log() << "You have " << unseen_mails << " unseen mails" << endl;
+  }
+  catch(std::invalid_argument&)
+  {
+    done = false;
+    log() << "Could not parse unseen mails: " << unseen << endl;
+  }
+
   done &= expect_resp("a002", result);
   done &= send_cmd("a003", "LOGOUT");
   done &= expect_resp("a003", result);
 
   disconnect_ssl();
   disconnect_tcp();
-
-  return done;
+  log() << "Done " << done << endl;
+  return success;
 }
 
-void GMail::print(void)
+void IMAPMail::print(void)
 {
-  if(unseen_mails != 0)
+  if(unseen_mails != 0 && success)
   {
     separate(Direction::left, Color::neutral, cout);
-    cout << Icon::mail << " You have " << unseen_mails << " unseen mails ";
+    cout << icon << " " << tag << ": " << unseen_mails << " unseen mails ";
     separate(Direction::left, Color::white_on_black, cout);
   }
 }
 
-void GMail::settings(JSONObject& config)
+IMAPMail::IMAPMail(JSONObject& item)
+    : StateItem(item), Logger("[IMAPMail]", cerr)
 {
-  hostname = config["hostname"].string();
-  port = config["port"].number();
+  JSON* icon_id = item.has("icon");
+  icon = icon_id == nullptr ? Icon::no_icon : parse_icon(icon_id->string());
+
+  hostname = item["hostname"].string();
+  port = item["port"].number();
   address = Address(hostname, port);
 
-  JSON* ca_file_ptr = config.has("ca_file");
+  JSON* ca_file_ptr = item.has("ca_file");
   if(ca_file_ptr != nullptr)
     ca_cert = ca_file_ptr->string();
-  JSON* ca_path_ptr = config.has("ca_path");
+  JSON* ca_path_ptr = item.has("ca_path");
   if(ca_path_ptr != nullptr)
     ca_path = ca_path_ptr->string();
-}
 
-GMail::GMail(JSONObject& item) : StateItem(item), Logger("[GMail]", cerr)
-{
   username = item["username"].string();
   password = item["password"].string();
   mailbox = item["mailbox"].string();
 
+  JSON* tag_json = item.has("tag");
+  tag = tag_json == nullptr ? hostname + username : tag_json->string();
+
   ctx = nullptr;
   server_fd = -1;
   ssl = nullptr;
+
+  unseen_mails = 0;
+  success = false;
 }
 
-GMail::~GMail(void)
+IMAPMail::~IMAPMail(void)
 {
   if(ssl != nullptr)
     SSL_free(ssl);

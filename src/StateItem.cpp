@@ -5,7 +5,7 @@
 #include "StateItems/Battery.hpp"
 #include "StateItems/CPU.hpp"
 #include "StateItems/Date.hpp"
-#include "StateItems/GMail.hpp"
+#include "StateItems/IMAPMail.hpp"
 #include "StateItems/Net.hpp"
 #include "StateItems/Space.hpp"
 #include "StateItems/Volume.hpp"
@@ -71,13 +71,6 @@ vector<StateItem*> StateItem::states;
  */
 void StateItem::init(JSONObject& config)
 {
-  // Date::settings(config["Date"].object());
-  // Net::settings(config["Net"].object());
-  CPU::settings(config["CPU"].object());
-  Battery::settings(config["Battery"].object());
-  Volume::settings(config["Volume"].object());
-  GMail::settings(config["GMail"].object());
-
   JSONArray& order = config["order"].array();
   auto length = order.size();
 
@@ -97,8 +90,8 @@ void StateItem::init(JSONObject& config)
       states.push_back(new Volume(section));
     else if(item.compare("Space") == 0)
       states.push_back(new Space(section));
-    else if(item.compare("GMail") == 0)
-      states.push_back(new GMail(section));
+    else if(item.compare("IMAPMail") == 0)
+      states.push_back(new IMAPMail(section));
   }
 }
 

@@ -1,24 +1,20 @@
+#include <alsa/asoundlib.h>
 #include <cstring>
 #include <iostream>
 
-#include "../output.hpp"
-#include "../util.hpp"
 #include "Volume.hpp"
+#include "../util.hpp"
 
 using namespace std;
 
 /******************************************************************************/
 /******************************************************************************/
 
-string Volume::deprecated_get_volume = "";
-
-void Volume::settings(JSONObject& section)
-{
-  deprecated_get_volume = section["deprecated_get_volume"].string();
-}
-
 Volume::Volume(JSONObject& item) : StateItem(item)
 {
+  JSON* icon_id = item.has("icon");
+  icon = icon_id == nullptr ? Icon::no_icon : parse_icon(icon_id->string());
+
   card = item["card"].string();
   mixer = item["mixer"].string();
 
@@ -26,10 +22,6 @@ Volume::Volume(JSONObject& item) : StateItem(item)
   volume = 0;
 }
 
-#define __VOLUME_WITH_ALSA__
-#ifdef __VOLUME_WITH_ALSA__
-
-#include <alsa/asoundlib.h>
 bool Volume::update(void)
 {
   long min, max;
@@ -77,41 +69,10 @@ bool Volume::update(void)
   return true;
 }
 
-#else
-
-bool Volume::update(void)
-{
-  string output = execute(get_volume);
-  char const* c = output.c_str();
-
-  while(*c != '\0')
-  {
-    int unused;
-    char on[5] = {0};
-    int matched =
-        sscanf(c, "  Front Left: Playback %d [%d%%] [%s", &unused, &volume, on);
-    // TODO other formats
-    if(matched == 3)
-    {
-      mute = strncmp(on, "on]", 3) != 0;
-      return true;
-    }
-
-    while(*c != '\n' && *c != '\0')
-      c++;
-    if(*c == '\n')
-      c++;
-  }
-
-  return false;
-}
-
-#endif
-
 void Volume::print(void)
 {
   separate(Direction::left, Color::neutral);
-  cout << Icon::vol;
+  cout << icon;
   if(mute)
     cout << " Mute ";
   else

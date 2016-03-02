@@ -3,22 +3,24 @@
 
 #include <string>
 #include <utility>
+
 #include "../StateItem.hpp"
 #include "../util.hpp"
+#include "../output.hpp"
 
-enum ConnectionType
+enum class ConnectionType
 {
-  Wireless,
-  Ethernet
+  wireless,
+  ethernet
 };
 
-enum ShowType
+enum class ShowType
 {
-  None,          // shows that the interface is active
+  none,          // shows that the interface is active
   IPv4,          // shows the ipv4 address if enabled
   IPv6,          // shows the ipv6 address if enabled
-  IPv6_Fallback, // shows the ipv6 address if enabled, otherwise -> ipv4
-  Both           // shows both addresses
+  IPv6_fallback, // shows the ipv6 address if enabled, otherwise -> ipv4
+  both           // shows both addresses
 };
 
 class Net : public StateItem, public Logger
@@ -38,6 +40,7 @@ private:
   std::string iface_ipv6;
 
   // optional (wireless)
+  Icon icon;
   std::string iface_essid;
   int iface_quality;
   int iface_bitrate;
@@ -53,9 +56,8 @@ private:
   static time_t min_cooldown;
 
 public:
-  static void settings(JSONObject& section);
   explicit Net(JSONObject&);
-  virtual ~Net(){}
+  virtual ~Net() {}
 };
 
 #endif

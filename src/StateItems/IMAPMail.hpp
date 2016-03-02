@@ -1,31 +1,36 @@
 #ifndef __GMAILREQUIRESOAUTH___
 #define __GMAILREQUIRESOAUTH___
 
-#include "../Address.hpp"
-#include "../JSON/jsonParser.hpp"
-#include "../StateItem.hpp"
-#include "../util.hpp"
 #include <openssl/ssl.h>
 #include <queue>
 #include <resolv.h>
 #include <string>
 
-class GMail : public StateItem, public Logger
+#include "../Address.hpp"
+#include "../JSON/jsonParser.hpp"
+#include "../StateItem.hpp"
+#include "../util.hpp"
+#include "../output.hpp"
+
+class IMAPMail : public StateItem, public Logger
 {
 
 private:
-  static std::string ca_cert;
-  static std::string ca_path;
+  std::string ca_cert;
+  std::string ca_path;
 
-  static std::string hostname;
-  static unsigned int port;
-  static Address address;
+  std::string hostname;
+  unsigned int port;
+  Address address;
 
   std::string username;
   std::string password;
   std::string mailbox;
 
+  std::string tag;
+  Icon icon;
   int unseen_mails;
+  bool success;
 
   int server_fd;
 
@@ -52,9 +57,8 @@ private:
   void print(void);
 
 public:
-  static void settings(JSONObject&);
-  GMail(JSONObject& item);
-  virtual ~GMail();
+  IMAPMail(JSONObject& item);
+  virtual ~IMAPMail();
 };
 
 #endif

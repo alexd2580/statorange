@@ -71,7 +71,7 @@ double TextPos::parse_num(void)
   char* endptr;
   double n = strtod(string, &endptr);
   if(endptr == string)
-    throw TraceCeption(*this, "Could not convert string to number");
+    throw(TraceCeption(*this, "Could not convert string to number"));
   column += (unsigned int)(endptr - string);
   string = endptr;
   return n;

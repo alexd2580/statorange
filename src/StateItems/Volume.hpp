@@ -2,12 +2,14 @@
 #define __VOLUMEXYZHEADER__
 
 #include <string>
+
 #include "../StateItem.hpp"
+#include "../output.hpp"
 
 class Volume : public StateItem
 {
 private:
-  static std::string deprecated_get_volume;
+  Icon icon;
   std::string card;
   std::string mixer;
 
@@ -19,9 +21,8 @@ private:
   void print(void);
 
 public:
-  static void settings(JSONObject&);
   Volume(JSONObject& item);
-  virtual ~Volume(){}
+  virtual ~Volume() {}
 };
 
 #endif

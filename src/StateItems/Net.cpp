@@ -3,7 +3,6 @@
 #include <cstring>
 #include <iostream>
 
-#include "../output.hpp"
 #include "Net.hpp"
 
 using namespace std;
@@ -166,25 +165,28 @@ bool Net::get_wireless_state(void)
 
 Net::Net(JSONObject& item) : StateItem(item), Logger("[Net]", cerr)
 {
+  JSON* icon_id = item.has("icon");
+  icon = icon_id == nullptr ? Icon::no_icon : parse_icon(icon_id->string());
+
   iface = item["interface"].string();
 
   string contype = item["type"].string();
   if(contype.compare("wireless") == 0)
-    iface_type = Wireless;
+    iface_type = ConnectionType::wireless;
   else if(contype.compare("ethernet") == 0)
-    iface_type = Ethernet;
+    iface_type = ConnectionType::ethernet;
 
   string showtype = item["show"].string();
   if(showtype.compare("ipv4") == 0)
-    iface_show = IPv4;
+    iface_show = ShowType::IPv4;
   else if(showtype.compare("ipv6") == 0)
-    iface_show = IPv6;
+    iface_show = ShowType::IPv6;
   else if(showtype.compare("both") == 0)
-    iface_show = Both;
+    iface_show = ShowType::both;
   else if(showtype.compare("none") == 0)
-    iface_show = None;
+    iface_show = ShowType::none;
   else if(showtype.compare("ipv6_fallback") == 0)
-    iface_show = IPv6_Fallback;
+    iface_show = ShowType::IPv6_fallback;
 
   time_t this_cooldown = item["cooldown"].number();
   min_cooldown = min(min_cooldown, this_cooldown);
@@ -206,7 +208,7 @@ bool Net::update(void)
   iface_ipv4.assign(it->second.first);
   iface_ipv6.assign(it->second.second);
 
-  if(iface_type == Wireless)
+  if(iface_type == ConnectionType::wireless)
     if(!get_wireless_state())
       return false;
 
@@ -220,19 +222,18 @@ void Net::print(void)
     separate(Direction::left, Color::neutral);
     switch(iface_type)
     {
-    case Ethernet:
-      cout << ' ' << iface;
+    case ConnectionType::ethernet:
+      cout << icon << ' ' << iface;
       break;
-    case Wireless:
-      cout << Icon::wlan << ' ' << iface_essid << '(' << iface_quality
-           << "%%) ";
+    case ConnectionType::wireless:
+      cout << icon << ' ' << iface_essid << '(' << iface_quality << "%%) ";
       separate(Direction::left, Color::neutral);
       break;
     }
 
     switch(iface_show)
     {
-    case IPv6_Fallback:
+    case ShowType::IPv6_fallback:
       if(iface_ipv6.size() != 0)
         cout << ' ' << iface_ipv6 << ' ';
       else if(iface_ipv4.size() != 0)
@@ -240,19 +241,19 @@ void Net::print(void)
       else
         cout << " No IPv4/IPv6 address ";
       break;
-    case Both:
+    case ShowType::both:
       if(iface_ipv4.size() != 0)
         cout << ' ' << iface_ipv4 << ' ';
       separate(Direction::left, Color::neutral);
       cout << ' ' << iface_ipv6 << ' ';
       break;
-    case IPv4:
+    case ShowType::IPv4:
       cout << ' ' << iface_ipv4 << ' ';
       break;
-    case IPv6:
+    case ShowType::IPv6:
       cout << ' ' << iface_ipv6 << ' ';
       break;
-    case None:
+    case ShowType::none:
       cout << " Up ";
       break;
     }

@@ -5,18 +5,18 @@
 #include "../StateItem.hpp"
 #include "../JSON/jsonParser.hpp"
 
-enum BatStatus
+enum class BatStatus
 {
-  NotFound,
-  Charging,
-  Full,
-  Discharging
+  not_found,
+  charging,
+  full,
+  discharging
 };
 
 class Battery : public StateItem
 {
 private:
-  static std::string bat_file_loc;
+  std::string bat_file_loc;
 
   bool cached;
   std::string printString;
@@ -31,9 +31,8 @@ private:
   void print(void);
 
 public:
-  static void settings(JSONObject&);
   Battery(JSONObject&);
-  virtual ~Battery(){}
+  virtual ~Battery() {}
 };
 
 #endif

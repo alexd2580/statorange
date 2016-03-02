@@ -21,7 +21,8 @@ Space::Space(JSONObject& item) : StateItem(item), Logger("[Space]", cerr)
   {
     JSONObject& mpt = mpoints[i].object();
     si.mount_point = mpt["file"].string();
-    si.icon = parse_icon(mpt["icon"].string());
+    JSON* icon = mpt.has("icon");
+    si.icon = icon == nullptr ? Icon::no_icon : parse_icon(icon->string());
     si.size = 0;
     si.used = 0;
     si.unit = "B";

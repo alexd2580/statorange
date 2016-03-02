@@ -13,6 +13,8 @@ using namespace std;
 
 Date::Date(JSONObject& item) : StateItem(item)
 {
+  JSON* icon_id = item.has("icon");
+  icon = icon_id == nullptr ? Icon::no_icon : parse_icon(icon_id->string());
   format = item["format"].string();
 }
 
@@ -31,6 +33,6 @@ bool Date::update(void)
 void Date::print(void)
 {
   separate(Direction::left, Color::active);
-  cout << Icon::clock << ' ' << time << ' ';
+  cout << icon << ' ' << time << ' ';
   separate(Direction::left, Color::white_on_black);
 }

@@ -71,6 +71,16 @@ void stopButton(std::ostream& = std::cout);
 
 #include "i3state.hpp"
 
-void echo_lemon(I3State const& i3);
+enum class WorkspaceGroup
+{
+  all,     // all workspaces
+  visible, // only directly visible ones
+  active,  // only the current ws
+  none     // none
+};
+
+WorkspaceGroup parse_workspace_group(std::string& s);
+
+void echo_lemon(I3State const& i3, WorkspaceGroup show_window_names);
 
 #endif

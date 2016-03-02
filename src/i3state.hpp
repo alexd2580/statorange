@@ -10,9 +10,6 @@
 
 #include "util.hpp"
 
-#define MAX_DISP_LEN 20
-#define MAX_NAME_LEN 50
-
 struct Workspace
 {
   /**
@@ -21,9 +18,9 @@ struct Workspace
    */
   uint8_t num;
   std::string name;
-  char visible;
-  char focused;
-  char urgent;
+  bool visible;
+  bool focused;
+  bool urgent;
   int output;
 
   long focusedAppID;      // -1 indicates unknown

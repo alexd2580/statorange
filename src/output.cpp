@@ -32,33 +32,44 @@ static map<Icon, string> icons{
     {Icon::no_icon, ""},
 };
 
-#define ICON_CASE(icon)                                                        \
-  if(s == #icon)                                                               \
-    return Icon::icon;
+#define PARSE_CASE(enum_id, constr_id)                                         \
+  if(s == #constr_id)                                                          \
+    return enum_id::constr_id;
 
 Icon parse_icon(std::string& s)
 {
-  ICON_CASE(clock)
-  ICON_CASE(cpu)
-  ICON_CASE(mem)
-  ICON_CASE(dl)
-  ICON_CASE(ul)
-  ICON_CASE(vol)
-  ICON_CASE(hd)
-  ICON_CASE(home)
-  ICON_CASE(mail)
-  ICON_CASE(chat)
-  ICON_CASE(music)
-  ICON_CASE(prog)
-  ICON_CASE(contact)
-  ICON_CASE(wsp)
-  ICON_CASE(wlan)
+  PARSE_CASE(Icon, clock)
+  PARSE_CASE(Icon, cpu)
+  PARSE_CASE(Icon, mem)
+  PARSE_CASE(Icon, dl)
+  PARSE_CASE(Icon, ul)
+  PARSE_CASE(Icon, vol)
+  PARSE_CASE(Icon, hd)
+  PARSE_CASE(Icon, home)
+  PARSE_CASE(Icon, mail)
+  PARSE_CASE(Icon, chat)
+  PARSE_CASE(Icon, music)
+  PARSE_CASE(Icon, prog)
+  PARSE_CASE(Icon, contact)
+  PARSE_CASE(Icon, wsp)
+  PARSE_CASE(Icon, wlan)
   return Icon::no_icon;
 }
 
 std::ostream& operator<<(std::ostream& o, Icon i)
 {
   return o << "%{T3}" << icons[i] << "%{T1}";
+}
+
+/******************************************************************************/
+/******************************* WORKSPACES ***********************************/
+
+WorkspaceGroup parse_workspace_group(std::string& s)
+{
+  PARSE_CASE(WorkspaceGroup, all)
+  PARSE_CASE(WorkspaceGroup, visible)
+  PARSE_CASE(WorkspaceGroup, active)
+  return WorkspaceGroup::none;
 }
 
 /******************************************************************************/
@@ -217,7 +228,9 @@ void stopButton(ostream& o) { o << "%{A}"; }
  * Prints the buttons for switching workspaces
  * align them to the left side
  */
-void echoWorkspaceButtons(I3State const& i3, uint8_t disp)
+void echoWorkspaceButtons(I3State const& i3,
+                          WorkspaceGroup show_names,
+                          uint8_t disp)
 {
   for(size_t w = 0; w < i3.workspaces.size(); w++)
   {
@@ -235,7 +248,12 @@ void echoWorkspaceButtons(I3State const& i3, uint8_t disp)
       startButton("i3-msg workspace " + ws.name);
       separate(Direction::right, color);
       cout << ' ' << ws.name << ' ';
-      if(ws.focusedApp.size() != 0)
+
+      bool show_name = show_names == WorkspaceGroup::all ||
+                       (show_names == WorkspaceGroup::visible && ws.visible) ||
+                       (show_names == WorkspaceGroup::active && ws.focused);
+
+      if(show_name && ws.focusedApp.size() != 0)
       {
         separate(Direction::right, color);
         cout << ' ' << ws.focusedApp << ' ';
@@ -250,13 +268,13 @@ void echoWorkspaceButtons(I3State const& i3, uint8_t disp)
  * Prints the input to lemonbar
  * TODO specify main monitor in config -> fix main, not this method
  */
-void echo_lemon(I3State const& i3)
+void echo_lemon(I3State const& i3, WorkspaceGroup show_names)
 {
   for(uint8_t i = 0; i < i3.outputs.size(); i++)
   {
     cout << "%{S" << (int)i << "}";
     cout << "%{l}";
-    echoWorkspaceButtons(i3, i);
+    echoWorkspaceButtons(i3, show_names, i);
     if(i3.mode.compare("default") != 0)
     {
       cout << ' ';

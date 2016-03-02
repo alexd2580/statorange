@@ -22,7 +22,7 @@ protected:
   static JSON* parseJSON(TextPos& string);
 
 public:
-  virtual ~JSON(){}
+  virtual ~JSON() {}
   virtual std::string get_type(void) = 0;
 
   virtual void print(size_t indention) = 0;
@@ -97,7 +97,7 @@ private:
 
 public:
   JSONNumber(TextPos&);
-  virtual ~JSONNumber(){}
+  virtual ~JSONNumber() {}
   std::string get_type(void);
 
   virtual void print(size_t);
@@ -115,7 +115,7 @@ private:
 
 public:
   JSONBool(TextPos&);
-  virtual ~JSONBool(){}
+  virtual ~JSONBool() {}
   std::string get_type(void);
 
   virtual void print(size_t);
@@ -126,7 +126,7 @@ class JSONNull : public JSON
 {
 public:
   JSONNull(TextPos&);
-  virtual ~JSONNull(){}
+  virtual ~JSONNull() {}
   std::string get_type(void);
 
   virtual void print(size_t);

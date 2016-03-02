@@ -139,7 +139,9 @@ int main(int argc, char* argv[])
     return EXIT_FAILURE;
   }
 
-  chrono::seconds cooldown;
+  chrono::seconds cooldown(5);
+  WorkspaceGroup show_names_on(WorkspaceGroup::visible);
+  bool show_failed_modules(true);
 
   try
   {
@@ -148,8 +150,17 @@ int main(int argc, char* argv[])
     JSONObject& config_json = config_json_raw->object();
 
     // cooldown
-    int cooldown_int = config_json["cooldown"].number();
-    cooldown = chrono::seconds(cooldown_int);
+    JSON* cooldown_json = config_json.has("cooldown");
+    if(cooldown_json != nullptr)
+      cooldown = chrono::seconds((int)cooldown_json->number());
+
+    JSON* sno = config_json.has("ws window names");
+    if(sno != nullptr)
+      show_names_on = parse_workspace_group(sno->string());
+
+    JSON* sfm = config_json.has("show failed modules");
+    if(sfm != nullptr)
+      show_failed_modules = sfm->boolean();
 
     // init StateItems
     StateItem::init(config_json);
@@ -199,7 +210,7 @@ int main(int argc, char* argv[])
       i3State.mutex.lock();
       if(!i3State.valid)
         break;
-      echo_lemon(i3State);
+      echo_lemon(i3State, show_names_on);
       i3State.mutex.unlock();
       global_data.notifier.wait_for(lock, cooldown);
     }
