@@ -29,7 +29,7 @@ protected:
   StateItem(JSONObject& item);
 
 public:
-  virtual ~StateItem() {}
+  virtual ~StateItem(void) = default;
 
   static void init(JSONObject& config);
   static void updates(void);

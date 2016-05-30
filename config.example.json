@@ -1,71 +1,80 @@
 {
-  "cooldown" : 5,
-
-  "Battery" : {
-    "battery_file" : "/sys/class/power_supply/BAT0/uevent"
-  },
-  "CPU" : {
-    "temperature_file" : "/sys/bus/acpi/devices/LNXTHERM:00/thermal_zone/temp",
-    "load_file" : "/proc/loadavg"
-  },
-  "Volume" : {
-    "deprecated_get_volume" : "amixer get Master"
-  },
-  "GMail" : {
-      "ca_file" : "/usr/share/ca-certificates/mozilla/GeoTrust_Global_CA.crt",
-      "you_can_also_specify" : "ca_path",
-      "hostname" : "imap.gmail.com",
-      "port" : 993
-  },
-
-  "order" : [
-    {
-      "item" : "GMail",
-      "cooldown" : 900,
-      "button" : "chromium www.gmail.com",
-      "username" : "your_mail@gmail.com",
-      "password" : "your_password",
-      "mailbox" : "INBOX"
-    },
-    {
-      "item" : "Volume",
-      "cooldown" : 300,
-      "button" : "terminator -e alsamixer &",
-      "card" : "default",
-      "mixer" : "Master"
-    },
-    {
-      "item" : "Net",
-      "cooldown" : 10,
-      "interface" : "wlp2s0",
-      "type" : "wireless",
-      "show" : "ipv4"
-    },
-    {
-      "item" : "Net",
-      "cooldown" : 10,
-      "interface" : "enp0s25",
-      "type" : "ethernet",
-      "show" : "ipv4"
-    },
-    {
-      "item" : "Battery",
-      "cooldown" : 15
-    },
-    {
-      "item" : "CPU",
-      "cooldown" : 5,
-      "button" : "terminator -e htop &"
-    },
-    {
-      "item" : "Space",
-      "cooldown" : 30,
-      "mount_points" : ["/", "/home"]
-    },
-    {
-      "item" : "Date",
-      "cooldown" : 30,
-      "format" : "%Y-%m-%d %H:%M"
-    }
-  ]
+    "cooldown": 5,
+    "ws window names" : "active",
+    "can also be" : "none, all, visible (btw the impl is missing)",
+    "show failed modules" : true,
+    "order": [
+        {
+            "item": "IMAPMail",
+            "icon": "mail",
+            "cooldown": 900,
+            "button": "chromium www.gmail.com &",
+            "hostname": "imap.gmail.com",
+            "port": 993,
+            "ca_file": "/etc/ca-certificates/extracted/cadir/GeoTrust_Global_CA.pem",
+            "username": "<username>",
+            "password": "<password>",
+            "mailbox": "INBOX",
+            "tag": "GMail"
+        },
+        {
+            "item": "Volume",
+            "icon": "vol",
+            "cooldown": 30,
+            "button": "terminator -e alsamixer &",
+            "card": "default",
+            "mixer": "Master"
+        },
+        {
+            "item": "Net",
+            "icon": "wlan",
+            "cooldown": 10,
+            "interface": "wlp2s0",
+            "type": "wireless",
+            "show": "ipv4"
+        },
+        {
+            "item": "Net",
+            "cooldown": 10,
+            "interface": "enp0s25",
+            "type": "ethernet",
+            "show": "ipv4"
+        },
+        {
+            "item": "Battery",
+            "cooldown": 15,
+            "battery_file": "/sys/class/power_supply/BAT0/uevent"
+        },
+        {
+            "item": "CPU",
+            "icon": "cpu",
+            "cooldown": 5,
+            "button": "terminator -e htop &",
+            "temperature_files": [
+                "/sys/bus/acpi/devices/LNXTHERM:00/thermal_zone/temp",
+                "/sys/bus/acpi/devices/LNXTHERM:01/thermal_zone/temp"
+            ],
+            "load_file": "/proc/loadavg"
+        },
+        {
+            "item": "Space",
+            "cooldown": 30,
+            "mount_points": [
+                {
+                    "file": "/",
+                    "icon": "hd"
+                },
+                {
+                    "file": "/home",
+                    "icon": "home"
+                }
+            ]
+        },
+        {
+            "item": "Date",
+            "cooldown": 30,
+            "format": "%Y-%m-%d %H:%M",
+            "icon": "clock"
+        }
+    ]
 }

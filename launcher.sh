@@ -4,6 +4,7 @@ this_path=`dirname "$0"`
 log_path=$this_path"/log"
 mkdir -p $log_path
 exit_value=4
+
 echo `date`
 
 normal_font="-f -misc-fixed-medium-r-normal--13-120-75-75-C-70-iso10646-1"
@@ -56,4 +57,4 @@ done
 rm -f $statorange_fifo
 
 dt=`date`
-echo "[$dt] statorange_launcher.sh exiting"
+echo "[$dt] launcher.sh exiting"
