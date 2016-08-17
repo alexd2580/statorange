@@ -4,19 +4,26 @@
 
 #include "Volume.hpp"
 #include "../util.hpp"
+#include "../JSON/JSONException.hpp"
 
 using namespace std;
 
 /******************************************************************************/
 /******************************************************************************/
 
-Volume::Volume(JSONObject& item) : StateItem(item)
+Volume::Volume(JSON const& item) : StateItem(item)
 {
-  JSON* icon_id = item.has("icon");
-  icon = icon_id == nullptr ? Icon::no_icon : parse_icon(icon_id->string());
+  try
+  {
+    icon = parse_icon(item["icon"]);
+  }
+  catch(JSONException&)
+  {
+    icon = Icon::no_icon;
+  }
 
-  card = item["card"].string();
-  mixer = item["mixer"].string();
+  card.assign(item["card"]);
+  mixer.assign(item["mixer"]);
 
   mute = true;
   volume = 0;

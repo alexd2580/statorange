@@ -26,12 +26,12 @@ private:
 protected:
   virtual bool update(void) = 0;
   virtual void print(void) = 0;
-  StateItem(JSONObject& item);
+  StateItem(JSON const& item);
 
 public:
   virtual ~StateItem(void) = default;
 
-  static void init(JSONObject& config);
+  static void init(JSON const& config);
   static void updates(void);
   static void forceUpdates(void);
   static void printState(void);

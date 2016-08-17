@@ -25,8 +25,8 @@ private:
   void print(void);
 
 public:
-  CPU(JSONObject& item);
-  virtual ~CPU() {}
+  CPU(JSON const& item);
+  virtual ~CPU(void) = default;
 };
 
 #endif

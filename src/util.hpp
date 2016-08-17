@@ -22,19 +22,27 @@ private:
 public:
   explicit TextPos(cchar* begin);
 
+  TextPos(TextPos const& other) = default;
+  TextPos(TextPos&& other) = default;
+  TextPos& operator=(TextPos const& other) = default;
+  TextPos& operator=(TextPos&& other) = default;
+
+  virtual ~TextPos(void) = default;
+
   /**
    * Returns the byte (character) at the current position.
    */
-  char operator*(void);
+  char operator*(void) const;
 
   /**
    * Returns the string ptr to the current position.
    */
   cchar* ptr(void) const;
+
   /**
    * Returns the next BYTE of the string.
    */
-  char next();
+  char next(void);
 
   /**
    * Moves the Text_pos to the next non-whitespace character
@@ -49,7 +57,7 @@ public:
   /**
    * Returns the string representation of the position -> ":line:column:"
    */
-  std::string to_string(void);
+  std::string to_string(void) const;
 
   unsigned int get_line(void) const;
   unsigned int get_column(void) const;
@@ -58,12 +66,19 @@ public:
    * Moves the pointer forward
    */
   void offset(size_t);
+  TextPos& operator+=(size_t off);
 
   /**
    * Parses a number at the current position and sets the pposition
    * to the first byte after the number.
    */
   double parse_num(void);
+
+  /**
+   * Given a pointer to the starting " of the string, returns a C++ string
+   * and offsets the pointer to the next character after the "
+   */
+  std::string parse_escaped_string(void);
 };
 
 std::ostream& operator<<(std::ostream&, TextPos const& pos);
@@ -114,12 +129,6 @@ public:
     }
   }
 };
-
-/**
- * Given a pointer to the starting " of the string, returns a C++ string
- * and offsets the pointer to the next character after the "
- */
-std::string parse_escaped_string(TextPos& pos);
 
 bool hasInput(int fd, int microsec);
 

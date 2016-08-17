@@ -5,331 +5,357 @@
  * I WILL EVENTUALLY (MAYBE) FIX THIS!
  */
 
+#include "jsonParser.hpp"
+#include "../util.hpp"
+#include "JSONException.hpp"
+
+#include <map>
+#include <vector>
+
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
-
-#include "jsonParser.hpp"
-#include "../util.hpp"
 
 using namespace std;
 
 /******************************************************************************/
 
-JSONArray::JSONArray(TextPos& pos)
+class JSONArray : public JSON
 {
-  try
-  {
-    char c = *pos;
-    if(c != '[')
-      throw JSONException("Array not starting at the given position");
+private:
+  std::vector<std::unique_ptr<JSON>> elems;
 
-    while(true)
+public:
+  JSONArray(TextPos& pos)
+  {
+    try
     {
-      c = *pos;
-      size_t esize = elems.size();
-      if((esize == 0 && c == '[') || (esize > 0 && c == ','))
+      char c = *pos;
+      if(c != '[')
+        throw JSONException("Array not starting at the given position");
+
+      while(true)
       {
-        (void)pos.next();
-        pos.skip_whitespace();
-        if(*pos == ']' && esize == 0)
+        c = *pos;
+        size_t esize = elems.size();
+        if((esize == 0 && c == '[') || (esize > 0 && c == ','))
+        {
+          (void)pos.next();
+          pos.skip_whitespace();
+          if(*pos == ']' && esize == 0)
+            break;
+          try
+          {
+            elems.push_back(JSON::parseJSON(pos));
+          }
+          catch(TraceCeption& e)
+          {
+            e.push_stack("While parsing array element #" +
+                         std::to_string(elems.size()));
+            throw e;
+          }
+          pos.skip_whitespace();
+        }
+        else if(c == ']')
           break;
-        try
-        {
-          elems.push_back(JSON::parseJSON(pos));
-        }
-        catch(TraceCeption& e)
-        {
-          e.push_stack("While parsing array element #" +
-                       std::to_string(elems.size()));
-          throw e;
-        }
-        pos.skip_whitespace();
+        else if(c == '\0')
+          throw JSONException(pos, "Unexpected end of str");
+        else
+          throw JSONException(pos,
+                              std::string("Unexpected symbol: ") + (char)c);
       }
-      else if(c == ']')
-        break;
-      else if(c == '\0')
-        throw JSONException(pos, "Unexpected end of str");
-      else
-        throw JSONException(pos, std::string("Unexpected symbol: ") + (char)c);
+      (void)pos.next(); // no need to check closing ] or \0
     }
-    (void)pos.next(); // no need to check closing ] or \0
+    catch(TraceCeption& e)
+    {
+      e.push_stack("While parsing array");
+      throw e;
+    }
   }
-  catch(TraceCeption& e)
+
+  virtual ~JSONArray(void) = default;
+  std::string get_type(void) const { return "array"; }
+
+  virtual void print(size_t indention) const
   {
-    e.push_stack("While parsing array");
-    throw e;
+    cout << '[' << endl << std::string(indention + INDENT_WIDTH, ' ');
+    if(elems.size() > 0)
+      elems[0]->print(indention + INDENT_WIDTH);
+    for(size_t i = 1; i < elems.size(); i++)
+    {
+      cout << ',' << endl << std::string(indention + INDENT_WIDTH, ' ');
+      elems[i]->print(indention + INDENT_WIDTH);
+    }
+    cout << endl << std::string(indention, ' ') << ']';
   }
-}
 
-JSONArray::~JSONArray()
-{
-  for(auto i = elems.begin(); i != elems.end(); i++)
-    delete *i;
-}
-
-std::string JSONArray::get_type(void) { return "array"; }
-
-void JSONArray::print(size_t indention)
-{
-  cout << '[' << endl << std::string(indention + INDENT_WIDTH, ' ');
-  if(elems.size() > 0)
-    elems[0]->print(indention + INDENT_WIDTH);
-  for(size_t i = 1; i < elems.size(); i++)
+  JSON& get(size_t i) const
   {
-    cout << ',' << endl << std::string(indention + INDENT_WIDTH, ' ');
-    elems[i]->print(indention + INDENT_WIDTH);
+    if(i > elems.size())
+      throw JSONException("Array index out of bounds: " + to_string(i));
+    return *elems[i];
   }
-  cout << endl << std::string(indention, ' ') << ']';
-}
 
-JSON& JSONArray::get(size_t i)
-{
-  if(i > elems.size())
-    throw JSONException("Array index out of bounds: " + to_string(i));
-  return *elems[i];
-}
+  JSON& operator[](size_t i) const { return get(i); }
 
-JSON& JSONArray::operator[](size_t i) { return get(i); }
-
-__attribute__((pure)) size_t JSONArray::size(void) { return elems.size(); }
+  size_t size(void) const { return elems.size(); }
+};
 
 /******************************************************************************/
 
-void JSONObject::parseNamed(TextPos& pos)
-{
-  std::string key;
-  try
-  {
-    key.assign(parse_escaped_string(pos));
-    pos.skip_whitespace();
-    char c = *pos;
-    if(c != ':')
-      throw JSONException(pos, std::string("Expected ':', got: ") + (char)c);
-    (void)pos.next(); // skip :
-  }
-  catch(TraceCeption& e)
-  {
-    e.push_stack("While parsing a field name of an object");
-    throw e;
-  }
-  try
-  {
-    pos.skip_whitespace();
-    JSON* something = JSON::parseJSON(pos);
-    fields.insert(std::pair<std::string, JSON*>(key, something));
-  }
-  catch(TraceCeption& e)
-  {
-    e.push_stack("While trying to parse the field with the key \"" + key +
-                 "\".");
-    throw e;
-  }
-}
-
-/******************************************************************************/
-
-void printNamed(map<std::string, JSON*>::iterator i, size_t indention)
+void printNamed(map<std::string, std::unique_ptr<JSON>>::const_iterator i,
+                size_t indention)
 {
   cout << '"' << i->first << "\" : ";
   i->second->print(indention);
 }
 
-JSONObject::JSONObject(TextPos& pos)
+class JSONObject : public JSON
 {
-  try
-  {
-    char c = *pos;
-    if(c != '{')
-      throw JSONException(pos, std::string("Expected '{', got: ") + (char)c);
+private:
+  std::map<std::string, std::unique_ptr<JSON>> fields;
 
-    while(true)
+  void parseNamed(TextPos& pos)
+  {
+    std::string key;
+    try
     {
-      c = *pos;
-      size_t field_size = fields.size();
-      if((field_size == 0 && c == '{') || (field_size > 0 && c == ','))
-      {
-        pos.next();
-        pos.skip_whitespace();
-        if(*pos == '}' && field_size == 0)
-          break;
-        parseNamed(pos);
-        pos.skip_whitespace();
-      }
-      else if(c == '}')
-        break;
-      else if(c == '\0')
-        throw JSONException(pos, "Unexpected end of string");
-      else
-        throw JSONException(pos, std::string("Unexpected symbol: ") + (char)c);
+      key.assign(pos.parse_escaped_string());
+      pos.skip_whitespace();
+      char c = *pos;
+      if(c != ':')
+        throw JSONException(pos, std::string("Expected ':', got: ") + (char)c);
+      (void)pos.next(); // skip :
+    }
+    catch(TraceCeption& e)
+    {
+      e.push_stack("While parsing a field name of an object");
+      throw e;
     }
 
-    (void)pos.next(); // skip closing brace
+    try
+    {
+      pos.skip_whitespace();
+      std::unique_ptr<JSON> something = JSON::parseJSON(pos);
+      std::pair<std::string, std::unique_ptr<JSON>> kvpair(
+          std::move(key), std::move(something));
+      fields.insert(std::move(kvpair));
+    }
+    catch(TraceCeption& e)
+    {
+      e.push_stack("While trying to parse the field with the key \"" + key +
+                   "\".");
+      throw e;
+    }
   }
-  catch(TraceCeption& e)
+
+public:
+  JSONObject(TextPos& pos)
   {
-    e.push_stack("While parsing JSONObject");
-    throw e;
+    try
+    {
+      char c = *pos;
+      if(c != '{')
+        throw JSONException(pos, std::string("Expected '{', got: ") + (char)c);
+
+      while(true)
+      {
+        c = *pos;
+        size_t field_size = fields.size();
+        if((field_size == 0 && c == '{') || (field_size > 0 && c == ','))
+        {
+          pos.next();
+          pos.skip_whitespace();
+          if(*pos == '}' && field_size == 0)
+            break;
+          parseNamed(pos);
+          pos.skip_whitespace();
+        }
+        else if(c == '}')
+          break;
+        else if(c == '\0')
+          throw JSONException(pos, "Unexpected end of string");
+        else
+          throw JSONException(pos,
+                              std::string("Unexpected symbol: ") + (char)c);
+      }
+
+      (void)pos.next(); // skip closing brace
+    }
+    catch(TraceCeption& e)
+    {
+      e.push_stack("While parsing JSONObject");
+      throw e;
+    }
   }
-}
 
-JSONObject::~JSONObject()
-{
-  for(auto i = fields.begin(); i != fields.end(); i++)
-    delete i->second;
-}
+  virtual ~JSONObject(void) = default;
+  virtual std::string get_type(void) const { return "object"; }
 
-std::string JSONObject::get_type(void) { return "object"; }
-
-void JSONObject::print(size_t indention)
-{
-  cout << '{' << endl << std::string(indention + INDENT_WIDTH, ' ');
-
-  auto i = fields.begin();
-  size_t field_size = fields.size();
-  if(field_size > 0)
-    printNamed(i, indention + INDENT_WIDTH);
-  for(; i != fields.end(); i++)
+  virtual void print(size_t indention) const
   {
-    cout << ',' << endl << std::string(indention + INDENT_WIDTH, ' ');
-    printNamed(i, indention + INDENT_WIDTH);
+    cout << '{' << endl << std::string(indention + INDENT_WIDTH, ' ');
+
+    auto i = fields.begin();
+    size_t field_size = fields.size();
+    if(field_size > 0)
+      printNamed(i, indention + INDENT_WIDTH);
+    i++;
+    for(; i != fields.end(); i++)
+    {
+      cout << ',' << endl << std::string(indention + INDENT_WIDTH, ' ');
+      printNamed(i, indention + INDENT_WIDTH);
+    }
+    cout << endl << std::string(indention, ' ') << '}';
   }
-  cout << endl << std::string(indention, ' ') << '}';
-}
 
-JSON* JSONObject::has(cchar* key)
-{
-  std::string skey(key);
-  return has(skey);
-}
+  JSON& get(cchar* key) const
+  {
+    std::string skey(key);
+    return get(skey);
+  }
 
-JSON* JSONObject::has(std::string& key)
-{
-  auto it = fields.find(key);
-  return (it == fields.end() ? nullptr : it->second);
-}
+  JSON& operator[](cchar* key) const
+  {
+    std::string skey(key);
+    return get(skey);
+  }
 
-JSON& JSONObject::get(cchar* key)
-{
-  std::string skey(key);
-  return get(skey);
-}
+  JSON& get(std::string& key) const
+  {
+    auto it = fields.find(key);
+    if(it == fields.end())
+      throw JSONException(std::string("Element ") + key + " not found");
+    return *it->second;
+  }
 
-JSON& JSONObject::operator[](cchar* key)
-{
-  std::string skey(key);
-  return get(skey);
-}
-
-JSON& JSONObject::get(std::string& key)
-{
-  auto it = fields.find(key);
-  if(it == fields.end())
-    throw JSONException(std::string("Element ") + key + " not found");
-  return *(it->second);
-}
-
-JSON& JSONObject::operator[](std::string& key) { return get(key); }
+  JSON& operator[](std::string& key) const { return get(key); }
+};
 
 /******************************************************************************/
 
-JSONString::JSONString(TextPos& pos)
+class JSONString : public JSON
 {
-  try
+private:
+  std::string string;
+
+public:
+  JSONString(TextPos& pos)
   {
-    string.assign(parse_escaped_string(pos));
+    try
+    {
+      string.assign(pos.parse_escaped_string());
+    }
+    catch(TraceCeption& e)
+    {
+      e.push_stack("While parsing JSONString");
+      throw e;
+    }
   }
-  catch(TraceCeption& e)
-  {
-    e.push_stack("While parsing JSONString");
-    throw e;
-  }
-}
 
-JSONString::~JSONString() {}
+  virtual ~JSONString(void) = default;
 
-std::string JSONString::get_type(void) { return "string"; }
+  virtual std::string get_type(void) const { return "string"; }
 
-void JSONString::print(size_t) { cout << string; }
+  virtual void print(size_t) const { cout << '"' << string << '"'; }
 
-string JSONString::get(void) { return string; }
-
-__attribute__((const)) JSONString::operator std::string&() { return string; }
+  __attribute__((const)) operator std::string&() { return string; }
+};
 
 /******************************************************************************/
 
-JSONNumber::JSONNumber(TextPos& pos)
+class JSONNumber : public JSON
 {
-  try
+private:
+  double n;
+
+public:
+  JSONNumber(TextPos& pos)
   {
-    n = pos.parse_num();
+    try
+    {
+      n = pos.parse_num();
+    }
+    catch(TraceCeption& e) // TODO chage to generic exceptions?
+    {
+      e.push_stack("While parsing JSONNumber");
+      throw e;
+    }
   }
-  catch(TraceCeption& e) // TODO chage to generic exceptions?
+
+  virtual ~JSONNumber(void) = default;
+
+  std::string get_type(void) const { return "num"; }
+
+  virtual void print(size_t) const { cout << n; }
+
+  __attribute__((pure)) virtual operator uint8_t() { return (uint8_t)n; }
+  __attribute__((pure)) virtual operator int() { return (int)n; }
+  __attribute__((pure)) virtual operator unsigned int()
   {
-    e.push_stack("While parsing JSONNumber");
-    throw e;
+    return (unsigned int)n;
   }
-}
-
-std::string JSONNumber::get_type(void) { return "num"; }
-
-void JSONNumber::print(size_t) { cout << n; }
-
-__attribute__((pure)) JSONNumber::operator uint8_t() { return (uint8_t)n; }
-
-__attribute__((pure)) JSONNumber::operator int() { return (int)n; }
-
-__attribute__((pure)) JSONNumber::operator unsigned int()
-{
-  return (unsigned int)n;
-}
-
-__attribute__((pure)) JSONNumber::operator long() { return (long)n; }
-
-__attribute__((pure)) JSONNumber::operator double() { return n; }
+  __attribute__((pure)) virtual operator long() { return (long)n; }
+  __attribute__((pure)) virtual operator double() { return n; }
+};
 
 /******************************************************************************/
 
-JSONBool::JSONBool(TextPos& pos)
+class JSONBool : public JSON
 {
-  cchar* str = pos.ptr();
-  if(strncmp(str, "false", 5) == 0)
-  {
-    b = false;
-    pos.offset(5);
-  }
-  else if(strncmp(str, "true", 4) == 0)
-  {
-    b = true;
-    pos.offset(4);
-  }
-  else
-  {
-    std::string errmsg("Could not detect neither true nor false: ");
-    throw JSONException(pos, errmsg + std::string(str, 5));
-  }
-}
+private:
+  bool b;
 
-std::string JSONBool::get_type(void) { return "bool"; }
+public:
+  JSONBool(TextPos& pos)
+  {
+    cchar* str = pos.ptr();
+    if(strncmp(str, "false", 5) == 0)
+    {
+      b = false;
+      pos.offset(5);
+    }
+    else if(strncmp(str, "true", 4) == 0)
+    {
+      b = true;
+      pos.offset(4);
+    }
+    else
+    {
+      std::string errmsg("Could not detect neither true nor false: ");
+      throw JSONException(pos, errmsg + std::string(str, 5));
+    }
+  }
 
-void JSONBool::print(size_t) { cout << b; }
+  virtual ~JSONBool(void) = default;
 
-__attribute__((pure)) JSONBool::operator bool() { return b; }
+  std::string get_type(void) const { return "bool"; }
+
+  virtual void print(size_t) const { cout << b ? "true" : "false"; }
+
+  __attribute__((pure)) virtual operator bool() { return b; }
+};
 
 /******************************************************************************/
 
-JSONNull::JSONNull(TextPos& pos)
+class JSONNull : public JSON
 {
-  cchar* str = pos.ptr();
-  if(strncmp(str, "null", 4) == 0)
-    pos.offset(4);
-  else
-    throw JSONException(pos, "Could not detect null: " + std::string(str, 4));
-}
+public:
+  JSONNull(TextPos& pos)
+  {
+    cchar* str = pos.ptr();
+    if(strncmp(str, "null", 4) == 0)
+      pos.offset(4);
+    else
+      throw JSONException(pos, "Could not detect null: " + std::string(str, 4));
+  }
 
-std::string JSONNull::get_type(void) { return "null"; }
+  virtual ~JSONNull(void) = default;
 
-void JSONNull::print(size_t) { cout << "null"; }
+  virtual std::string get_type(void) const { return "null"; }
+
+  virtual void print(size_t) const { cout << "null"; }
+};
 
 /******************************************************************************/
 
@@ -337,13 +363,13 @@ void JSONNull::print(size_t) { cout << "null"; }
  * Parses the first JSONSomthing it encounters,
  * string is set to the next (untouched) character.
  */
-JSON* JSON::parse(cchar* str)
+std::unique_ptr<JSON> JSON::parse(cchar* str)
 {
   TextPos pos(str);
   return parseJSON(pos);
 }
 
-JSON* JSON::parseJSON(TextPos& pos)
+std::unique_ptr<JSON> JSON::parseJSON(TextPos& pos)
 {
   pos.skip_whitespace();
   char c = *pos;
@@ -352,18 +378,18 @@ JSON* JSON::parseJSON(TextPos& pos)
   case '\0':
     throw JSONException("Unexpected end of string");
   case '"':
-    return new JSONString(pos);
+    return std::make_unique<JSONString>(pos);
   case '{':
-    return new JSONObject(pos);
+    return std::make_unique<JSONObject>(pos);
   case '[':
-    return new JSONArray(pos);
+    return std::make_unique<JSONArray>(pos);
   default:
     if((c >= '0' && c <= '9') || c == '.' || c == '+' || c == '-')
-      return new JSONNumber(pos);
+      return std::make_unique<JSONNumber>(pos);
     else if(c == 't' || c == 'f')
-      return new JSONBool(pos);
+      return std::make_unique<JSONBool>(pos);
     else if(c == 'n')
-      return new JSONNull(pos);
+      return std::make_unique<JSONNull>(pos);
     break;
   }
 
@@ -371,82 +397,76 @@ JSON* JSON::parseJSON(TextPos& pos)
   throw JSONException(pos, errmsg + c);
 }
 
-void JSON::print(void)
+void JSON::print(void) const
 {
   print(0);
   cout << endl;
 }
 
-JSONArray& JSON::array(void)
+// JSONArray
+JSON& JSON::get(size_t) const
 {
-  JSONArray* ptr = dynamic_cast<JSONArray*>(this);
-  if(ptr == nullptr)
-  {
-    JSONException e(std::string("This JSON instance is of type ") + get_type());
-    e.push_stack("Cannot cast to JSONArray");
-    throw e;
-  }
-  return *ptr;
+  string errmsg("Cannot access " + get_type() +
+                " type using array subscription");
+  throw JSONException(errmsg);
+}
+JSON& JSON::operator[](size_t) const { return get((size_t)0); }
+
+size_t JSON::size(void) const
+{
+  string errmsg("Cannot access size of " + get_type() + " type");
+  throw JSONException(errmsg);
 }
 
-JSONObject& JSON::object(void)
+// JSONObject
+JSON& JSON::get(cchar*) const
 {
-  JSONObject* ptr = dynamic_cast<JSONObject*>(this);
-  if(ptr == nullptr)
-  {
-    JSONException e(std::string("This JSON instance is of type ") + get_type());
-    e.push_stack("Cannot cast to JSONObject");
-    throw e;
-  }
-  return *ptr;
+  string errmsg("Cannot access " + get_type() + " type as a dictionary");
+  throw JSONException(errmsg);
+}
+JSON& JSON::operator[](cchar*) const { return get((cchar*)nullptr); }
+JSON& JSON::get(std::string&) const { return get((cchar*)nullptr); }
+JSON& JSON::operator[](std::string&) const { return get((cchar*)nullptr); }
+
+// JSONString
+JSON::operator std::string&()
+{
+  string errmsg("Cannot convert " + get_type() + " type to 'string'");
+  throw JSONException(errmsg);
 }
 
-JSONString& JSON::string(void)
+// JSONNumber
+JSON::operator uint8_t()
 {
-  JSONString* ptr = dynamic_cast<JSONString*>(this);
-  if(ptr == nullptr)
-  {
-    JSONException e(std::string("This JSON instance is of type ") + get_type());
-    e.push_stack("Cannot cast to JSONString");
-    throw e;
-  }
-  return *ptr;
+  string errmsg("Cannot convert " + get_type() + " type to 'uint8_t'");
+  throw JSONException(errmsg);
+}
+JSON::operator int()
+{
+  string errmsg("Cannot convert " + get_type() + " type to 'int'");
+  throw JSONException(errmsg);
+}
+JSON::operator unsigned int()
+{
+  string errmsg("Cannot convert " + get_type() + " type to 'unsigned int'");
+  throw JSONException(errmsg);
+}
+JSON::operator long()
+{
+  string errmsg("Cannot convert " + get_type() + " type to 'long'");
+  throw JSONException(errmsg);
+}
+JSON::operator double()
+{
+  string errmsg("Cannot convert " + get_type() + " type to 'double'");
+  throw JSONException(errmsg);
 }
 
-JSONNumber& JSON::number(void)
+// JSONBool
+JSON::operator bool()
 {
-  JSONNumber* ptr = dynamic_cast<JSONNumber*>(this);
-  if(ptr == nullptr)
-  {
-    JSONException e(std::string("This JSON instance is of type ") + get_type());
-    e.push_stack("Cannot cast to JSONNumber");
-    throw e;
-  }
-  return *ptr;
-}
-
-JSONBool& JSON::boolean(void)
-{
-  JSONBool* ptr = dynamic_cast<JSONBool*>(this);
-  if(ptr == nullptr)
-  {
-    JSONException e(std::string("This JSON instance is of type ") + get_type());
-    e.push_stack("Cannot cast to JSONBool");
-    throw e;
-  }
-  return *ptr;
-}
-
-JSONNull& JSON::null(void)
-{
-  JSONNull* ptr = dynamic_cast<JSONNull*>(this);
-  if(ptr == nullptr)
-  {
-    JSONException e(std::string("This JSON instance is of type ") + get_type());
-    e.push_stack("Cannot cast to JSONNull");
-    throw e;
-  }
-  return *ptr;
+  string errmsg("Cannot convert " + get_type() + " type to 'bool'");
+  throw JSONException(errmsg);
 }
 
 /******************************************************************************/
@@ -456,10 +476,10 @@ void test_json(void)
   std::string jsonstring = "{\"asd\":\"asd\", \"qwe\":123}";
   try
   {
-    JSON* json = JSON::parse(jsonstring.c_str());
-    (void)json->object()["asd"].string();
-    (void)json->object()["qwe"].string();
-    delete json;
+    auto json_ptr = JSON::parse(jsonstring.c_str());
+    auto& json = *json_ptr;
+    std::string asd(json["asd"]);
+    std::string qwe(json["qwe"]);
   }
   catch(TraceCeption& e)
   {

@@ -57,7 +57,7 @@ private:
   void print(void);
 
 public:
-  IMAPMail(JSONObject& item);
+  IMAPMail(JSON const& item);
   virtual ~IMAPMail();
 };
 

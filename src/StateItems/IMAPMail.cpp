@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include "IMAPMail.hpp"
+#include "../JSON/JSONException.hpp"
 
 using namespace std;
 
@@ -265,29 +266,52 @@ void IMAPMail::print(void)
   }
 }
 
-IMAPMail::IMAPMail(JSONObject& item)
+IMAPMail::IMAPMail(JSON const& item)
     : StateItem(item), Logger("[IMAPMail]", cerr)
 {
-  JSON* icon_id = item.has("icon");
-  icon = icon_id == nullptr ? Icon::no_icon : parse_icon(icon_id->string());
+  try
+  {
+    icon = parse_icon(item["icon"]);
+  }
+  catch(JSONException&)
+  {
+    icon = Icon::no_icon;
+  }
 
-  hostname = item["hostname"].string();
-  port = item["port"].number();
+  hostname.assign(item["hostname"]);
+  port = item["port"];
   address = Address(hostname, port);
 
-  JSON* ca_file_ptr = item.has("ca_file");
-  if(ca_file_ptr != nullptr)
-    ca_cert = ca_file_ptr->string();
-  JSON* ca_path_ptr = item.has("ca_path");
-  if(ca_path_ptr != nullptr)
-    ca_path = ca_path_ptr->string();
+  try
+  {
+    ca_cert.assign(item["ca_file"]);
+  }
+  catch(JSONException&)
+  {
+    // ignore
+  }
 
-  username = item["username"].string();
-  password = item["password"].string();
-  mailbox = item["mailbox"].string();
+  try
+  {
+    ca_path.assign(item["ca_path"]);
+  }
+  catch(JSONException&)
+  {
+    // ignore
+  }
 
-  JSON* tag_json = item.has("tag");
-  tag = tag_json == nullptr ? hostname + username : tag_json->string();
+  username.assign(item["username"]);
+  password.assign(item["password"]);
+  mailbox.assign(item["mailbox"]);
+
+  try
+  {
+    tag.assign(item["tag"]);
+  }
+  catch(JSONException&)
+  {
+    tag = hostname + username;
+  }
 
   ctx = nullptr;
   server_fd = -1;

@@ -56,8 +56,8 @@ private:
   static time_t min_cooldown;
 
 public:
-  explicit Net(JSONObject&);
-  virtual ~Net() {}
+  explicit Net(JSON const&);
+  virtual ~Net(void) = default;
 };
 
 #endif

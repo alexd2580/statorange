@@ -21,8 +21,8 @@ private:
   void print(void);
 
 public:
-  Volume(JSONObject& item);
-  virtual ~Volume() {}
+  Volume(JSON const& item);
+  virtual ~Volume(void) = default;
 };
 
 #endif

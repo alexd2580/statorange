@@ -21,6 +21,8 @@ typedef struct i3_ipc_header
   uint32_t type;
 } __attribute__((packed)) i3_ipc_header_t;
 
+#define HEADER_SIZE (sizeof(i3_ipc_header_t))
+
 /*
  * Messages from clients to i3
  *

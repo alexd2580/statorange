@@ -10,17 +10,14 @@
 
 using namespace std;
 
-CPU::CPU(JSONObject& item) : StateItem(item), Logger("[CPU]", cerr)
+CPU::CPU(JSON const& item) : StateItem(item), Logger("[CPU]", cerr)
 {
-  JSONArray& temp_paths = item["temperature_files"].array();
+  auto& temp_paths = item["temperature_files"];
   auto num_temps = temp_paths.size();
   for(decltype(num_temps) i = 0; i < num_temps; i++)
-  {
-    JSONString& temp_path = temp_paths[i].string();
-    temp_file_paths.push_back(temp_path);
-  }
+    temp_file_paths.push_back(temp_paths[i]);
 
-  load_file_path = item["load_file"].string();
+  load_file_path.assign(item["load_file"]);
 
   print_string = "";
   cached = false;

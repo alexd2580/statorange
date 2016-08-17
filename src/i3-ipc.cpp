@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include "i3-ipc-constants.hpp"
+#include "i3-ipc.hpp"
 
 using namespace std;
 
@@ -41,14 +42,14 @@ string ipc_type_to_string(unsigned int type)
   }
 }
 
-ssize_t writeall(int fd, void* buf, size_t count, bool& die)
+ssize_t write_all(int fd, char const* buf, size_t count, bool& die)
 {
   size_t written = 0;
 
   while(written < count)
   {
     errno = 0;
-    ssize_t n = write(fd, (char*)buf + written, count - written);
+    ssize_t n = write(fd, buf + written, count - written);
     if(die)
       return -1;
     else if(n <= 0)
@@ -64,14 +65,14 @@ ssize_t writeall(int fd, void* buf, size_t count, bool& die)
   return (ssize_t)written;
 }
 
-ssize_t readall(int fd, void* buf, size_t count, bool& die)
+ssize_t read_all(int fd, char* buf, size_t count, bool& die)
 {
   size_t raed = 0;
 
   while(raed < count)
   {
     errno = 0;
-    ssize_t n = read(fd, (char*)buf + raed, count - raed);
+    ssize_t n = read(fd, buf + raed, count - raed);
     if(die)
     {
       cerr << "Aborting readall. die is set to 1." << endl;
@@ -93,17 +94,17 @@ auto kofn = [](auto k, auto n) {
   return string(std::to_string(k) + "/" + std::to_string(n));
 };
 
-#define HEADER_SIZE (sizeof(i3_ipc_header_t))
-
-int sendMessage(int fd, uint32_t type, char* payload, bool& die)
+bool send_message(int fd, uint32_t type, bool& die, string&& payload)
 {
+  // Prepare header
   i3_ipc_header_t header;
   memcpy(header.magic, I3_IPC_MAGIC, 6);
   header.type = type;
-  header.size = payload == nullptr ? 0 : (uint32_t)strlen(payload);
+  header.size = (uint32_t)payload.length();
 
+  // Write Header
   ssize_t sent = 0;
-  sent = writeall(fd, &header, HEADER_SIZE, die);
+  sent = write_all(fd, (char*)&header, HEADER_SIZE, die);
   if(sent < (ssize_t)HEADER_SIZE)
   {
     if(sent == -1)
@@ -113,11 +114,13 @@ int sendMessage(int fd, uint32_t type, char* payload, bool& die)
       string msg("Could not transmit header " + kofn(sent, HEADER_SIZE));
       perror(msg.c_str());
     }
-    return -1;
+    return false;
   }
+
+  // Write payload if present
   if(header.size != 0)
   {
-    sent = writeall(fd, payload, header.size, die);
+    sent = write_all(fd, payload.c_str(), header.size, die);
     if(sent < (int)header.size)
     {
       if(sent == -1)
@@ -127,10 +130,10 @@ int sendMessage(int fd, uint32_t type, char* payload, bool& die)
         string msg("Could not transmit message " + kofn(sent, header.size));
         perror(msg.c_str());
       }
-      return -1;
+      return false;
     }
   }
-  return 0;
+  return true;
 }
 
 /**
@@ -140,11 +143,11 @@ int sendMessage(int fd, uint32_t type, char* payload, bool& die)
  * The type of the message is written to *type;
  * If there was an error, *type is set to I3_INVALID_TYPE
  */
-char* readMessage(int fd, uint32_t* type, bool& die)
+std::unique_ptr<char[]> read_message(int fd, uint32_t* type, bool& die)
 {
   i3_ipc_header_t header;
   ssize_t n = 0;
-  n = readall(fd, &header, HEADER_SIZE, die);
+  n = read_all(fd, (char*)&header, HEADER_SIZE, die);
   *type = header.type;
 
   if(n < (ssize_t)HEADER_SIZE)
@@ -157,22 +160,22 @@ char* readMessage(int fd, uint32_t* type, bool& die)
       perror(msg.c_str());
     }
     *type = I3_INVALID_TYPE;
-    return nullptr;
+    return std::unique_ptr<char[]>();
   }
 
   if(strncmp(header.magic, I3_IPC_MAGIC, 6) != 0)
   {
     cerr << "Invalid magic string" << endl;
     *type = I3_INVALID_TYPE;
-    return nullptr;
+    return std::unique_ptr<char[]>();
   }
 
   char* payload = nullptr;
 
   if(header.size > 0)
   {
-    payload = (char*)malloc((header.size + 1) * sizeof(char));
-    n = readall(fd, payload, header.size, die);
+    payload = new char[header.size + 1]; // why +1?
+    n = read_all(fd, payload, header.size, die);
     if(n < header.size)
     {
       if(n == -1)
@@ -184,17 +187,17 @@ char* readMessage(int fd, uint32_t* type, bool& die)
       }
       *type = I3_INVALID_TYPE;
       free(payload);
-      return nullptr;
+      return std::unique_ptr<char[]>();
     }
     payload[header.size] = '\0';
   }
 
-  return payload;
+  return std::unique_ptr<char[]>(payload);
 }
 
 typedef struct sockaddr_un SocketAddr;
 
-int init_socket(char const* path)
+int init_socket(string const& path)
 {
   int sockfd = socket(AF_LOCAL, SOCK_STREAM, 0);
   if(sockfd < 0)
@@ -207,7 +210,7 @@ int init_socket(char const* path)
   SocketAddr server_address;
   memset(&server_address, 0, sizeof(server_address));
   server_address.sun_family = AF_LOCAL;
-  strcpy(server_address.sun_path, path);
+  strcpy(server_address.sun_path, path.c_str());
 
   int err = connect(
       sockfd, (struct sockaddr*)&server_address, sizeof(server_address));
@@ -236,16 +239,15 @@ int test_sockets(int argc, char* argv[])
   printf("%s\n", path);
   int fd = init_socket(path);
 
-  char msg[] = "[\"workspace\", \"mode\"]";
+  auto msg = string("[\"workspace\", \"mode\"]");
   bool yay = false;
-  sendMessage(fd, 2, msg, yay);
+  send_message(fd, 2, yay, move(msg));
 
   for(int i = 0; i < 100; i++)
   {
     uint32_t type;
-    char* payload = readMessage(fd, &type, yay);
-    cout << "Type " << type << ": " << payload << endl << endl;
-    free(payload);
+    auto payload = read_message(fd, &type, yay);
+    cout << "Type " << type << ": " << payload.get() << endl << endl;
   }
 
   return 0;

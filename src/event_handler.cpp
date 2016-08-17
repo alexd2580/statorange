@@ -22,48 +22,38 @@ EventHandler::EventHandler(I3State& i3, int fd, GlobalData& global_)
 {
 }
 
-#define GET_DISPLAY_NUM double n = object["current"].object()["num"].number();
-
 void EventHandler::workspace_event(char* response)
 {
-  JSON* json = JSON::parse(response);
-  JSONObject& object = json->object();
-  try
+  auto json_uptr = JSON::parse(response);
+  auto& object = *json_uptr;
+
+  string change(object["change"]);
+  if(change.compare("init") == 0)
   {
-    string change = object["change"].string();
-    if(change.compare("init") == 0)
-    {
-      GET_DISPLAY_NUM
-      i3State.workspaceInit((uint8_t)n);
-    }
-    else if(change.compare("focus") == 0)
-      i3State.updateWorkspaceStatus();
-    else if(change.compare("urgent") == 0)
-      i3State.updateWorkspaceStatus();
-    else if(change.compare("empty") == 0)
-    {
-      GET_DISPLAY_NUM
-      i3State.workspaceEmpty((uint8_t)n);
-    }
-    else
-      log() << "Unhandled workspace event type: " << change << endl;
+    uint8_t n = object["current"]["num"];
+    i3State.workspace_init(n);
   }
-  catch(TraceCeption& e)
+  else if(change.compare("focus") == 0)
+    i3State.workspace_status();
+  else if(change.compare("urgent") == 0)
+    i3State.workspace_status();
+  else if(change.compare("empty") == 0)
   {
-    delete json;
-    throw e;
+    uint8_t n = object["current"]["num"];
+    i3State.workspace_empty(n);
   }
-  delete json;
+  else
+    log() << "Unhandled workspace event type: " << change << endl;
 }
 
-string EventHandler::getWindowName(JSONObject& container)
+string EventHandler::getWindowName(JSON const& container)
 {
   try
   {
-    string name = container["name"].string();
+    string name(container["name"]);
     if(name.length() > 20)
     {
-      string class_ = container["window_properties"].object()["class"].string();
+      string class_(container["window_properties"]["class"]);
       if(class_.length() > 20)
       {
         string sub = name.substr(0, 15);
@@ -85,35 +75,30 @@ string EventHandler::getWindowName(JSONObject& container)
 
 void EventHandler::window_event(char* response)
 {
-  JSON* json = JSON::parse(response);
-  JSONObject& windowEvent = json->object();
-  string change = windowEvent["change"].string();
+  auto json_uptr = JSON::parse(response);
+  auto& wevent = *json_uptr;
+  string change = wevent["change"];
 
-  JSONObject& container = windowEvent["container"].object();
-  long appId = container["id"].number();
+  auto& container = wevent["container"];
+  long window_id = container["id"];
 
   /** New events are also accompanied by focus events if necessary */
   // cLen == 3 && strncmp(cStr, "new", 3) == 0
 
   /**
-   * On a title update check if the application is focused
-   * on any visible workspace. If yes -> update (id does not change)
+   * On a title update add application name
    */
   if(change.compare("title") == 0)
   {
-    for(auto i = i3State.workspaces.begin(); i != i3State.workspaces.end(); i++)
-      if(i->focusedAppID == appId)
-      {
-        i->focusedApp = getWindowName(container);
-        break;
-      }
+    i3State.window_titles[window_id] = getWindowName(container);
   }
   /** Copy the title/id of the currently focused window to it's WS. */
   else if(change.compare("focus") == 0)
   {
-    Workspace& fw = i3State.workspaces[i3State.focusedWorkspace];
+    /*Workspace& fw = i3State.workspaces[i3State.focusedWorkspace];
     fw.focusedApp = getWindowName(container);
-    fw.focusedAppID = appId;
+    fw.focusedAppID = appId;*/
+    // todo notify workspace
   }
   /**
    * usually after a close event a focus event is issued,
@@ -122,15 +107,8 @@ void EventHandler::window_event(char* response)
    */
   else if(change.compare("close") == 0)
   {
-    for(auto i = i3State.workspaces.begin(); i != i3State.workspaces.end(); i++)
-    {
-      if(i->focusedAppID == appId)
-      {
-        i->focusedAppID = -1;
-        i->focusedApp = "";
-        break;
-      }
-    }
+    i3State.window_titles.erase(window_id);
+    // todo notify workspace
   }
   else if(change.compare("fullscreen_mode") == 0)
   {
@@ -142,12 +120,9 @@ void EventHandler::window_event(char* response)
   }
   else
     log() << "Unhandled window event type: " << change << endl;
-
-  delete json;
-  return;
 }
 
-void EventHandler::handle_event(uint32_t type, char* response)
+void EventHandler::handle_event(uint32_t type, std::unique_ptr<char[]> response)
 {
   try
   {
@@ -160,19 +135,18 @@ void EventHandler::handle_event(uint32_t type, char* response)
       break;
     case I3_IPC_EVENT_MODE:
     {
+      auto json_uptr = JSON::parse(response.get());
+      auto& mevent = *json_uptr;
       i3State.mutex.lock();
-      JSON* json = JSON::parse(response);
-      JSONObject& modeEvent = json->object();
-      i3State.mode = modeEvent["change"].string();
-      delete json;
+      i3State.mode.assign(mevent["change"]);
       i3State.mutex.unlock();
     }
     break;
     case I3_IPC_EVENT_WINDOW:
-      window_event(response);
+      window_event(response.get());
       break;
     case I3_IPC_EVENT_WORKSPACE:
-      workspace_event(response);
+      workspace_event(response.get());
       break;
     case I3_IPC_EVENT_OUTPUT:
       log() << "Output event - Restarting application" << endl;
@@ -186,7 +160,7 @@ void EventHandler::handle_event(uint32_t type, char* response)
   }
   catch(TraceCeption& e)
   {
-    e.push_stack(std::string(response));
+    e.push_stack(std::string(response.get()));
     e.push_stack("While handling an event of type: " +
                  ipc_type_to_string(type));
     throw e;
@@ -196,12 +170,9 @@ void EventHandler::handle_event(uint32_t type, char* response)
   {
     log() << "Invalid change after event " << type << " occured" << endl;
     if(response != NULL)
-      log() << response << endl;
+      log() << response.get() << endl;
     global.die = 1;
   }
-
-  if(response != NULL)
-    free(response);
 }
 
 void EventHandler::start(EventHandler* instance) { instance->run(); }
@@ -209,9 +180,11 @@ void EventHandler::start(EventHandler* instance) { instance->run(); }
 void EventHandler::run(void)
 {
   log() << "Forked event handler" << endl;
-  char abonnements[] = "[\"workspace\",\"mode\",\"output\",\"window\"]";
-  sendMessage(
-      push_socket, I3_IPC_MESSAGE_TYPE_SUBSCRIBE, abonnements, global.die);
+  string abonnements = "[\"workspace\",\"mode\",\"output\",\"window\"]";
+  send_message(push_socket,
+               I3_IPC_MESSAGE_TYPE_SUBSCRIBE,
+               global.die,
+               move(abonnements));
 
   struct timespec t;
   t.tv_sec = 0;
@@ -227,15 +200,15 @@ void EventHandler::run(void)
     nanosleep(&t, nullptr);
 
     uint32_t type;
-    char* response = readMessage(push_socket, &type, global.die);
+    auto response = read_message(push_socket, &type, global.die);
     try
     {
-      handle_event(type, response);
+      handle_event(type, std::move(response));
 
       while(!global.die && hasInput(push_socket, 1000))
       {
-        response = readMessage(push_socket, &type, global.die);
-        handle_event(type, response);
+        auto consecutive = read_message(push_socket, &type, global.die);
+        handle_event(type, std::move(consecutive));
       }
     }
     catch(TraceCeption& e)

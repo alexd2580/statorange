@@ -9,10 +9,10 @@
 
 using namespace std;
 
-Battery::Battery(JSONObject& item)
+Battery::Battery(JSON const& item)
     : StateItem(item), cached(false), printString("")
 {
-  bat_file_loc = item["battery_file"].string();
+  bat_file_loc.assign(item["battery_file"]);
 
   status = BatStatus::not_found;
   dischargeRate = 0;
@@ -67,7 +67,7 @@ void Battery::print(void)
       {
       case BatStatus::charging:
         separate(Direction::left, Color::neutral, o);
-        o << " BAT charging " << 100 * currentLevel / maxCapacity << "%% ";
+        o << " BAT charging " << 100 * currentLevel / maxCapacity << "% ";
         break;
       case BatStatus::full:
         separate(Direction::left, Color::info, o);
@@ -80,7 +80,7 @@ void Battery::print(void)
         else if(rem_minutes < 60) { SEP_LEFT(info_colors); }
         else { SEP_LEFT(neutral_colors); }*/
         dynamic_section((float)-rem_minutes, -60.0f, -10.0f, o);
-        o << " BAT " << (int)(100 * currentLevel / maxCapacity) << "%% ";
+        o << " BAT " << (int)(100 * currentLevel / maxCapacity) << "% ";
         separate(Direction::left, o);
 
         long rem_hrOnly = rem_minutes / 60;

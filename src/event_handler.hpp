@@ -32,21 +32,23 @@ private:
   /* ??
       extern volatile sig_atomic_t exit_status;
   */
-  std::string getWindowName(JSONObject& container);
+  std::string getWindowName(JSON const& container);
 
   void workspace_event(char* response);
   void window_event(char* response);
+
   /**
-   * Handles the incoming event. response is NOT freed.
+   * Handles the incoming event.
+   * Assumes ownership of the response string.
    */
-  void handle_event(uint32_t type, char* response);
+  void handle_event(uint32_t type, std::unique_ptr<char[]> response);
 
   static void start(EventHandler* instance);
   void run(void);
 
 public:
   EventHandler(I3State& i3State, int fd, GlobalData& global);
-  ~EventHandler(void) {}
+  virtual ~EventHandler(void) = default;
 
   void fork(void);
   void join(void);

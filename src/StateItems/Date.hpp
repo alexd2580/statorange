@@ -19,8 +19,8 @@ private:
   void print(void);
 
 public:
-  Date(JSONObject& item);
-  virtual ~Date() {}
+  Date(JSON const& item);
+  virtual ~Date(void) = default;
 };
 
 #endif

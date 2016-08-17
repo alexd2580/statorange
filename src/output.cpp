@@ -228,39 +228,39 @@ void stopButton(ostream& o) { o << "%{A}"; }
  * Prints the buttons for switching workspaces
  * align them to the left side
  */
-void echoWorkspaceButtons(I3State const& i3,
-                          WorkspaceGroup show_names,
-                          uint8_t disp)
+void echo_workspace_buttons(I3State const& i3,
+                            WorkspaceGroup show_names,
+                            Output const& disp)
 {
-  for(size_t w = 0; w < i3.workspaces.size(); w++)
+  for(auto& workspace_pair : disp.workspaces)
   {
-    Workspace const& ws = i3.workspaces[w];
-    if(ws.output == disp)
-    {
-      Color color = Color::inactive;
-      if(ws.urgent)
-        color = Color::warn;
-      else if(ws.focused)
-        color = Color::active;
-      else if(ws.visible)
-        color = Color::semiactive;
+    auto& workspace = *workspace_pair.second;
 
-      startButton("i3-msg workspace " + ws.name);
-      separate(Direction::right, color);
-      cout << ' ' << ws.name << ' ';
+    Color color = Color::inactive;
+    if(workspace.urgent)
+      color = Color::warn;
+    else if(workspace.focused)
+      color = Color::active;
+    else if(workspace.visible)
+      color = Color::semiactive;
 
-      bool show_name = show_names == WorkspaceGroup::all ||
-                       (show_names == WorkspaceGroup::visible && ws.visible) ||
-                       (show_names == WorkspaceGroup::active && ws.focused);
+    startButton("i3-msg workspace " + workspace.name);
+    separate(Direction::right, color);
+    cout << ' ' << workspace.name << ' ';
 
-      if(show_name && ws.focusedApp.size() != 0)
-      {
-        separate(Direction::right, color);
-        cout << ' ' << ws.focusedApp << ' ';
-      }
-      separate(Direction::right, Color::white_on_black);
-      stopButton();
-    }
+    /*bool show_name =
+        show_names == WorkspaceGroup::all ||
+        (show_names == WorkspaceGroup::visible && workspace.visible) ||
+        (show_names == WorkspaceGroup::active && workspace.focused);
+
+
+        if(show_name && workspace.focusedApp.size() != 0)
+        {
+          separate(Direction::right, color);
+          cout << ' ' << workspace.focusedApp << ' ';
+      }*/
+    separate(Direction::right, Color::white_on_black);
+    stopButton();
   }
 }
 
@@ -270,11 +270,12 @@ void echoWorkspaceButtons(I3State const& i3,
  */
 void echo_lemon(I3State const& i3, WorkspaceGroup show_names)
 {
-  for(uint8_t i = 0; i < i3.outputs.size(); i++)
+  for(auto& output_pair : i3.outputs)
   {
-    cout << "%{S" << (int)i << "}";
+    auto& output = output_pair.second;
+    cout << "%{S" << (int)output.position << "}";
     cout << "%{l}";
-    echoWorkspaceButtons(i3, show_names, i);
+    echo_workspace_buttons(i3, show_names, output);
     if(i3.mode.compare("default") != 0)
     {
       cout << ' ';
@@ -288,7 +289,7 @@ void echo_lemon(I3State const& i3, WorkspaceGroup show_names)
     StateItem::printState();
 
     cout << "%{r}";
-    cout << "%{S" << (int)i << "}";
+    cout << "%{S" << (int)output.position << "}";
   }
 
   cout << endl;

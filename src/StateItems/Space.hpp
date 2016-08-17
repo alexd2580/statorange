@@ -27,8 +27,8 @@ private:
   void print(void);
 
 public:
-  explicit Space(JSONObject& item);
-  virtual ~Space() {}
+  explicit Space(JSON const& item);
+  virtual ~Space(void) = default;
 };
 
 #endif

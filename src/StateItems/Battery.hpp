@@ -31,8 +31,8 @@ private:
   void print(void);
 
 public:
-  Battery(JSONObject&);
-  virtual ~Battery() {}
+  Battery(JSON const&);
+  virtual ~Battery(void) = default;
 };
 
 #endif

@@ -5,6 +5,7 @@
 
 #include "../output.hpp"
 #include "../util.hpp"
+#include "../JSON/JSONException.hpp"
 #include "Space.hpp"
 
 using namespace std;
@@ -12,17 +13,25 @@ using namespace std;
 /******************************************************************************/
 /******************************************************************************/
 
-Space::Space(JSONObject& item) : StateItem(item), Logger("[Space]", cerr)
+Space::Space(JSON const& item) : StateItem(item), Logger("[Space]", cerr)
 {
-  JSONArray& mpoints = item["mount_points"].array();
+  auto& mpoints = item["mount_points"];
+
   items.clear();
   SpaceItem si;
   for(decltype(mpoints.size()) i = 0; i < mpoints.size(); i++)
   {
-    JSONObject& mpt = mpoints[i].object();
-    si.mount_point = mpt["file"].string();
-    JSON* icon = mpt.has("icon");
-    si.icon = icon == nullptr ? Icon::no_icon : parse_icon(icon->string());
+    auto& mpt = mpoints[i];
+    si.mount_point.assign(mpt["file"]);
+    try
+    {
+      si.icon = parse_icon(mpt["icon"]);
+    }
+    catch(JSONException&)
+    {
+      si.icon = Icon::no_icon;
+    }
+
     si.size = 0;
     si.used = 0;
     si.unit = "B";

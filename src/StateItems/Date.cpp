@@ -8,14 +8,21 @@
 
 #include "../output.hpp"
 #include "../util.hpp"
+#include "../JSON/JSONException.hpp"
 
 using namespace std;
 
-Date::Date(JSONObject& item) : StateItem(item)
+Date::Date(JSON const& item) : StateItem(item)
 {
-  JSON* icon_id = item.has("icon");
-  icon = icon_id == nullptr ? Icon::no_icon : parse_icon(icon_id->string());
-  format = item["format"].string();
+  try
+  {
+    icon = parse_icon(item["icon"]);
+  }
+  catch(JSONException&)
+  {
+    icon = Icon::no_icon;
+  }
+  format.assign(item["format"]);
 }
 
 using std::chrono::system_clock;

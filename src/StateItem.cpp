@@ -1,5 +1,6 @@
-#include "output.hpp"
 #include <iostream>
+#include "output.hpp"
+#include "JSON/JSONException.hpp"
 
 #include "StateItem.hpp"
 #include "StateItems/Battery.hpp"
@@ -12,16 +13,20 @@
 
 using namespace std;
 
-StateItem::StateItem(JSONObject& item)
+StateItem::StateItem(JSON const& item)
 {
-  module_name.assign(item["item"].string());
-  cooldown = (time_t)item["cooldown"].number();
-  JSON* cmd = item.has("button");
-  if((button = (cmd != nullptr)))
-    button_command = cmd->string();
-
-  last_updated = 0;
-  valid = false;
+  module_name.assign(item["item"]);
+  cooldown = (time_t)item["cooldown"];
+  button = false;
+  try
+  {
+    button_command.assign(item["button"]);
+    button = true;
+  }
+  catch(JSONException&)
+  {
+    // ignore
+  }
 }
 
 void StateItem::wrap_update(void)
@@ -69,15 +74,15 @@ vector<StateItem*> StateItem::states;
  * If missing it will throw a JSONException here.
  * and reads the "order" component of the config, instantiating the items.
  */
-void StateItem::init(JSONObject& config)
+void StateItem::init(JSON const& config)
 {
-  JSONArray& order = config["order"].array();
+  auto& order = config["order"];
   auto length = order.size();
 
   for(decltype(length) i = 0; i < length; i++)
   {
-    JSONObject& section = order[i].object();
-    string item = section["item"].string();
+    auto& section = order[i];
+    string item = section["item"];
     if(item.compare("CPU") == 0)
       states.push_back(new CPU(section));
     else if(item.compare("Battery") == 0)

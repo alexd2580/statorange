@@ -2,134 +2,49 @@
 #define __COMPACT_JSON_PARSER__
 
 #include <string>
-#include <vector>
-#include <map>
-#include <iostream>
+#include <memory>
 
 #include "../util.hpp"
-#include "JSONException.hpp"
-
-class JSONArray;
-class JSONObject;
-class JSONString;
-class JSONNumber;
-class JSONBool;
-class JSONNull;
 
 class JSON
 {
 protected:
-  static JSON* parseJSON(TextPos& string);
+  static std::unique_ptr<JSON> parseJSON(TextPos& string);
 
 public:
-  virtual ~JSON() {}
-  virtual std::string get_type(void) = 0;
+  static std::unique_ptr<JSON> parse(char const* string);
 
-  virtual void print(size_t indention) = 0;
-  virtual void print(void);
+  virtual ~JSON(void) = default;
+  virtual std::string get_type(void) const = 0;
 
-  static JSON* parse(char const* string);
+  virtual void print(size_t indention) const = 0;
+  virtual void print(void) const;
 
-  JSONArray& array(void);
-  JSONObject& object(void);
-  JSONString& string(void);
-  JSONNumber& number(void);
-  JSONBool& boolean(void);
-  JSONNull& null(void);
-};
+  // JSONArray
+  virtual JSON& get(size_t i) const;
+  virtual JSON& operator[](size_t) const;
+  virtual size_t size(void) const;
 
-class JSONArray : public JSON
-{
-private:
-  std::vector<JSON*> elems;
+  // JSONObject
+  virtual JSON& get(cchar*) const;
+  virtual JSON& operator[](cchar*) const;
+  virtual JSON& get(std::string&) const;
+  virtual JSON& operator[](std::string&) const;
 
-public:
-  JSONArray(TextPos&);
-  virtual ~JSONArray();
-  std::string get_type(void);
+  // JSONString
+  virtual operator std::string&();
 
-  virtual void print(size_t indention);
-  JSON& get(size_t i);
-  JSON& operator[](size_t);
-  size_t size(void);
-};
+  // JSONNumber
+  virtual operator uint8_t();
+  virtual operator int();
+  virtual operator unsigned int();
+  virtual operator long();
+  virtual operator double();
 
-class JSONObject : public JSON
-{
-private:
-  std::map<std::string, JSON*> fields;
+  // JSONBool
+  virtual operator bool();
 
-  void parseNamed(TextPos&);
-
-public:
-  JSONObject(TextPos&);
-  virtual ~JSONObject();
-  std::string get_type(void);
-
-  virtual void print(size_t indention);
-  JSON* has(cchar*);
-  JSON* has(std::string&);
-  JSON& get(cchar*);
-  JSON& operator[](cchar*);
-  JSON& get(std::string&);
-  JSON& operator[](std::string&);
-};
-
-class JSONString : public JSON
-{
-private:
-  std::string string;
-
-public:
-  JSONString(TextPos&);
-  virtual ~JSONString();
-  std::string get_type(void);
-
-  virtual void print(size_t);
-  std::string get(void);
-  operator std::string&();
-};
-
-class JSONNumber : public JSON
-{
-private:
-  double n;
-
-public:
-  JSONNumber(TextPos&);
-  virtual ~JSONNumber() {}
-  std::string get_type(void);
-
-  virtual void print(size_t);
-  operator uint8_t();
-  operator int();
-  operator unsigned int();
-  operator long();
-  operator double();
-};
-
-class JSONBool : public JSON
-{
-private:
-  bool b;
-
-public:
-  JSONBool(TextPos&);
-  virtual ~JSONBool() {}
-  std::string get_type(void);
-
-  virtual void print(size_t);
-  operator bool();
-};
-
-class JSONNull : public JSON
-{
-public:
-  JSONNull(TextPos&);
-  virtual ~JSONNull() {}
-  std::string get_type(void);
-
-  virtual void print(size_t);
+  // JSONNull
 };
 
 #define INDENT_WIDTH 2

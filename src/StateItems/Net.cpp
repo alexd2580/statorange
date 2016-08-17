@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "Net.hpp"
+#include "../JSON/JSONException.hpp"
 
 using namespace std;
 
@@ -163,20 +164,26 @@ bool Net::get_wireless_state(void)
   }
 }
 
-Net::Net(JSONObject& item) : StateItem(item), Logger("[Net]", cerr)
+Net::Net(JSON const& item) : StateItem(item), Logger("[Net]", cerr)
 {
-  JSON* icon_id = item.has("icon");
-  icon = icon_id == nullptr ? Icon::no_icon : parse_icon(icon_id->string());
+  try
+  {
+    icon = parse_icon(item["icon"]);
+  }
+  catch(JSONException&)
+  {
+    icon = Icon::no_icon;
+  }
 
-  iface = item["interface"].string();
+  iface.assign(item["interface"]);
 
-  string contype = item["type"].string();
+  string contype = item["type"];
   if(contype.compare("wireless") == 0)
     iface_type = ConnectionType::wireless;
   else if(contype.compare("ethernet") == 0)
     iface_type = ConnectionType::ethernet;
 
-  string showtype = item["show"].string();
+  string showtype = item["show"];
   if(showtype.compare("ipv4") == 0)
     iface_show = ShowType::IPv4;
   else if(showtype.compare("ipv6") == 0)
@@ -188,7 +195,7 @@ Net::Net(JSONObject& item) : StateItem(item), Logger("[Net]", cerr)
   else if(showtype.compare("ipv6_fallback") == 0)
     iface_show = ShowType::IPv6_fallback;
 
-  time_t this_cooldown = item["cooldown"].number();
+  time_t this_cooldown = item["cooldown"];
   min_cooldown = min(min_cooldown, this_cooldown);
 }
 
@@ -226,7 +233,7 @@ void Net::print(void)
       cout << icon << ' ' << iface;
       break;
     case ConnectionType::wireless:
-      cout << icon << ' ' << iface_essid << '(' << iface_quality << "%%) ";
+      cout << icon << ' ' << iface_essid << '(' << iface_quality << "%) ";
       separate(Direction::left, Color::neutral);
       break;
     }

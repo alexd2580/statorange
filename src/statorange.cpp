@@ -7,6 +7,7 @@
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
+#include <cassert>
 #include <iostream>
 
 #include <chrono>
@@ -20,6 +21,7 @@
 #include <unistd.h>
 
 #include "JSON/jsonParser.hpp"
+#include "JSON/JSONException.hpp"
 
 #include "StateItem.hpp"
 #include "event_handler.hpp"
@@ -146,27 +148,41 @@ int main(int argc, char* argv[])
   try
   {
     /** Load the config */
-    JSON* config_json_raw = JSON::parse(config_string.c_str());
-    JSONObject& config_json = config_json_raw->object();
+    auto config_json_raw = JSON::parse(config_string.c_str());
+    auto& config_json = *config_json_raw;
 
     // cooldown
-    JSON* cooldown_json = config_json.has("cooldown");
-    if(cooldown_json != nullptr)
-      cooldown = chrono::seconds((int)cooldown_json->number());
+    auto oldval(cooldown);
+    try
+    {
+      cooldown = chrono::seconds((int)config_json["cooldown"]);
+    }
+    catch(JSONException&)
+    {
+      assert(oldval == cooldown);
+      // ignore
+    }
 
-    JSON* sno = config_json.has("ws window names");
-    if(sno != nullptr)
-      show_names_on = parse_workspace_group(sno->string());
+    try
+    {
+      auto& sno = config_json["ws window names"];
+      show_names_on = parse_workspace_group(sno);
+    }
+    catch(JSONException&)
+    {
+      // ignore
+    }
 
-    JSON* sfm = config_json.has("show failed modules");
-    if(sfm != nullptr)
-      show_failed_modules = sfm->boolean();
-
+    try
+    {
+      show_failed_modules = config_json["show failed modules"];
+    }
+    catch(JSONException&)
+    {
+      // ignore
+    }
     // init StateItems
     StateItem::init(config_json);
-
-    // Now the config can be deleted
-    delete config_json_raw;
   }
   catch(TraceCeption& e)
   {
@@ -177,7 +193,7 @@ int main(int argc, char* argv[])
 
   // init i3State
   I3State i3State(socket_path, global_data.die);
-  i3State.updateOutputs();
+  i3State.init_layout();
 
   // signal handlers and event handlers
   Sigaction term = mk_handler(term_handler);
@@ -187,7 +203,7 @@ int main(int argc, char* argv[])
   Sigaction notify = mk_handler(notify_handler);
   register_handler(SIGUSR1, notify);
 
-  int push_socket = init_socket(socket_path.c_str());
+  int push_socket = init_socket(socket_path);
   EventHandler event_handler(i3State, push_socket, global_data);
   event_handler.fork();
 
