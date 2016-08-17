@@ -35,15 +35,6 @@ using namespace std;
 /******************************************************************************/
 /********************************** GLOBALS ***********************************/
 
-/**
- * Long story short - C++ std::threads do not support killing each other. LOL
- * This hack works as long as
- *  std::thread::native_handle_type == __gthread == pthread_t
- * if it fails, it should do so at compile-time.
- */
-static pthread_t main_thread_id;
-static pthread_t handler_thread_id;
-
 static GlobalData* global;
 
 /******************************************************************************/
@@ -73,12 +64,17 @@ void term_handler(int signum)
 
   global->die = 1;
 
-  pthread_t this_id = pthread_self();
-  if(this_id == main_thread_id)
+  auto thread_id = std::this_thread::get_id();
+  term.log() << "This thread id:          " << thread_id << endl;
+  term.log() << "Main thread id:          " << global->main_thread_id << endl;
+  term.log() << "Event handler thread id: " << global->handler_thread_id
+             << endl;
+
+  if(thread_id == global->main_thread_id)
   {
     term.log() << "main() received signal " << signum << endl;
     term.log() << "Interrupting event_listener()" << endl;
-    pthread_kill(handler_thread_id, SIGINT);
+    pthread_kill(global->handler_pthread_id, SIGINT);
   }
   else
   {
@@ -99,12 +95,17 @@ void notify_handler(int signum)
   global->force_update = 1;
   global->notifier.notify_one();
 
-  pthread_t this_id = pthread_self();
-  if(this_id == handler_thread_id)
+  auto thread_id = std::this_thread::get_id();
+  nlog.log() << "This thread id:          " << thread_id << endl;
+  nlog.log() << "Main thread id:          " << global->main_thread_id << endl;
+  nlog.log() << "Event handler thread id: " << global->handler_thread_id
+             << endl;
+
+  if(thread_id == global->handler_thread_id)
   {
     nlog.log() << "event_listener() received signal " << signum << endl;
     nlog.log() << "Interrupting main()" << endl;
-    pthread_kill(main_thread_id, SIGUSR1);
+    pthread_kill(global->main_pthread_id, SIGUSR1);
   }
   else
   {
@@ -130,6 +131,12 @@ int main(int argc, char* argv[])
   GlobalData global_data;
   global_data.die = false;
   global = &global_data;
+
+  auto thread_id = std::this_thread::get_id();
+  l.log() << "Setting main thread id: " << thread_id << endl;
+  global_data.main_thread_id = thread_id;
+  l.log() << "Setting main pthread id: " << pthread_self() << endl;
+  global_data.main_pthread_id = pthread_self();
 
   string socket_path(argv[1]);
   string config_name(argv[2]);

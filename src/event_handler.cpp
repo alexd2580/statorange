@@ -85,11 +85,17 @@ void EventHandler::window_event(char* response)
   /** New events are also accompanied by focus events if necessary */
   // cLen == 3 && strncmp(cStr, "new", 3) == 0
 
+  if(change.compare("new") == 0)
+  {
+    // cerr << endl << "NEW" << endl << response << endl;
+  }
+
   /**
    * On a title update add application name
    */
-  if(change.compare("title") == 0)
+  else if(change.compare("title") == 0)
   {
+    cerr << endl << "TITLE" << endl << response << endl;
     i3State.window_titles[window_id] = getWindowName(container);
   }
   /** Copy the title/id of the currently focused window to it's WS. */
@@ -117,6 +123,7 @@ void EventHandler::window_event(char* response)
   else if(change.compare("move") == 0)
   {
     log() << "Move event TODO update titles" << endl;
+    // cerr << endl << "TITLE" << endl << response << endl;
   }
   else
     log() << "Unhandled window event type: " << change << endl;
@@ -180,6 +187,11 @@ void EventHandler::start(EventHandler* instance) { instance->run(); }
 void EventHandler::run(void)
 {
   log() << "Forked event handler" << endl;
+  auto thread_id = std::this_thread::get_id();
+  log() << "Setting event handler thread id: " << thread_id << endl;
+  global.handler_thread_id = thread_id;
+  log() << "Setting event handler pthread id: " << pthread_self() << endl;
+  global.handler_pthread_id = pthread_self();
   string abonnements = "[\"workspace\",\"mode\",\"output\",\"window\"]";
   send_message(push_socket,
                I3_IPC_MESSAGE_TYPE_SUBSCRIBE,

@@ -11,6 +11,17 @@
 
 struct GlobalData
 {
+  /**
+   * Long story short - C++ std::threads do not support killing each other. LOL
+   * This hack works as long as
+   *  std::thread::native_handle_type == __gthread == pthread_t
+   * if it fails, it should do so at compile-time.
+   */
+  std::thread::id main_thread_id;
+  pthread_t main_pthread_id;
+  std::thread::id handler_thread_id;
+  pthread_t handler_pthread_id;
+
   std::condition_variable notifier;
   std::mutex mutex;
 

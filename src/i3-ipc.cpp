@@ -67,6 +67,12 @@ ssize_t write_all(int fd, char const* buf, size_t count, bool& die)
 
 ssize_t read_all(int fd, char* buf, size_t count, bool& die)
 {
+  if(die)
+  {
+    cerr << "Skipping read_all. die is set to true." << endl;
+    return -1;
+  }
+
   size_t raed = 0;
 
   while(raed < count)
@@ -75,7 +81,7 @@ ssize_t read_all(int fd, char* buf, size_t count, bool& die)
     ssize_t n = read(fd, buf + raed, count - raed);
     if(die)
     {
-      cerr << "Aborting readall. die is set to 1." << endl;
+      cerr << "Aborting read_all. die is set to true." << endl;
       return -1;
     }
     else if(n <= 0)
@@ -140,7 +146,6 @@ bool send_message(int fd, uint32_t type, bool& die, string&& payload)
  * Waits for message and fills the recv_buffer with its payload.
  * Returns the payload as a pointer to allocated mem. (has to be freed)
  * If the message type does not include a body, NULL is returned.
- * The type of the message is written to *type;
  * If there was an error, *type is set to I3_INVALID_TYPE
  */
 std::unique_ptr<char[]> read_message(int fd, uint32_t* type, bool& die)
