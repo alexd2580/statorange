@@ -10,7 +10,7 @@
 
 using namespace std;
 
-CPU::CPU(JSON const& item) : StateItem(item), Logger("[CPU]", cerr)
+CPU::CPU(JSON const& item) : StateItem(item), Logger("[CPU]")
 {
   auto& temp_paths = item["temperature_files"];
   auto num_temps = temp_paths.size();

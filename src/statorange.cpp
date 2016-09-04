@@ -2,20 +2,19 @@
  * ONLY FOR PRIVATE USE!
  * NEITHER VALIDATED, NOR EXCESSIVELY TESTED
  */
-//#define _POSIX_C_SOURCE 200809L
 
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
 #include <cassert>
-#include <iostream>
 
+#include <iostream>
 #include <chrono>
 #include <condition_variable>
 #include <functional>
 #include <mutex>
-#include <pthread.h>
 #include <thread>
+#include <fstream>
 
 #include <sys/socket.h>
 #include <unistd.h>
@@ -60,7 +59,7 @@ void register_handler(int sig, Sigaction& handler)
  */
 void term_handler(int signum)
 {
-  static Logger term("[Term handler]", cerr);
+  static Logger term("[Term handler]");
 
   global->die = 1;
 
@@ -90,7 +89,7 @@ void term_handler(int signum)
  */
 void notify_handler(int signum)
 {
-  static Logger nlog("[Notify handler]", cerr);
+  static Logger nlog("[Notify handler]");
 
   global->force_update = 1;
   global->notifier.notify_one();
@@ -119,7 +118,12 @@ void notify_handler(int signum)
 
 int main(int argc, char* argv[])
 {
-  Logger l("[Main]", cerr);
+
+  fstream log_file;
+  log_file.open("log/statorange.log", fstream::out);
+  LoggerManager::set_stream(log_file);
+
+  Logger l("[Main]");
   l.log() << "Launching Statorange" << endl;
 
   if(argc < 3)
@@ -139,10 +143,12 @@ int main(int argc, char* argv[])
   global_data.main_pthread_id = pthread_self();
 
   string socket_path(argv[1]);
-  string config_name(argv[2]);
+  l.log() << "Socket path: " << socket_path << endl;
+  string config_path(argv[2]);
+  l.log() << "Config path: " << config_path << endl;
 
   string config_string;
-  if(!load_file(config_name, config_string))
+  if(!load_file(config_path, config_string))
   {
     l.log() << "Could not load config.json" << endl;
     return EXIT_FAILURE;
@@ -219,9 +225,12 @@ int main(int argc, char* argv[])
   std::unique_lock<std::mutex> lock(global_data.mutex); // TODO
   try
   {
+    int a = 0;
 
+    l.log() << "before while " << global_data.die << endl;
     while(!global_data.die) // <- volatile
     {
+      l.log() << "inside while" << endl;
       if(global_data.force_update)
       {
         StateItem::forceUpdates();
@@ -231,11 +240,15 @@ int main(int argc, char* argv[])
         StateItem::updates();
 
       i3State.mutex.lock();
+
       if(!i3State.valid)
         break;
+
       echo_lemon(i3State, show_names_on);
       i3State.mutex.unlock();
+      l.log() << a++ << " asdasd " << endl;
       global_data.notifier.wait_for(lock, cooldown);
+      l.log() << a++ << " qwqwe " << endl;
     }
   }
   catch(TraceCeption& e)
@@ -245,16 +258,20 @@ int main(int argc, char* argv[])
     global_data.exit_status = EXIT_FAILURE;
   }
 
-  global_data.die = 1;
+  global_data.die = true;
   i3State.mutex.unlock(); // returns error if already unlocked (ignore)
   lock.unlock();
   l.log() << "Exiting main loop" << endl;
-
   close(push_socket);
   event_handler.join();
 
   StateItem::deinit();
 
   l.log() << "Stopping Statorange" << endl;
+  cout.flush();
+  cerr.flush();
+  log_file.flush();
+  log_file.close();
+
   return global_data.exit_status;
 }

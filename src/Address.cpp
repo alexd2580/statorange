@@ -12,7 +12,7 @@ using namespace std;
 Address::Address(void) : Address("localhost", 1337) {}
 
 Address::Address(std::string hostname_, unsigned int port_)
-    : Logger("[Address]", cerr), hostname(hostname_), port(port_)
+    : Logger("[Address]"), hostname(hostname_), port(port_)
 {
 }
 

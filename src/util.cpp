@@ -182,9 +182,24 @@ bool load_file(string& name, string& content)
   return false;
 }
 
-string mkTerminalCmd(string s) { return terminal_cmd + " " + s + "&"; }
+/******************************************************************************/
+/******************************************************************************/
 
-Logger::Logger(string lname, std::ostream& ostr) : logname(lname), ostream(ostr)
+std::unique_ptr<LoggerManager> LoggerManager::instance;
+
+LoggerManager::LoggerManager(ostream& ostr) : log_stream(ostr) {}
+
+void LoggerManager::set_stream(ostream& ostr)
+{
+  instance = std::unique_ptr<LoggerManager>(new LoggerManager(ostr));
+}
+
+ostream& LoggerManager::get_stream(void) { return instance->log_stream; }
+mutex& LoggerManager::get_mutex(void) { return instance->log_mutex; }
+
+Logger::Logger(string lname)
+    : logname(lname), ostream(LoggerManager::get_stream()),
+      log_mutex(LoggerManager::get_mutex())
 {
 }
 
@@ -208,14 +223,18 @@ ostream& print_time(ostream& out, struct tm* ptm, char const* const format)
 
 ostream& Logger::log(void)
 {
+  log_mutex.lock();
   time_t tt = system_clock::to_time_t(system_clock::now());
   struct tm* ptm = localtime(&tt);
   char const* const log_time_format = "%Y-%m-%d %H:%M ";
-  return print_time(ostream, ptm, log_time_format) << logname << ' ';
+  auto& res = print_time(ostream, ptm, log_time_format) << logname << ' ';
+  log_mutex.unlock();
+  return res;
 }
 
 #include <cerrno>
 #include <cstring>
+
 void Logger::log_errno(void)
 {
   log() << "errno = " << errno << endl;

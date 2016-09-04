@@ -19,6 +19,8 @@ public:
 
   virtual void print(size_t indention) const = 0;
   virtual void print(void) const;
+  // return string representation. valid on all types.
+  virtual std::string to_string(void) const = 0;
 
   // JSONArray
   virtual JSON& get(size_t i) const;
@@ -26,10 +28,12 @@ public:
   virtual size_t size(void) const;
 
   // JSONObject
+  virtual bool has(cchar*) const;
+  virtual bool has(std::string const&) const;
   virtual JSON& get(cchar*) const;
   virtual JSON& operator[](cchar*) const;
-  virtual JSON& get(std::string&) const;
-  virtual JSON& operator[](std::string&) const;
+  virtual JSON& get(std::string const&) const;
+  virtual JSON& operator[](std::string const&) const;
 
   // JSONString
   virtual operator std::string&();

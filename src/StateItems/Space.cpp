@@ -13,7 +13,7 @@ using namespace std;
 /******************************************************************************/
 /******************************************************************************/
 
-Space::Space(JSON const& item) : StateItem(item), Logger("[Space]", cerr)
+Space::Space(JSON const& item) : StateItem(item), Logger("[Space]")
 {
   auto& mpoints = item["mount_points"];
 

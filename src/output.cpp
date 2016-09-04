@@ -228,13 +228,13 @@ void stopButton(ostream& o) { o << "%{A}"; }
  * Prints the buttons for switching workspaces
  * align them to the left side
  */
-void echo_workspace_buttons(I3State const& i3,
+void echo_workspace_buttons(I3State& i3,
                             WorkspaceGroup show_names,
                             Output const& disp)
 {
   for(auto& workspace_pair : disp.workspaces)
   {
-    auto& workspace = *workspace_pair.second;
+    auto const& workspace = *workspace_pair.second;
 
     Color color = Color::inactive;
     if(workspace.urgent)
@@ -248,17 +248,16 @@ void echo_workspace_buttons(I3State const& i3,
     separate(Direction::right, color);
     cout << ' ' << workspace.name << ' ';
 
-    /*bool show_name =
+    bool show_name =
         show_names == WorkspaceGroup::all ||
         (show_names == WorkspaceGroup::visible && workspace.visible) ||
         (show_names == WorkspaceGroup::active && workspace.focused);
 
-
-        if(show_name && workspace.focusedApp.size() != 0)
-        {
-          separate(Direction::right, color);
-          cout << ' ' << workspace.focusedApp << ' ';
-      }*/
+    if(show_name && workspace.focused_window_id != -1)
+    {
+      separate(Direction::right, color);
+      cout << ' ' << i3.windows[workspace.focused_window_id].name << ' ';
+    }
     separate(Direction::right, Color::white_on_black);
     stopButton();
   }
@@ -268,14 +267,14 @@ void echo_workspace_buttons(I3State const& i3,
  * Prints the input to lemonbar
  * TODO specify main monitor in config -> fix main, not this method
  */
-void echo_lemon(I3State const& i3, WorkspaceGroup show_names)
+void echo_lemon(I3State& i3, WorkspaceGroup show_names)
 {
   for(auto& output_pair : i3.outputs)
   {
     auto& output = output_pair.second;
-    cout << "%{S" << (int)output.position << "}";
+    cout << "%{S" << (int)output->position << "}";
     cout << "%{l}";
-    echo_workspace_buttons(i3, show_names, output);
+    echo_workspace_buttons(i3, show_names, *output);
     if(i3.mode.compare("default") != 0)
     {
       cout << ' ';
@@ -289,7 +288,7 @@ void echo_lemon(I3State const& i3, WorkspaceGroup show_names)
     StateItem::printState();
 
     cout << "%{r}";
-    cout << "%{S" << (int)output.position << "}";
+    cout << "%{S" << (int)output->position << "}";
   }
 
   cout << endl;

@@ -17,36 +17,11 @@ using namespace std;
 /******************************************************************************/
 
 EventHandler::EventHandler(I3State& i3, int fd, GlobalData& global_)
-    : Logger("[EventHandler]", cerr), i3State(i3), push_socket(fd),
-      global(global_)
+    : Logger("[EventHandler]"), i3State(i3), push_socket(fd), global(global_)
 {
 }
 
-void EventHandler::workspace_event(char* response)
-{
-  auto json_uptr = JSON::parse(response);
-  auto& object = *json_uptr;
-
-  string change(object["change"]);
-  if(change.compare("init") == 0)
-  {
-    uint8_t n = object["current"]["num"];
-    i3State.workspace_init(n);
-  }
-  else if(change.compare("focus") == 0)
-    i3State.workspace_status();
-  else if(change.compare("urgent") == 0)
-    i3State.workspace_status();
-  else if(change.compare("empty") == 0)
-  {
-    uint8_t n = object["current"]["num"];
-    i3State.workspace_empty(n);
-  }
-  else
-    log() << "Unhandled workspace event type: " << change << endl;
-}
-
-string EventHandler::getWindowName(JSON const& container)
+string EventHandler::get_window_name(JSON const& container)
 {
   try
   {
@@ -73,7 +48,23 @@ string EventHandler::getWindowName(JSON const& container)
   }
 }
 
-void EventHandler::window_event(char* response)
+void EventHandler::invalid_event(void)
+{
+  if(!global.die)
+    log() << "Invalid packet received. Aborting" << endl;
+  global.die = true;
+}
+
+void EventHandler::mode_event(char const* response)
+{
+  auto json_uptr = JSON::parse(response);
+  auto& mevent = *json_uptr;
+  i3State.mutex.lock();
+  i3State.mode.assign(mevent["change"]);
+  i3State.mutex.unlock();
+}
+
+void EventHandler::window_event(char const* response)
 {
   auto json_uptr = JSON::parse(response);
   auto& wevent = *json_uptr;
@@ -83,20 +74,21 @@ void EventHandler::window_event(char* response)
   long window_id = container["id"];
 
   /** New events are also accompanied by focus events if necessary */
-  // cLen == 3 && strncmp(cStr, "new", 3) == 0
-
   if(change.compare("new") == 0)
   {
-    // cerr << endl << "NEW" << endl << response << endl;
-  }
+    auto focused_output = i3State.focused_output;
+    log() << "Focused output " << focused_output << ' ' << focused_output->name
+          << endl;
+    auto focused_workspace = focused_output->focused_workspace;
+    log() << "Focused workspace " << focused_workspace->name << endl;
 
-  /**
-   * On a title update add application name
-   */
+    i3State.windows[window_id] = {window_id, "New window", focused_workspace};
+  }
   else if(change.compare("title") == 0)
   {
-    cerr << endl << "TITLE" << endl << response << endl;
-    i3State.window_titles[window_id] = getWindowName(container);
+    {
+      i3State.windows[window_id].name = get_window_name(container);
+    }
   }
   /** Copy the title/id of the currently focused window to it's WS. */
   else if(change.compare("focus") == 0)
@@ -113,20 +105,44 @@ void EventHandler::window_event(char* response)
    */
   else if(change.compare("close") == 0)
   {
-    i3State.window_titles.erase(window_id);
-    // todo notify workspace
+    i3State.windows.erase(window_id);
   }
   else if(change.compare("fullscreen_mode") == 0)
   {
-    log() << "Fullscreen mode TODO if anything at all..." << endl;
+    log() << "Ignoring fullscreen mode event" << endl;
   }
   else if(change.compare("move") == 0)
   {
-    log() << "Move event TODO update titles" << endl;
-    // cerr << endl << "TITLE" << endl << response << endl;
+    log() << "Ignoring move event" << endl;
   }
   else
     log() << "Unhandled window event type: " << change << endl;
+}
+
+void EventHandler::workspace_event(char const* response)
+{
+  auto json_uptr = JSON::parse(response);
+  auto& object = *json_uptr;
+
+  string change(object["change"]);
+  auto& current = object["current"];
+  if(change.compare("init") == 0)
+    i3State.workspace_init(current);
+  else if(change.compare("focus") == 0)
+    i3State.workspace_focus(current);
+  else if(change.compare("urgent") == 0)
+    i3State.workspace_urgent(current);
+  else if(change.compare("empty") == 0)
+    i3State.workspace_empty(current);
+  else
+    log() << "Unhandled workspace event type: " << change << endl;
+}
+
+void EventHandler::output_event(char const*)
+{
+  log() << "Output event - Restarting application" << endl;
+  global.exit_status = EXIT_RESTART;
+  global.die = true;
 }
 
 void EventHandler::handle_event(uint32_t type, std::unique_ptr<char[]> response)
@@ -136,29 +152,27 @@ void EventHandler::handle_event(uint32_t type, std::unique_ptr<char[]> response)
     switch(type)
     {
     case I3_INVALID_TYPE:
-      if(!global.die)
-        log() << "Invalid packet received. Aborting" << endl;
-      global.die = 1;
+      log() << "Invalid event type" << endl;
+      invalid_event();
       break;
     case I3_IPC_EVENT_MODE:
-    {
-      auto json_uptr = JSON::parse(response.get());
-      auto& mevent = *json_uptr;
-      i3State.mutex.lock();
-      i3State.mode.assign(mevent["change"]);
-      i3State.mutex.unlock();
-    }
-    break;
+      log() << "Mode event" << endl;
+      mode_event(response.get());
+      break;
     case I3_IPC_EVENT_WINDOW:
+      log() << "Window event" << endl;
       window_event(response.get());
       break;
     case I3_IPC_EVENT_WORKSPACE:
+      log() << "Workspace event" << endl;
       workspace_event(response.get());
       break;
     case I3_IPC_EVENT_OUTPUT:
-      log() << "Output event - Restarting application" << endl;
-      global.exit_status = EXIT_RESTART;
-      global.die = 1;
+      log() << "Output event" << endl;
+      output_event(response.get());
+      break;
+    case I3_IPC_REPLY_TYPE_SUBSCRIBE:
+      log() << "Subscribed to events - " << response.get() << endl;
       break;
     default:
       log() << "Unhandled event type: " << ipc_type_to_string(type) << endl;
@@ -173,16 +187,15 @@ void EventHandler::handle_event(uint32_t type, std::unique_ptr<char[]> response)
     throw e;
   }
 
-  if(i3State.valid == 0) // is this necessary?
+  if(!i3State.valid) // is this necessary?
   {
-    log() << "Invalid change after event " << type << " occured" << endl;
-    if(response != NULL)
+    log() << "Invalid change after event of type " << ipc_type_to_string(type)
+          << " occured." << endl;
+    if(response)
       log() << response.get() << endl;
-    global.die = 1;
+    global.die = true;
   }
 }
-
-void EventHandler::start(EventHandler* instance) { instance->run(); }
 
 void EventHandler::run(void)
 {
@@ -192,6 +205,7 @@ void EventHandler::run(void)
   global.handler_thread_id = thread_id;
   log() << "Setting event handler pthread id: " << pthread_self() << endl;
   global.handler_pthread_id = pthread_self();
+
   string abonnements = "[\"workspace\",\"mode\",\"output\",\"window\"]";
   send_message(push_socket,
                I3_IPC_MESSAGE_TYPE_SUBSCRIBE,
@@ -225,16 +239,18 @@ void EventHandler::run(void)
     }
     catch(TraceCeption& e)
     {
-      log() << "Catched TraceCeption" << endl;
+      log() << "Caught exception in EventHandler::run" << endl;
       e.printStackTrace();
       // TODO open new socket?
       log() << "Retrying" << endl;
     }
-    unique_lock<std::mutex> lock(mutex);
+    unique_lock<std::mutex> lock(global.mutex);
     global.notifier.notify_one();
   }
   log() << "Exiting event handler loop" << endl;
 }
+
+void EventHandler::start(EventHandler* instance) { instance->run(); }
 
 void EventHandler::fork(void)
 {

@@ -7,6 +7,7 @@
 #include <stack>
 #include <string>
 #include <memory>
+#include <mutex>
 
 typedef char const cchar;
 
@@ -136,7 +137,20 @@ void store_string(char* dst, size_t dst_size, char* src, size_t src_size);
 
 bool load_file(std::string& name, std::string& content);
 
-std::string mkTerminalCmd(std::string);
+class LoggerManager
+{
+private:
+  static std::unique_ptr<LoggerManager> instance;
+
+  std::ostream& log_stream;
+  std::mutex log_mutex;
+  LoggerManager(std::ostream& ostr);
+
+public:
+  static void set_stream(std::ostream& ostr);
+  static std::ostream& get_stream(void);
+  static std::mutex& get_mutex(void);
+};
 
 std::ostream&
 print_time(std::ostream& out, struct tm* ptm, char const* const format);
@@ -146,10 +160,11 @@ class Logger
 private:
   std::string const logname;
   std::ostream& ostream;
+  std::mutex& log_mutex;
 
 public:
-  Logger(std::string lname, std::ostream& ostr);
-  virtual ~Logger() {}
+  Logger(std::string lname);
+  virtual ~Logger() = default;
 
   std::ostream& log(void);
   void log_errno(void);

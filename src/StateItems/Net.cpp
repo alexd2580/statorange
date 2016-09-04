@@ -164,7 +164,7 @@ bool Net::get_wireless_state(void)
   }
 }
 
-Net::Net(JSON const& item) : StateItem(item), Logger("[Net]", cerr)
+Net::Net(JSON const& item) : StateItem(item), Logger("[Net]")
 {
   try
   {

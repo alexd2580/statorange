@@ -266,8 +266,7 @@ void IMAPMail::print(void)
   }
 }
 
-IMAPMail::IMAPMail(JSON const& item)
-    : StateItem(item), Logger("[IMAPMail]", cerr)
+IMAPMail::IMAPMail(JSON const& item) : StateItem(item), Logger("[IMAPMail]")
 {
   try
   {

@@ -43,10 +43,13 @@ private:
   /* ??
       extern volatile sig_atomic_t exit_status;
   */
-  std::string getWindowName(JSON const& container);
+  std::string get_window_name(JSON const& container);
 
-  void workspace_event(char* response);
-  void window_event(char* response);
+  void invalid_event(void);
+  void mode_event(char const* response);
+  void window_event(char const* response);
+  void workspace_event(char const* response);
+  void output_event(char const* response);
 
   /**
    * Handles the incoming event.
@@ -54,8 +57,10 @@ private:
    */
   void handle_event(uint32_t type, std::unique_ptr<char[]> response);
 
-  static void start(EventHandler* instance);
+  // The actual thread function
   void run(void);
+  // Static starter method required for creating a std::thread
+  static void start(EventHandler* instance);
 
 public:
   EventHandler(I3State& i3State, int fd, GlobalData& global);

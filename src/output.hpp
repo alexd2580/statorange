@@ -81,6 +81,6 @@ enum class WorkspaceGroup
 
 WorkspaceGroup parse_workspace_group(std::string& s);
 
-void echo_lemon(I3State const& i3, WorkspaceGroup show_window_names);
+void echo_lemon(I3State& i3, WorkspaceGroup show_window_names);
 
 #endif

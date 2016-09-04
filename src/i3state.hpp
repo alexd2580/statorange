@@ -15,6 +15,8 @@ class Workspace;
 
 struct Output
 {
+  Output(uint8_t pos, std::string const& name);
+
   // Used to display the right display-tag in lemonbar
   uint8_t position;
 
@@ -24,36 +26,47 @@ struct Output
   // The map always contains at least one element
   // maps from unique workspace num to the corresponging workspace
   // Per display Workspaces are sorted by their num
-  std::map<uint8_t, std::unique_ptr<Workspace>> workspaces;
+  std::map<uint8_t, std::shared_ptr<Workspace>> workspaces;
+
+  // The current focused workspace
+  std::shared_ptr<Workspace> focused_workspace;
+
+  void update_from_tree(JSON const&);
 };
 
 class Workspace
 {
 private:
-  Workspace(JSON const& from_workspace_list, Output& parent);
+  void update_windows_from_tree(JSON const&);
 
 public:
-  /**
-   * unique number of workspace
-   * nobody ever used more than 256 workspaces!
-   */
+  Workspace(uint8_t num,
+            std::string const& name,
+            std::shared_ptr<Output> parent);
+  virtual ~Workspace(void) = default;
+
+  // unique number of workspace; nobody ever used more than 256 workspaces!
   uint8_t const num;
+  // name of workspace as defined in ~/.i3/config
   std::string const name;
-  // A workspae is always bound to an output
-  Output& output;
+  // A workspae should always be bound to an output
+  std::shared_ptr<Output> output;
 
   bool visible;
   bool focused;
   bool urgent;
 
-  long focused_window_id;          // -1 for none
-  std::string focused_window_name; // undefined when none
+  // ID of the focused window. -1 if none
+  long focused_window_id;
 
-  // Parses an entry from GET_WORKSPACES
-  // requires the map of outputs to match workspace and output
-  static void register_workspace(JSON const& json,
-                                 std::map<std::string, Output>& outputs);
-  virtual ~Workspace(void) = default;
+  void update_from_tree(JSON const&);
+};
+
+struct Window
+{
+  long id;
+  std::string name;
+  std::shared_ptr<Workspace> workspace;
 };
 
 class I3State : public Logger
@@ -63,23 +76,46 @@ private:
   bool& die;
 
 public:
+  bool valid;
   std::mutex mutex; // TODO private
 
+  // UnMod/resize/XrandR-mode
+  std::string mode;
+  std::shared_ptr<Output> focused_output;
+
+  std::map<std::string, std::shared_ptr<Output>> outputs;
+  std::map<uint8_t, std::shared_ptr<Workspace>> workspaces;
+  std::map<long, Window> windows;
+
+public:
   explicit I3State(std::string& path, bool& die);
   ~I3State(void);
-  bool valid;
 
-  std::string mode;
-  std::map<std::string, Output> outputs;
-  std::map<long, std::string> window_titles;
+private:
+  std::unique_ptr<char[]> message(uint32_t type);
+  void register_workspace(uint8_t num,
+                          std::string const& name,
+                          std::string const& output_name,
+                          bool focused);
 
-  void init_layout(void);
   void get_outputs(void);
   void get_workspaces(void);
 
-  void workspace_init(uint8_t num);
-  void workspace_status(void);
-  void workspace_empty(uint8_t num);
+public:
+  void init_layout(void);
+
+  void workspace_init(JSON const& current);
+  // also determine output monitor via get_outputs?
+  void workspace_focus(JSON const& current); // does not contain visible
+  void workspace_urgent(JSON const& current);
+  void workspace_empty(JSON const& current);
+
+  /**
+   * Updates the current output/workspace/window mapping,
+   * setting the boolean flags and the currently focused window id.
+   * Needs to be called after a window focus event.
+   */
+  void update_from_tree(void);
 };
 
 #endif

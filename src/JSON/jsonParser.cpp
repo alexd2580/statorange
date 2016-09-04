@@ -92,13 +92,15 @@ public:
   JSON& get(size_t i) const
   {
     if(i > elems.size())
-      throw JSONException("Array index out of bounds: " + to_string(i));
+      throw JSONException("Array index out of bounds: " + ::to_string(i));
     return *elems[i];
   }
 
   JSON& operator[](size_t i) const { return get(i); }
 
   size_t size(void) const { return elems.size(); }
+
+  string to_string(void) const { return "JSONArray"; }
 };
 
 /******************************************************************************/
@@ -209,6 +211,18 @@ public:
     cout << endl << std::string(indention, ' ') << '}';
   }
 
+  bool has(cchar* key) const
+  {
+    string skey(key);
+    return has(skey);
+  }
+
+  bool has(string const& key) const
+  {
+    auto it = fields.find(key);
+    return it != fields.end();
+  }
+
   JSON& get(cchar* key) const
   {
     std::string skey(key);
@@ -221,7 +235,7 @@ public:
     return get(skey);
   }
 
-  JSON& get(std::string& key) const
+  JSON& get(std::string const& key) const
   {
     auto it = fields.find(key);
     if(it == fields.end())
@@ -230,6 +244,8 @@ public:
   }
 
   JSON& operator[](std::string& key) const { return get(key); }
+
+  string to_string(void) const { return "JSONObject"; }
 };
 
 /******************************************************************************/
@@ -237,14 +253,14 @@ public:
 class JSONString : public JSON
 {
 private:
-  std::string string;
+  string string_;
 
 public:
   JSONString(TextPos& pos)
   {
     try
     {
-      string.assign(pos.parse_escaped_string());
+      string_.assign(pos.parse_escaped_string());
     }
     catch(TraceCeption& e)
     {
@@ -255,11 +271,13 @@ public:
 
   virtual ~JSONString(void) = default;
 
-  virtual std::string get_type(void) const { return "string"; }
+  virtual string get_type(void) const { return "string"; }
 
-  virtual void print(size_t) const { cout << '"' << string << '"'; }
+  virtual void print(size_t) const { cout << '"' << string_ << '"'; }
 
-  __attribute__((const)) operator std::string&() { return string; }
+  __attribute__((const)) operator string&() { return string_; }
+
+  string to_string(void) const { return string_; }
 };
 
 /******************************************************************************/
@@ -297,6 +315,8 @@ public:
   }
   __attribute__((pure)) virtual operator long() { return (long)n; }
   __attribute__((pure)) virtual operator double() { return n; }
+
+  string to_string(void) const { return ::to_string(n); }
 };
 
 /******************************************************************************/
@@ -331,9 +351,11 @@ public:
 
   std::string get_type(void) const { return "bool"; }
 
-  virtual void print(size_t) const { cout << b ? "true" : "false"; }
+  virtual void print(size_t) const { cout << (b ? "true" : "false"); }
 
   __attribute__((pure)) virtual operator bool() { return b; }
+
+  string to_string(void) const { return ::to_string(b); }
 };
 
 /******************************************************************************/
@@ -355,6 +377,8 @@ public:
   virtual std::string get_type(void) const { return "null"; }
 
   virtual void print(size_t) const { cout << "null"; }
+
+  string to_string(void) const { return "null"; }
 };
 
 /******************************************************************************/
@@ -425,8 +449,18 @@ JSON& JSON::get(cchar*) const
   throw JSONException(errmsg);
 }
 JSON& JSON::operator[](cchar*) const { return get((cchar*)nullptr); }
-JSON& JSON::get(std::string&) const { return get((cchar*)nullptr); }
-JSON& JSON::operator[](std::string&) const { return get((cchar*)nullptr); }
+JSON& JSON::get(std::string const&) const { return get((cchar*)nullptr); }
+JSON& JSON::operator[](std::string const&) const
+{
+  return get((cchar*)nullptr);
+}
+
+bool JSON::has(cchar*) const
+{
+  string errmsg("Cannot access " + get_type() + " type as a dictionary");
+  throw JSONException(errmsg);
+}
+bool JSON::has(std::string const&) const { return has((cchar*)nullptr); }
 
 // JSONString
 JSON::operator std::string&()
