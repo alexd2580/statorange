@@ -225,12 +225,8 @@ int main(int argc, char* argv[])
   std::unique_lock<std::mutex> lock(global_data.mutex); // TODO
   try
   {
-    int a = 0;
-
-    l.log() << "before while " << global_data.die << endl;
     while(!global_data.die) // <- volatile
     {
-      l.log() << "inside while" << endl;
       if(global_data.force_update)
       {
         StateItem::forceUpdates();
@@ -246,9 +242,7 @@ int main(int argc, char* argv[])
 
       echo_lemon(i3State, show_names_on);
       i3State.mutex.unlock();
-      l.log() << a++ << " asdasd " << endl;
       global_data.notifier.wait_for(lock, cooldown);
-      l.log() << a++ << " qwqwe " << endl;
     }
   }
   catch(TraceCeption& e)

@@ -92,7 +92,7 @@ Workspace::Workspace(uint8_t num_,
 
 void Workspace::update_windows_from_tree(JSON const& json)
 {
-  for(int i = 0; i < json.size(); i++)
+  for(size_t i = 0; i < json.size(); i++)
   {
     auto& node = json[i];
     if(node["focused"])

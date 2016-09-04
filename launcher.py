@@ -36,7 +36,7 @@ statorange_config = this_path + '/config.json'
 lemonbar_log = log_path + '/lemonbar.log'
 command_log = log_path + '/command.log'
 
-os.system('rm -f ' + statorange_log + ' ' + lemonbar_log)
+os.system('rm -f ' + lemonbar_log + ' ' + command_log)
 
 while exit_value == 4:
     (socket_path, _) = subprocess.Popen(['i3', '--get-socketpath'], stdout=subprocess.PIPE).communicate()

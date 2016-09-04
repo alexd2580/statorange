@@ -86,17 +86,17 @@ void EventHandler::window_event(char const* response)
   }
   else if(change.compare("title") == 0)
   {
-    {
-      i3State.windows[window_id].name = get_window_name(container);
-    }
+    i3State.windows[window_id].name = get_window_name(container);
   }
   /** Copy the title/id of the currently focused window to it's WS. */
   else if(change.compare("focus") == 0)
   {
-    /*Workspace& fw = i3State.workspaces[i3State.focusedWorkspace];
-    fw.focusedApp = getWindowName(container);
-    fw.focusedAppID = appId;*/
-    // todo notify workspace
+    Output& focused_output = *i3State.focused_output;
+    Workspace& focused_workspace = *focused_output.focused_workspace;
+    focused_workspace.focused_window_id = window_id;
+
+    if(i3State.windows.find(window_id) == i3State.windows.end())
+      i3State.windows[window_id].name = get_window_name(container);
   }
   /**
    * usually after a close event a focus event is issued,

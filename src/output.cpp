@@ -258,8 +258,12 @@ void echo_workspace_buttons(I3State& i3,
 
     if(show_name && workspace.focused_window_id != -1)
     {
-      separate(Direction::right, color);
-      cout << ' ' << i3.windows[workspace.focused_window_id].name << ' ';
+      auto iter = i3.windows.find(workspace.focused_window_id);
+      if(iter != i3.windows.end())
+      {
+        separate(Direction::right, color);
+        cout << ' ' << iter->second.name << ' ';
+      }
     }
     separate(Direction::right, Color::white_on_black);
     stopButton();
