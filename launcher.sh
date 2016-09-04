@@ -49,7 +49,7 @@ do
 
 
   echo -n "Launching lemonbar ... "
-  echo "cat $statorange_fifo | $lemonbar_cmd 2>> $lemonbar_log | $shell_cmd -v 2>> $command_log &"
+  cat $statorange_fifo | $lemonbar_cmd 2>> $lemonbar_log | $shell_cmd -v 2>> $command_log &
   lemonbar_pid=$!
   echo $lemonbar_pid
 

@@ -52,8 +52,7 @@ public:
   // A workspae should always be bound to an output
   std::shared_ptr<Output> output;
 
-  bool visible;
-  bool focused;
+  // urgent flag set by X
   bool urgent;
 
   // ID of the focused window. -1 if none

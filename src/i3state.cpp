@@ -86,11 +86,7 @@ Workspace::Workspace(uint8_t num_,
                      std::shared_ptr<Output> parent)
     : num(num_), name(name_), output(parent)
 {
-  // flags handles per focus/urgent events
-  focused = false;
-  visible = false;
   urgent = false;
-
   focused_window_id = -1;
 }
 

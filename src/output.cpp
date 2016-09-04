@@ -230,18 +230,21 @@ void stopButton(ostream& o) { o << "%{A}"; }
  */
 void echo_workspace_buttons(I3State& i3,
                             WorkspaceGroup show_names,
-                            Output const& disp)
+                            Output const& disp,
+                            bool focused)
 {
   for(auto& workspace_pair : disp.workspaces)
   {
-    auto const& workspace = *workspace_pair.second;
+    auto const workspace_ptr = workspace_pair.second;
+    auto const& workspace = *workspace_ptr;
+    bool visible = workspace_ptr.get() == disp.focused_workspace.get();
 
     Color color = Color::inactive;
     if(workspace.urgent)
       color = Color::warn;
-    else if(workspace.focused)
+    else if(focused && visible)
       color = Color::active;
-    else if(workspace.visible)
+    else if(visible)
       color = Color::semiactive;
 
     startButton("i3-msg workspace " + workspace.name);
@@ -250,8 +253,8 @@ void echo_workspace_buttons(I3State& i3,
 
     bool show_name =
         show_names == WorkspaceGroup::all ||
-        (show_names == WorkspaceGroup::visible && workspace.visible) ||
-        (show_names == WorkspaceGroup::active && workspace.focused);
+        (show_names == WorkspaceGroup::visible && visible) ||
+        (show_names == WorkspaceGroup::active && focused && visible);
 
     if(show_name && workspace.focused_window_id != -1)
     {
@@ -274,7 +277,8 @@ void echo_lemon(I3State& i3, WorkspaceGroup show_names)
     auto& output = output_pair.second;
     cout << "%{S" << (int)output->position << "}";
     cout << "%{l}";
-    echo_workspace_buttons(i3, show_names, *output);
+    bool focused = i3.focused_output.get() == output.get();
+    echo_workspace_buttons(i3, show_names, *output, focused);
     if(i3.mode.compare("default") != 0)
     {
       cout << ' ';
