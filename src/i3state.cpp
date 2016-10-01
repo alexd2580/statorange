@@ -322,11 +322,10 @@ void I3State::workspace_urgent(JSON const& current)
 {
   unique_lock<std::mutex> lock(this->mutex);
   valid = false;
-  long id(current["id"]);
+  uint8_t num(current["num"]);
   bool urgent(current["urgent"]);
 
-  auto const window = windows[id];
-  auto const workspace = window.workspace;
+  auto const workspace = workspaces[num];
   workspace->urgent = urgent;
 
   valid = true;

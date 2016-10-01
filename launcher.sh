@@ -47,7 +47,6 @@ do
   statorange_pid=$!
   echo $statorange_pid
 
-
   echo -n "Launching lemonbar ... "
   cat $statorange_fifo | $lemonbar_cmd 2>> $lemonbar_log | $shell_cmd -v 2>> $command_log &
   lemonbar_pid=$!

@@ -77,10 +77,11 @@ void EventHandler::window_event(char const* response)
   if(change.compare("new") == 0)
   {
     auto focused_output = i3State.focused_output;
-    log() << "Focused output " << focused_output << ' ' << focused_output->name
-          << endl;
+    // log() << "Focused output " << focused_output << ' ' <<
+    // focused_output->name
+    //      << endl;
     auto focused_workspace = focused_output->focused_workspace;
-    log() << "Focused workspace " << focused_workspace->name << endl;
+    // log() << "Focused workspace " << focused_workspace->name << endl;
 
     i3State.windows[window_id] = {window_id, "New window", focused_workspace};
   }
@@ -152,23 +153,18 @@ void EventHandler::handle_event(uint32_t type, std::unique_ptr<char[]> response)
     switch(type)
     {
     case I3_INVALID_TYPE:
-      log() << "Invalid event type" << endl;
       invalid_event();
       break;
     case I3_IPC_EVENT_MODE:
-      log() << "Mode event" << endl;
       mode_event(response.get());
       break;
     case I3_IPC_EVENT_WINDOW:
-      log() << "Window event" << endl;
       window_event(response.get());
       break;
     case I3_IPC_EVENT_WORKSPACE:
-      log() << "Workspace event" << endl;
       workspace_event(response.get());
       break;
     case I3_IPC_EVENT_OUTPUT:
-      log() << "Output event" << endl;
       output_event(response.get());
       break;
     case I3_IPC_REPLY_TYPE_SUBSCRIBE:
