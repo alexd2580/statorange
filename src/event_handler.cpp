@@ -26,19 +26,20 @@ string EventHandler::get_window_name(JSON const& container)
   try
   {
     string name(container["name"]);
+    log() << "Requesting window name: " << name << endl;
+
     if(name.length() > 20)
     {
       string class_(container["window_properties"]["class"]);
+      log() << "Too long window name, using class: " << class_ << endl;
       if(class_.length() > 20)
       {
-        string sub = name.substr(0, 15);
-        return sub + "[...]";
+        string sub = name.substr(0, 17);
+        return sub + "[…]";
       }
-      else
-        return class_;
+      return class_;
     }
-    else
-      return name;
+    return name;
   }
   catch(TraceCeption& e)
   {
@@ -83,7 +84,8 @@ void EventHandler::window_event(char const* response)
     auto focused_workspace = focused_output->focused_workspace;
     // log() << "Focused workspace " << focused_workspace->name << endl;
 
-    i3State.windows[window_id] = {window_id, "New window", focused_workspace};
+    auto name = get_window_name(container);
+    i3State.windows[window_id] = {window_id, name, focused_workspace};
   }
   else if(change.compare("title") == 0)
   {

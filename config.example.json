@@ -1,4 +1,5 @@
 {
+    "log file path": "/dev/null",
     "cooldown": 5,
     "ws window names" : "active",
     "can also be" : "none, all, visible (btw the impl is missing)",

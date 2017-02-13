@@ -3,9 +3,9 @@
 #include <string.h>
 #include <sys/statvfs.h>
 
+#include "../JSON/JSONException.hpp"
 #include "../output.hpp"
 #include "../util.hpp"
-#include "../JSON/JSONException.hpp"
 #include "Space.hpp"
 
 using namespace std;
@@ -93,12 +93,8 @@ void Space::print(void)
 {
   if(items.size() > 0)
   {
-    separate(Direction::left, Color::neutral);
-    auto i = items.begin();
     cout.precision(1);
-    cout << std::fixed << i->icon << ' ' << i->mount_point << ' ' << i->used
-         << '/' << i->size << i->unit << ' ';
-    for(i++; i != items.end(); i++)
+    for(auto i = items.begin(); i != items.end(); i++)
     {
       separate(Direction::left, Color::neutral);
       cout << std::fixed << i->icon << ' ' << i->mount_point << ' ' << i->used

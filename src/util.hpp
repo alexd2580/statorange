@@ -170,4 +170,8 @@ public:
   void log_errno(void);
 };
 
+#include<vector>
+#include<functional>
+void try_all(std::vector<std::function<void(void)>>);
+
 #endif

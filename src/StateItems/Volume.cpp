@@ -40,7 +40,7 @@ bool Volume::update(void)
 
   snd_mixer_open(&handle, 0);
   snd_mixer_attach(handle, card.c_str());
-  snd_mixer_selem_register(handle, NULL, NULL);
+  snd_mixer_selem_register(handle, nullptr, nullptr);
   snd_mixer_load(handle);
 
   //  snd_mixer_selem_id_alloca(&sid);

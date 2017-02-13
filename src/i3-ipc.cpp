@@ -145,7 +145,7 @@ bool send_message(int fd, uint32_t type, bool& die, string&& payload)
 /**
  * Waits for message and fills the recv_buffer with its payload.
  * Returns the payload as a pointer to allocated mem. (has to be freed)
- * If the message type does not include a body, NULL is returned.
+ * If the message type does not include a body, nullptr is returned.
  * If there was an error, *type is set to I3_INVALID_TYPE
  */
 std::unique_ptr<char[]> read_message(int fd, uint32_t* type, bool& die)

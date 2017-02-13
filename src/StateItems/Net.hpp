@@ -52,7 +52,7 @@ private:
   // static
   /** addresses :: Map Interface (IPv4_Addr, IPv6_Addr) **/
   static std::map<std::string, std::pair<std::string, std::string>> addresses;
-  static bool get_IP_addresses(void);
+  static bool get_IP_addresses(Logger&);
   static time_t min_cooldown;
 
 public:

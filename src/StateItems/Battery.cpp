@@ -10,14 +10,14 @@
 using namespace std;
 
 Battery::Battery(JSON const& item)
-    : StateItem(item), cached(false), printString("")
+    : StateItem(item), cached(false), print_string("")
 {
   bat_file_loc.assign(item["battery_file"]);
 
   status = BatStatus::not_found;
-  dischargeRate = 0;
-  maxCapacity = 0;
-  currentLevel = 0;
+  discharge_rate = 0;
+  max_capacity = 0;
+  current_level = 0;
 }
 
 bool Battery::update(void)
@@ -44,11 +44,11 @@ bool Battery::update(void)
           status = BatStatus::full;
       }
       else if(strncmp(line + 13, "POWER_NOW", 9) == 0)
-        dischargeRate = strtol(line + 23, NULL, 0);
+        discharge_rate = strtol(line + 23, nullptr, 0);
       else if(strncmp(line + 13, "ENERGY_FULL_DESIGN", 18) == 0)
-        maxCapacity = strtol(line + 32, NULL, 0);
+        max_capacity = strtol(line + 32, nullptr, 0);
       else if(strncmp(line + 13, "ENERGY_NOW", 10) == 0)
-        currentLevel = strtol(line + 24, NULL, 0);
+        current_level = strtol(line + 24, nullptr, 0);
     }
     fclose(bfile);
   }
@@ -67,7 +67,7 @@ void Battery::print(void)
       {
       case BatStatus::charging:
         separate(Direction::left, Color::neutral, o);
-        o << " BAT charging " << 100 * currentLevel / maxCapacity << "% ";
+        o << " BAT charging " << 100 * current_level / max_capacity << "% ";
         break;
       case BatStatus::full:
         separate(Direction::left, Color::info, o);
@@ -75,19 +75,19 @@ void Battery::print(void)
         break;
       case BatStatus::discharging:
       {
-        long rem_minutes = 60 * currentLevel / dischargeRate;
+        long rem_minutes = 60 * current_level / discharge_rate;
         /*if(rem_minutes < 20) {  SEP_LEFT(warn_colors); }
         else if(rem_minutes < 60) { SEP_LEFT(info_colors); }
         else { SEP_LEFT(neutral_colors); }*/
         dynamic_section((float)-rem_minutes, -60.0f, -10.0f, o);
-        o << " BAT " << (int)(100 * currentLevel / maxCapacity) << "% ";
+        o << " BAT " << (int)(100 * current_level / max_capacity) << "% ";
         separate(Direction::left, o);
 
-        long rem_hrOnly = rem_minutes / 60;
-        o << (rem_hrOnly < 10 ? " 0" : " ") << rem_hrOnly;
+        long rem_hr_only = rem_minutes / 60;
+        o << (rem_hr_only < 10 ? " 0" : " ") << rem_hr_only;
 
-        long rem_minOnly = rem_minutes % 60;
-        o << (rem_minOnly < 10 ? ":0" : ":") << rem_minOnly << ' ';
+        long rem_min_only = rem_minutes % 60;
+        o << (rem_min_only < 10 ? ":0" : ":") << rem_min_only << ' ';
 
         break;
       }
@@ -96,8 +96,8 @@ void Battery::print(void)
       }
       separate(Direction::left, Color::white_on_black, o);
     }
-    printString = o.str();
+    print_string = o.str();
     cached = true;
   }
-  cout << printString;
+  cout << print_string;
 }

@@ -3,8 +3,8 @@
 #include <cstring>
 #include <iostream>
 
-#include "Net.hpp"
 #include "../JSON/JSONException.hpp"
+#include "Net.hpp"
 
 using namespace std;
 
@@ -21,7 +21,7 @@ map<string, pair<string, string>> Net::addresses;
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wcast-align"
-bool Net::get_IP_addresses(void)
+bool Net::get_IP_addresses(Logger& logger)
 {
   static time_t last_updated = 0;
   time_t now = time(nullptr);
@@ -37,8 +37,6 @@ bool Net::get_IP_addresses(void)
   void* addr_ptr;
 
   string iface;
-  string ipv4;
-  string ipv6;
 
   if(getifaddrs(&base) != 0)
     return true;
@@ -49,24 +47,29 @@ bool Net::get_IP_addresses(void)
     if(ifa->ifa_addr)
     {
       iface = string(ifa->ifa_name);
+      logger.log() << "Found interface " << iface << endl;
+      if(addresses.find(iface) == addresses.end())
+      {
+        addresses[iface] = pair<string, string>("No Address", "No Address");
+      }
+      auto& address_entry = addresses[iface];
 
       if(ifa->ifa_addr->sa_family == AF_INET)
       {
         addr_ptr = &((struct sockaddr_in*)ifa->ifa_addr)->sin_addr;
         char buffer[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, addr_ptr, buffer, INET_ADDRSTRLEN);
-        ipv4 = string(buffer);
+        address_entry.first = string(buffer);
+        logger.log() << "IPv4 address: " << address_entry.first << endl;
       }
       else if(ifa->ifa_addr->sa_family == AF_INET6)
       {
         addr_ptr = &((struct sockaddr_in6*)ifa->ifa_addr)->sin6_addr;
         char buffer[INET6_ADDRSTRLEN];
         inet_ntop(AF_INET6, addr_ptr, buffer, INET6_ADDRSTRLEN);
-        ipv6 = string(buffer);
+        address_entry.second = string(buffer);
+        logger.log() << "IPv6 address: " << address_entry.second << endl;
       }
-
-      if(ipv4.size() > 0 || ipv6.size() > 0)
-        addresses[iface] = pair<string, string>(ipv4, ipv6);
     }
     ifa = ifa->ifa_next;
   }
@@ -201,7 +204,7 @@ Net::Net(JSON const& item) : StateItem(item), Logger("[Net]")
 
 bool Net::update(void)
 {
-  if(!get_IP_addresses())
+  if(!get_IP_addresses(*this))
     return false;
 
   auto it = addresses.find(iface);

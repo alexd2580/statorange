@@ -19,13 +19,13 @@ private:
   std::string bat_file_loc;
 
   bool cached;
-  std::string printString;
+  std::string print_string;
 
   // BAT
   BatStatus status;
-  long dischargeRate;
-  long maxCapacity;
-  long currentLevel;
+  long discharge_rate;
+  long max_capacity;
+  long current_level;
 
   bool update(void);
   void print(void);

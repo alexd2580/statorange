@@ -23,7 +23,7 @@ TextPos::TextPos(cchar* begin)
   column = 1;
 }
 
-__attribute__((pure)) char TextPos::operator*(void) const { return *string; }
+__attribute__((pure)) char TextPos::operator*(void)const { return *string; }
 
 __attribute__((pure)) cchar* TextPos::ptr(void) const { return string; }
 
@@ -145,8 +145,9 @@ string TextPos::parse_escaped_string(void)
 
 ostream& operator<<(ostream& out, TextPos const& pos)
 {
-  return pos.ptr() == nullptr ? out : out << ':' << pos.get_line() << ':'
-                                          << pos.get_column() << ':';
+  return pos.ptr() == nullptr
+             ? out
+             : out << ':' << pos.get_line() << ':' << pos.get_column() << ':';
 }
 
 bool hasInput(int fd, int microsec)
@@ -239,4 +240,19 @@ void Logger::log_errno(void)
 {
   log() << "errno = " << errno << endl;
   log() << "Error description is : " << strerror(errno) << endl;
+}
+
+void try_all(std::vector<std::function<void(void)>> functions)
+{
+  for(auto i = functions.begin(); i != functions.end(); i++)
+  {
+    try
+    {
+      (*i)();
+    }
+    catch(TraceCeption& e)
+    {
+      // ignore
+    }
+  }
 }

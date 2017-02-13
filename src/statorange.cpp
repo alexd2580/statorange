@@ -3,24 +3,24 @@
  * NEITHER VALIDATED, NOR EXCESSIVELY TESTED
  */
 
+#include <cassert>
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
-#include <cassert>
 
-#include <iostream>
 #include <chrono>
 #include <condition_variable>
+#include <fstream>
 #include <functional>
+#include <iostream>
 #include <mutex>
 #include <thread>
-#include <fstream>
 
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "JSON/jsonParser.hpp"
 #include "JSON/JSONException.hpp"
+#include "JSON/jsonParser.hpp"
 
 #include "StateItem.hpp"
 #include "event_handler.hpp"
@@ -116,22 +116,80 @@ void notify_handler(int signum)
 
 /******************************************************************************/
 
+unique_ptr<JSON> load_config(char const* argv_2)
+{
+  string config_path(argv_2);
+  cerr << "Config path: " << config_path << endl;
+  string config_string;
+  if(!load_file(config_path, config_string))
+  {
+    cerr << "Could not load the config from " << config_path << endl;
+    return {};
+  }
+  try
+  {
+    return JSON::parse(config_string.c_str());
+  }
+  catch(TraceCeption& e)
+  {
+    cerr << "Could not parse config:" << endl;
+    e.printStackTrace();
+  }
+  return {};
+}
+
 int main(int argc, char* argv[])
 {
-
-  fstream log_file;
-  log_file.open("log/statorange.log", fstream::out);
-  LoggerManager::set_stream(log_file);
-
-  Logger l("[Main]");
-  l.log() << "Launching Statorange" << endl;
-
   if(argc < 3)
   {
     cout << "Please supply the socket and config paths." << endl;
     return EXIT_FAILURE;
   }
 
+  string socket_path(argv[1]);
+  cerr << "Socket path: " << socket_path << endl;
+
+  auto config_json_raw = load_config(argv[2]);
+  auto& config_json = *config_json_raw;
+
+  // Load config fields.
+  vector<function<void(void)>> parsers;
+
+  string log_file_path("/dev/null");
+  parsers.push_back([&config_json, &log_file_path]() {
+    log_file_path = (string)config_json["log file path"];
+  });
+
+  chrono::seconds cooldown(5);
+  parsers.push_back([&config_json, &cooldown]() {
+    cooldown = chrono::seconds((int)config_json["cooldown"]);
+  });
+
+  WorkspaceGroup show_names_on(WorkspaceGroup::visible);
+  parsers.push_back([&config_json, &show_names_on]() {
+    auto& sno = config_json["ws window names"];
+    show_names_on = parse_workspace_group(sno);
+  });
+
+  bool show_failed_modules(true);
+  parsers.push_back([&config_json, &show_failed_modules]() {
+    show_failed_modules = config_json["show failed modules"];
+  });
+
+  try_all(parsers);
+
+  // Set the log file output.
+  fstream log_file;
+  log_file.open(log_file_path, fstream::out);
+  LoggerManager::set_stream(log_file);
+
+  Logger l("[Main]");
+  l.log() << "Launching Statorange" << endl;
+
+  // Init StateItems.
+  StateItem::init(config_json);
+
+  // Create the global data for the threads.
   GlobalData global_data;
   global_data.die = false;
   global = &global_data;
@@ -141,68 +199,6 @@ int main(int argc, char* argv[])
   global_data.main_thread_id = thread_id;
   l.log() << "Setting main pthread id: " << pthread_self() << endl;
   global_data.main_pthread_id = pthread_self();
-
-  string socket_path(argv[1]);
-  l.log() << "Socket path: " << socket_path << endl;
-  string config_path(argv[2]);
-  l.log() << "Config path: " << config_path << endl;
-
-  string config_string;
-  if(!load_file(config_path, config_string))
-  {
-    l.log() << "Could not load config.json" << endl;
-    return EXIT_FAILURE;
-  }
-
-  chrono::seconds cooldown(5);
-  WorkspaceGroup show_names_on(WorkspaceGroup::visible);
-  bool show_failed_modules(true);
-
-  try
-  {
-    /** Load the config */
-    auto config_json_raw = JSON::parse(config_string.c_str());
-    auto& config_json = *config_json_raw;
-
-    // cooldown
-    auto oldval(cooldown);
-    try
-    {
-      cooldown = chrono::seconds((int)config_json["cooldown"]);
-    }
-    catch(JSONException&)
-    {
-      assert(oldval == cooldown);
-      // ignore
-    }
-
-    try
-    {
-      auto& sno = config_json["ws window names"];
-      show_names_on = parse_workspace_group(sno);
-    }
-    catch(JSONException&)
-    {
-      // ignore
-    }
-
-    try
-    {
-      show_failed_modules = config_json["show failed modules"];
-    }
-    catch(JSONException&)
-    {
-      // ignore
-    }
-    // init StateItems
-    StateItem::init(config_json);
-  }
-  catch(TraceCeption& e)
-  {
-    l.log() << "Could not parse config:" << endl;
-    e.printStackTrace();
-    return EXIT_FAILURE;
-  }
 
   // init i3State
   I3State i3State(socket_path, global_data.die);
@@ -220,9 +216,9 @@ int main(int argc, char* argv[])
   EventHandler event_handler(i3State, push_socket, global_data);
   event_handler.fork();
 
-  // main loop
   l.log() << "Entering main loop" << endl;
   std::unique_lock<std::mutex> lock(global_data.mutex); // TODO
+
   try
   {
     while(!global_data.die) // <- volatile
@@ -230,7 +226,7 @@ int main(int argc, char* argv[])
       if(global_data.force_update)
       {
         StateItem::forceUpdates();
-        global_data.force_update = 0;
+        global_data.force_update = false;
       }
       else
         StateItem::updates();

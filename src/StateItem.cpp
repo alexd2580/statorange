@@ -1,6 +1,6 @@
-#include <iostream>
-#include "output.hpp"
 #include "JSON/JSONException.hpp"
+#include "output.hpp"
+#include <iostream>
 
 #include "StateItem.hpp"
 #include "StateItems/Battery.hpp"
@@ -13,7 +13,7 @@
 
 using namespace std;
 
-StateItem::StateItem(JSON const& item)
+StateItem::StateItem(JSON const& item) : last_updated(0)
 {
   module_name.assign(item["item"]);
   cooldown = (time_t)item["cooldown"];
