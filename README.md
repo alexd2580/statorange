@@ -82,7 +82,7 @@ Instead place these two lines at the end of the config:
 # TRAYER
 bindsym $mod+t exec PATHTOSTATORANGE/toggle_trayer.sh
 # STATORANGE
-exec PATHTOSTATORANGE/statorange_launcher.sh > PATHTOSTATORANGE/log/statorange_launcher.log
+exec PATHTOSTATORANGE/launcher.sh > PATHTOSTATORANGE/log/launcher.log
 ```
 (Don't forget to replace _PATHTOSTATORANGE_)
 
