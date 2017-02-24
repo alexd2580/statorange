@@ -1,4 +1,3 @@
-
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
@@ -48,27 +47,29 @@ bool Net::get_IP_addresses(Logger& logger)
     {
       iface = string(ifa->ifa_name);
       logger.log() << "Found interface " << iface << endl;
-      if(addresses.find(iface) == addresses.end())
+      auto family = ifa->ifa_addr->sa_family;
+      if(family == AF_INET || family == AF_INET6)
       {
-        addresses[iface] = pair<string, string>("No Address", "No Address");
-      }
-      auto& address_entry = addresses[iface];
+        if(addresses.find(iface) == addresses.end())
+          addresses[iface] = pair<string, string>("", "");
+        auto& address_entry = addresses[iface];
 
-      if(ifa->ifa_addr->sa_family == AF_INET)
-      {
-        addr_ptr = &((struct sockaddr_in*)ifa->ifa_addr)->sin_addr;
-        char buffer[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, addr_ptr, buffer, INET_ADDRSTRLEN);
-        address_entry.first = string(buffer);
-        logger.log() << "IPv4 address: " << address_entry.first << endl;
-      }
-      else if(ifa->ifa_addr->sa_family == AF_INET6)
-      {
-        addr_ptr = &((struct sockaddr_in6*)ifa->ifa_addr)->sin6_addr;
-        char buffer[INET6_ADDRSTRLEN];
-        inet_ntop(AF_INET6, addr_ptr, buffer, INET6_ADDRSTRLEN);
-        address_entry.second = string(buffer);
-        logger.log() << "IPv6 address: " << address_entry.second << endl;
+        if(family == AF_INET)
+        {
+          addr_ptr = &((struct sockaddr_in*)ifa->ifa_addr)->sin_addr;
+          char buffer[INET_ADDRSTRLEN];
+          inet_ntop(AF_INET, addr_ptr, buffer, INET_ADDRSTRLEN);
+          address_entry.first = string(buffer);
+          logger.log() << "IPv4 address: " << address_entry.first << endl;
+        }
+        else if(family == AF_INET6)
+        {
+          addr_ptr = &((struct sockaddr_in6*)ifa->ifa_addr)->sin6_addr;
+          char buffer[INET6_ADDRSTRLEN];
+          inet_ntop(AF_INET6, addr_ptr, buffer, INET6_ADDRSTRLEN);
+          address_entry.second = string(buffer);
+          logger.log() << "IPv6 address: " << address_entry.second << endl;
+        }
       }
     }
     ifa = ifa->ifa_next;
