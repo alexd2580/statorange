@@ -8,20 +8,12 @@
 
 #include "../output.hpp"
 #include "../util.hpp"
-#include "../JSON/JSONException.hpp"
 
 using namespace std;
 
 Date::Date(JSON const& item) : StateItem(item)
 {
-  try
-  {
-    icon = parse_icon(item["icon"]);
-  }
-  catch(JSONException&)
-  {
-    icon = Icon::no_icon;
-  }
+  icon = parse_icon(item.get("icon").as_string_with_default(""));
   format.assign(item["format"]);
 }
 

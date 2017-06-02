@@ -36,7 +36,7 @@ static map<Icon, string> icons{
   if(s == #constr_id)                                                          \
     return enum_id::constr_id;
 
-Icon parse_icon(std::string& s)
+Icon parse_icon(std::string const& s)
 {
   PARSE_CASE(Icon, clock)
   PARSE_CASE(Icon, cpu)
@@ -64,7 +64,7 @@ std::ostream& operator<<(std::ostream& o, Icon i)
 /******************************************************************************/
 /******************************* WORKSPACES ***********************************/
 
-WorkspaceGroup parse_workspace_group(std::string& s)
+WorkspaceGroup parse_workspace_group(std::string const& s)
 {
   PARSE_CASE(WorkspaceGroup, all)
   PARSE_CASE(WorkspaceGroup, visible)

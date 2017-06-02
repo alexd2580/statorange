@@ -2,9 +2,8 @@
 #include <cstring>
 #include <iostream>
 
-#include "Volume.hpp"
 #include "../util.hpp"
-#include "../JSON/JSONException.hpp"
+#include "Volume.hpp"
 
 using namespace std;
 
@@ -13,14 +12,7 @@ using namespace std;
 
 Volume::Volume(JSON const& item) : StateItem(item)
 {
-  try
-  {
-    icon = parse_icon(item["icon"]);
-  }
-  catch(JSONException&)
-  {
-    icon = Icon::no_icon;
-  }
+  icon = parse_icon(item.get("icon").as_string_with_default(""));
 
   card.assign(item["card"]);
   mixer.assign(item["mixer"]);

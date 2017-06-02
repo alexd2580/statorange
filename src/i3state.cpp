@@ -6,9 +6,6 @@
 
 #include <sys/socket.h>
 
-#include "JSON/jsonParser.hpp"
-#include "JSON/JSONException.hpp"
-
 #include "i3-ipc-constants.hpp"
 #include "i3-ipc.hpp"
 #include "i3state.hpp"
@@ -54,23 +51,23 @@ Output::Output(uint8_t pos, std::string const& name_)
 
 void Output::update_from_tree(const JSON& json)
 {
-  // get nodes and search for "con"
+  // Get nodes and search for "con".
   auto& output_nodes = json["nodes"];
   for(uint8_t i = 0; i < output_nodes.size(); i++)
   {
     auto& node = output_nodes[i];
-    string& node_type = node["type"];
+    string const& node_type = node["type"];
     if(node_type.compare("con") == 0)
     {
-      // get workspaces of the current output
+      // Get workspaces of the current output.
       auto& workspaces_arr = node["nodes"];
       for(uint8_t j = 0; j < workspaces_arr.size(); j++)
       {
-        // for each workspace tree
+        // For each workspace tree ...
         auto& workspace_obj = workspaces_arr[j];
         uint8_t workspace_num = workspace_obj["num"];
 
-        // get Workspace object from Output object
+        // ... get the Workspace object from Output object.
         auto& workspace = workspaces[workspace_num];
         workspace->update_from_tree(workspace_obj);
       }
@@ -192,36 +189,29 @@ void I3State::get_outputs(void)
     return;
   }
 
-  try
-  {
-    auto json_uptr = JSON::parse(buffer.get());
-    auto& array = *json_uptr;
-    uint8_t total_displays((uint8_t)array.size());
-    log() << "Total outputs: " << (int)total_displays << endl;
-    vector<Output_rect> outputs_vec;
-    for(uint8_t i = 0; i < total_displays; i++)
-    {
-      auto& disp = array[i];
-      if(disp["active"])
-        outputs_vec.push_back(Output_rect::from_json(disp));
-    }
+  auto json_uptr = JSON::parse(buffer.get());
+  auto& array = *json_uptr;
 
-    std::sort(outputs_vec.begin(), outputs_vec.end(), sort_by_pos);
-
-    log() << "Outputs" << endl;
-    for(uint8_t i = 0; i < outputs_vec.size(); i++)
-    {
-      Output_rect& o = outputs_vec[i];
-      outputs[o.name] = make_shared<Output>(i, o.name);
-      log() << "\t" << (int)i << ": " << o.name << endl;
-    }
-    valid = true;
-  }
-  catch(JSONException& e)
+  uint8_t total_displays((uint8_t)array.size());
+  log() << "Total outputs: " << (int)total_displays << endl;
+  vector<Output_rect> outputs_vec;
+  for(uint8_t i = 0; i < total_displays; i++)
   {
-    log() << "Caught exception in I3State::get_outputs:" << endl;
-    e.printStackTrace();
+    auto& disp = array[i];
+    if(disp["active"])
+      outputs_vec.push_back(Output_rect::from_json(disp));
   }
+
+  std::sort(outputs_vec.begin(), outputs_vec.end(), sort_by_pos);
+
+  log() << "Outputs" << endl;
+  for(uint8_t i = 0; i < outputs_vec.size(); i++)
+  {
+    Output_rect& o = outputs_vec[i];
+    outputs[o.name] = make_shared<Output>(i, o.name);
+    log() << "    " << (int)i << ": " << o.name << endl;
+  }
+  valid = true;
 }
 
 /**
@@ -238,27 +228,19 @@ void I3State::get_workspaces(void)
     return;
   }
 
-  try
-  {
-    auto json_uptr = JSON::parse(buffer.get());
-    auto& array = *json_uptr;
+  auto json_uptr = JSON::parse(buffer.get());
+  auto& array = *json_uptr;
 
-    for(uint8_t i = 0; i < array.size(); i++)
-    {
-      auto& workspace_i = array[i];
-      register_workspace(workspace_i["num"],
-                         workspace_i["name"],
-                         workspace_i["output"],
-                         workspace_i["focused"]);
-    }
-
-    valid = true;
-  }
-  catch(JSONException& e)
+  for(uint8_t i = 0; i < array.size(); i++)
   {
-    log() << "Caught exception in I3State::get_workspaces:" << endl;
-    e.printStackTrace();
+    auto& workspace_i = array[i];
+    register_workspace(workspace_i["num"],
+                       workspace_i["name"],
+                       workspace_i["output"],
+                       workspace_i["focused"]);
   }
+
+  valid = true;
 }
 
 void I3State::init_layout(void)
@@ -352,34 +334,26 @@ void I3State::update_from_tree(void)
   auto buffer = message(I3_IPC_MESSAGE_TYPE_GET_TREE);
   if(buffer)
   {
-    try
-    {
-      auto json_uptr = JSON::parse(buffer.get());
-      // root object
-      auto const& root = *json_uptr;
-      // root nddes are outputs
-      auto const& root_nodes = root["nodes"];
+    auto json_uptr = JSON::parse(buffer.get());
+    auto const& root = *json_uptr;
+    // Root nodes are outputs.
+    auto const& root_nodes = root["nodes"];
 
-      for(uint8_t i = 0; i < root_nodes.size(); i++)
+    for(uint8_t i = 0; i < root_nodes.size(); i++)
+    {
+      // For each output tree ...
+      auto const& output_obj = root_nodes[i];
+      auto& output_name = output_obj["name"]; // eDP1, __i3, LVDS0
+
+      // ... search for output_name in list of known outputs.
+      auto output_kv = outputs.find(output_name);
+      // If it is an actual display ...
+      if(output_kv != outputs.end())
       {
-        // for each output tree
-        auto const& output_obj = root_nodes[i];
-        auto& output_name = output_obj["name"]; // eDP1, __i3, LVDS0
-
-        // search for output_name in list of known outputs
-        auto output_kv = outputs.find(output_name);
-        // if it is an actual display
-        if(output_kv != outputs.end())
-        {
-          // get the Output object
-          auto const output = output_kv->second;
-          output->update_from_tree(output_obj);
-        }
+        // ... get the Output object.
+        auto const output = output_kv->second;
+        output->update_from_tree(output_obj);
       }
-    }
-    catch(TraceCeption& e)
-    {
-      e.printStackTrace();
     }
   }
 }

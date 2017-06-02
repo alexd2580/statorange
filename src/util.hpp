@@ -84,53 +84,6 @@ public:
 
 std::ostream& operator<<(std::ostream&, TextPos const& pos);
 
-class TraceCeption
-{
-protected:
-  TextPos const position;
-  using StringStack = std::stack<std::string>;
-  std::unique_ptr<StringStack> stacktrace_ptr;
-
-public:
-  TraceCeption(TextPos& pos, std::string msg)
-      : position(pos), stacktrace_ptr(std::make_unique<StringStack>())
-  {
-    stacktrace_ptr->push(msg);
-  }
-
-  TraceCeption(TextPos&& pos, std::string msg)
-      : position(pos), stacktrace_ptr(std::make_unique<StringStack>())
-  {
-    stacktrace_ptr->push(msg);
-  }
-
-  TraceCeption(TraceCeption& rhs)
-      : position(rhs.position), stacktrace_ptr(std::move(rhs.stacktrace_ptr))
-  {
-  }
-
-  TraceCeption(TraceCeption&& rhs)
-      : position(rhs.position), stacktrace_ptr(std::move(rhs.stacktrace_ptr))
-  {
-  }
-
-  TraceCeption& operator=(TraceCeption& rhs) = delete;
-  TraceCeption& operator=(TraceCeption&& rhs) = delete;
-
-  virtual ~TraceCeption() {}
-
-  void push_stack(std::string msg) { stacktrace_ptr->push(msg); }
-
-  void printStackTrace(std::ostream& out = std::cerr)
-  {
-    while(!stacktrace_ptr->empty())
-    {
-      out << position << stacktrace_ptr->top() << std::endl;
-      stacktrace_ptr->pop();
-    }
-  }
-};
-
 bool hasInput(int fd, int microsec);
 
 void store_string(char* dst, size_t dst_size, char* src, size_t src_size);

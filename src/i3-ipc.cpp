@@ -191,7 +191,7 @@ std::unique_ptr<char[]> read_message(int fd, uint32_t* type, bool& die)
         perror(msg.c_str());
       }
       *type = I3_INVALID_TYPE;
-      free(payload);
+      delete[] payload;
       return std::unique_ptr<char[]>();
     }
     payload[header.size] = '\0';
@@ -215,7 +215,7 @@ int init_socket(string const& path)
   SocketAddr server_address;
   memset(&server_address, 0, sizeof(server_address));
   server_address.sun_family = AF_LOCAL;
-  strcpy(server_address.sun_path, path.c_str());
+  strncpy(server_address.sun_path, path.c_str(), path.length());
 
   int err = connect(
       sockfd, (struct sockaddr*)&server_address, sizeof(server_address));

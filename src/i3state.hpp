@@ -9,7 +9,7 @@
 #include <memory>
 
 #include "util.hpp"
-#include "JSON/jsonParser.hpp"
+#include "JSON/json_parser.hpp"
 
 class Workspace;
 

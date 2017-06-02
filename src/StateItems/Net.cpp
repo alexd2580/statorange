@@ -2,7 +2,6 @@
 #include <cstring>
 #include <iostream>
 
-#include "../JSON/JSONException.hpp"
 #include "Net.hpp"
 
 using namespace std;
@@ -170,15 +169,7 @@ bool Net::get_wireless_state(void)
 
 Net::Net(JSON const& item) : StateItem(item), Logger("[Net]")
 {
-  try
-  {
-    icon = parse_icon(item["icon"]);
-  }
-  catch(JSONException&)
-  {
-    icon = Icon::no_icon;
-  }
-
+  icon = parse_icon(item.get("icon").as_string_with_default(""));
   iface.assign(item["interface"]);
 
   string contype = item["type"];

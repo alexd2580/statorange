@@ -5,7 +5,7 @@
 #include <mutex>
 #include <thread>
 
-#include "JSON/jsonParser.hpp"
+#include "JSON/json_parser.hpp"
 #include "i3state.hpp"
 #include "util.hpp"
 

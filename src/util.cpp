@@ -70,7 +70,10 @@ double TextPos::parse_num(void)
   char* endptr;
   double n = strtod(string, &endptr);
   if(endptr == string)
-    throw(TraceCeption(*this, "Could not convert string to number"));
+  {
+    cerr << "Could not convert string to number" << endl;
+    exit(1);
+  }
   column += (unsigned int)(endptr - string);
   string = endptr;
   return n;
@@ -92,7 +95,10 @@ string TextPos::parse_escaped_string(void)
 {
   char c = *string;
   if(c != '"')
-    throw TraceCeption(*this, std::string("Expected [\"], got: [") + c + "].");
+  {
+    cerr << "Expected [\"], got: [" << c << "]." << endl;
+    exit(1);
+  }
 
   c = next();
   cchar* start = string;
@@ -107,9 +113,11 @@ string TextPos::parse_escaped_string(void)
       column += off + 1;
       c = next();
       if(c == '\0')
-        throw TraceCeption(
-            *this,
-            std::string("Unexpected EOS when parsing escaped character."));
+      {
+        cerr << "Unexpected EOS when parsing escaped character." << endl;
+        exit(1);
+      }
+
       switch(c)
       {
       case 'n':
@@ -132,7 +140,10 @@ string TextPos::parse_escaped_string(void)
   }
 
   if(c == '\0')
-    throw TraceCeption(*this, std::string("Unexpected EOS"));
+  {
+    cerr << "Unexpected EOS" << endl;
+    exit(1);
+  }
 
   size_t off = (size_t)(string - start);
   res += std::string(start, off);
@@ -244,15 +255,8 @@ void Logger::log_errno(void)
 
 void try_all(std::vector<std::function<void(void)>> functions)
 {
-  for(auto i = functions.begin(); i != functions.end(); i++)
+  for(auto& function : functions)
   {
-    try
-    {
-      (*i)();
-    }
-    catch(TraceCeption& e)
-    {
-      // ignore
-    }
+    function();
   }
 }

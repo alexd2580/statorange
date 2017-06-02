@@ -5,8 +5,6 @@
 
 #include "event_handler.hpp"
 
-#include "JSON/jsonParser.hpp"
-
 #include "i3-ipc-constants.hpp"
 #include "i3-ipc.hpp"
 #include "i3state.hpp"
@@ -23,30 +21,24 @@ EventHandler::EventHandler(I3State& i3, int fd, GlobalData& global_)
 
 string EventHandler::get_window_name(JSON const& container)
 {
-  try
-  {
-    string name(container["name"]);
-    log() << "Requesting window name: " << name << endl;
+  std::string default_value("ERROR");
+  string name(container.get("name").as_string_with_default(default_value));
+  log() << "Requesting window name: " << name << endl;
 
-    if(name.length() > 20)
-    {
-      string class_(container["window_properties"]["class"]);
-      log() << "Too long window name, using class: " << class_ << endl;
-      if(class_.length() > 20)
-      {
-        string sub = name.substr(0, 17);
-        return sub + "[…]";
-      }
-      return class_;
-    }
-    return name;
-  }
-  catch(TraceCeption& e)
+  if(name.length() > 20)
   {
-    log() << "Exception when trying to get window name/class" << endl;
-    e.printStackTrace();
-    return "ERROR";
+    string class_(container.get("window_properties")
+                      .get("class")
+                      .as_string_with_default(default_value));
+    log() << "Too long window name, using class: " << class_ << endl;
+    if(class_.length() > 20)
+    {
+      string sub = name.substr(0, 17);
+      return sub + "[…]";
+    }
+    return class_;
   }
+  return name;
 }
 
 void EventHandler::invalid_event(void)
@@ -150,39 +142,29 @@ void EventHandler::output_event(char const*)
 
 void EventHandler::handle_event(uint32_t type, std::unique_ptr<char[]> response)
 {
-  try
+  switch(type)
   {
-    switch(type)
-    {
-    case I3_INVALID_TYPE:
-      invalid_event();
-      break;
-    case I3_IPC_EVENT_MODE:
-      mode_event(response.get());
-      break;
-    case I3_IPC_EVENT_WINDOW:
-      window_event(response.get());
-      break;
-    case I3_IPC_EVENT_WORKSPACE:
-      workspace_event(response.get());
-      break;
-    case I3_IPC_EVENT_OUTPUT:
-      output_event(response.get());
-      break;
-    case I3_IPC_REPLY_TYPE_SUBSCRIBE:
-      log() << "Subscribed to events - " << response.get() << endl;
-      break;
-    default:
-      log() << "Unhandled event type: " << ipc_type_to_string(type) << endl;
-      break;
-    }
-  }
-  catch(TraceCeption& e)
-  {
-    e.push_stack(std::string(response.get()));
-    e.push_stack("While handling an event of type: " +
-                 ipc_type_to_string(type));
-    throw e;
+  case I3_INVALID_TYPE:
+    invalid_event();
+    break;
+  case I3_IPC_EVENT_MODE:
+    mode_event(response.get());
+    break;
+  case I3_IPC_EVENT_WINDOW:
+    window_event(response.get());
+    break;
+  case I3_IPC_EVENT_WORKSPACE:
+    workspace_event(response.get());
+    break;
+  case I3_IPC_EVENT_OUTPUT:
+    output_event(response.get());
+    break;
+  case I3_IPC_REPLY_TYPE_SUBSCRIBE:
+    log() << "Subscribed to events - " << response.get() << endl;
+    break;
+  default:
+    log() << "Unhandled event type: " << ipc_type_to_string(type) << endl;
+    break;
   }
 
   if(!i3State.valid) // is this necessary?
@@ -225,23 +207,14 @@ void EventHandler::run(void)
 
     uint32_t type;
     auto response = read_message(push_socket, &type, global.die);
-    try
-    {
-      handle_event(type, std::move(response));
+    handle_event(type, std::move(response));
 
-      while(!global.die && hasInput(push_socket, 1000))
-      {
-        auto consecutive = read_message(push_socket, &type, global.die);
-        handle_event(type, std::move(consecutive));
-      }
-    }
-    catch(TraceCeption& e)
+    while(!global.die && hasInput(push_socket, 1000))
     {
-      log() << "Caught exception in EventHandler::run" << endl;
-      e.printStackTrace();
-      // TODO open new socket?
-      log() << "Retrying" << endl;
+      auto consecutive = read_message(push_socket, &type, global.die);
+      handle_event(type, std::move(consecutive));
     }
+
     unique_lock<std::mutex> lock(global.mutex);
     global.notifier.notify_one();
   }

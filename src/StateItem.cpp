@@ -1,4 +1,3 @@
-#include "JSON/JSONException.hpp"
 #include "output.hpp"
 #include <iostream>
 
@@ -18,14 +17,11 @@ StateItem::StateItem(JSON const& item) : last_updated(0)
   module_name.assign(item["item"]);
   cooldown = (time_t)item["cooldown"];
   button = false;
-  try
+
+  if(item.has("button"))
   {
     button_command.assign(item["button"]);
     button = true;
-  }
-  catch(JSONException&)
-  {
-    // ignore
   }
 }
 

@@ -33,7 +33,7 @@ bool CPU::update(void)
 
   cpu_temps.clear();
   auto n = temp_file_paths.size();
-  for(decltype(n) i = 0; i < temp_file_paths.size(); i++)
+  for(decltype(n) i = 0; i < n; i++)
   {
     auto path = temp_file_paths[i].c_str();
     FILE* tfile = fopen(path, "r");

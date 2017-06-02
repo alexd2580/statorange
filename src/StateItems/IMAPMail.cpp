@@ -8,7 +8,6 @@
 #include <unistd.h>
 
 #include "IMAPMail.hpp"
-#include "../JSON/JSONException.hpp"
 
 using namespace std;
 
@@ -38,8 +37,7 @@ bool IMAPMail::init_SSL(void)
   OpenSSL_add_all_algorithms();
   SSL_load_error_strings();
 
-  mth = TLSv1_method();
-  ctx = SSL_CTX_new(mth);
+  ctx = SSL_CTX_new(SSLv23_client_method());
   if(ctx == nullptr)
   {
     log_SSL_errors();
@@ -193,8 +191,10 @@ bool IMAPMail::update(void)
 {
   success = false;
   if(ctx == nullptr)
+  {
     if(!init_SSL())
       return false; // failed to initialize ssl, which is mandatory
+  }
 
   if(!connect_tcp())
     return true; // just no internet
@@ -268,49 +268,20 @@ void IMAPMail::print(void)
 
 IMAPMail::IMAPMail(JSON const& item) : StateItem(item), Logger("[IMAPMail]")
 {
-  try
-  {
-    icon = parse_icon(item["icon"]);
-  }
-  catch(JSONException&)
-  {
-    icon = Icon::no_icon;
-  }
+  icon = parse_icon(item.get("icon").as_string_with_default(""));
 
   hostname.assign(item["hostname"]);
   port = item["port"];
   address = Address(hostname, port);
 
-  try
-  {
-    ca_cert.assign(item["ca_file"]);
-  }
-  catch(JSONException&)
-  {
-    // ignore
-  }
-
-  try
-  {
-    ca_path.assign(item["ca_path"]);
-  }
-  catch(JSONException&)
-  {
-    // ignore
-  }
+  ca_cert.assign(item.get("ca_file").as_string_with_default(""));
+  ca_cert.assign(item.get("ca_path").as_string_with_default(""));
 
   username.assign(item["username"]);
   password.assign(item["password"]);
   mailbox.assign(item["mailbox"]);
 
-  try
-  {
-    tag.assign(item["tag"]);
-  }
-  catch(JSONException&)
-  {
-    tag = hostname + username;
-  }
+  tag.assign(item.get("tag").as_string_with_default(hostname + ":" + username));
 
   ctx = nullptr;
   server_fd = -1;

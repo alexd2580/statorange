@@ -19,8 +19,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include "JSON/JSONException.hpp"
-#include "JSON/jsonParser.hpp"
+#include "JSON/json_parser.hpp"
 
 #include "StateItem.hpp"
 #include "event_handler.hpp"
@@ -126,16 +125,7 @@ unique_ptr<JSON> load_config(char const* argv_2)
     cerr << "Could not load the config from " << config_path << endl;
     return {};
   }
-  try
-  {
-    return JSON::parse(config_string.c_str());
-  }
-  catch(TraceCeption& e)
-  {
-    cerr << "Could not parse config:" << endl;
-    e.printStackTrace();
-  }
-  return {};
+  return JSON::parse(config_string.c_str());
 }
 
 int main(int argc, char* argv[])
@@ -219,33 +209,24 @@ int main(int argc, char* argv[])
   l.log() << "Entering main loop" << endl;
   std::unique_lock<std::mutex> lock(global_data.mutex); // TODO
 
-  try
+  while(!global_data.die) // <- volatile
   {
-    while(!global_data.die) // <- volatile
+    if(global_data.force_update)
     {
-      if(global_data.force_update)
-      {
-        StateItem::forceUpdates();
-        global_data.force_update = false;
-      }
-      else
-        StateItem::updates();
-
-      i3State.mutex.lock();
-
-      if(!i3State.valid)
-        break;
-
-      echo_lemon(i3State, show_names_on);
-      i3State.mutex.unlock();
-      global_data.notifier.wait_for(lock, cooldown);
+      StateItem::forceUpdates();
+      global_data.force_update = false;
     }
-  }
-  catch(TraceCeption& e)
-  {
-    l.log() << "Exception catched:" << endl;
-    e.printStackTrace();
-    global_data.exit_status = EXIT_FAILURE;
+    else
+      StateItem::updates();
+
+    i3State.mutex.lock();
+
+    if(!i3State.valid)
+      break;
+
+    echo_lemon(i3State, show_names_on);
+    i3State.mutex.unlock();
+    global_data.notifier.wait_for(lock, cooldown);
   }
 
   global_data.die = true;

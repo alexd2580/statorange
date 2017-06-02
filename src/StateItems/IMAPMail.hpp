@@ -7,7 +7,7 @@
 #include <string>
 
 #include "../Address.hpp"
-#include "../JSON/jsonParser.hpp"
+#include "../JSON/json_parser.hpp"
 #include "../StateItem.hpp"
 #include "../util.hpp"
 #include "../output.hpp"
@@ -34,7 +34,6 @@ private:
 
   int server_fd;
 
-  SSL_METHOD const* mth;
   SSL_CTX* ctx;
   SSL* ssl;
 

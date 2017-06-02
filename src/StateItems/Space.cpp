@@ -3,7 +3,6 @@
 #include <string.h>
 #include <sys/statvfs.h>
 
-#include "../JSON/JSONException.hpp"
 #include "../output.hpp"
 #include "../util.hpp"
 #include "Space.hpp"
@@ -23,14 +22,7 @@ Space::Space(JSON const& item) : StateItem(item), Logger("[Space]")
   {
     auto& mpt = mpoints[i];
     si.mount_point.assign(mpt["file"]);
-    try
-    {
-      si.icon = parse_icon(mpt["icon"]);
-    }
-    catch(JSONException&)
-    {
-      si.icon = Icon::no_icon;
-    }
+    si.icon = parse_icon(mpt.get("icon").as_string_with_default(""));
 
     si.size = 0;
     si.used = 0;

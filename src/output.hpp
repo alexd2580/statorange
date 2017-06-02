@@ -27,7 +27,7 @@ enum class Icon
   no_icon
 };
 
-Icon parse_icon(std::string& s);
+Icon parse_icon(std::string const& s);
 std::ostream& operator<<(std::ostream&, Icon);
 
 /******************************************************************************/
@@ -79,7 +79,7 @@ enum class WorkspaceGroup
   none     // none
 };
 
-WorkspaceGroup parse_workspace_group(std::string& s);
+WorkspaceGroup parse_workspace_group(std::string const& s);
 
 void echo_lemon(I3State& i3, WorkspaceGroup show_window_names);
 
