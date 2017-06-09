@@ -167,7 +167,7 @@ bool Net::get_wireless_state(void)
   }
 }
 
-Net::Net(JSON const& item) : StateItem(item), Logger("[Net]")
+Net::Net(JSON const& item) : StateItem("[Net]", item)
 {
   icon = parse_icon(item.get("icon").as_string_with_default(""));
   iface.assign(item["interface"]);

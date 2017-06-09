@@ -1,41 +1,53 @@
 #ifndef __STATEITEMHEADER_LOL___
 #define __STATEITEMHEADER_LOL___
 
-#include <ctime>
+#include <chrono>
+#include <map>
 #include <string>
 #include <vector>
 
 #include "JSON/json_parser.hpp"
+#include "Logger.hpp"
 
-class StateItem
+class StateItem : public Logger
 {
-private:
-  static std::vector<StateItem*> states;
+  private:
+    static std::chrono::seconds min_cooldown;
+    static std::vector<StateItem*> states;
+    static std::map<int, StateItem*> event_sockets;
 
-  std::string module_name;
-  time_t cooldown;
-  time_t last_updated;
-  bool button;
-  std::string button_command;
-  bool valid;
+    std::string module_name;
+    std::chrono::seconds cooldown;
+    std::chrono::system_clock::time_point last_updated;
+    bool button;
+    std::string button_command;
+    bool valid;
 
-  void wrap_update(void);
-  void force_update(void);
-  void wrap_print(void);
+    void wrap_update(void);
+    void force_update(void);
+    void wrap_print(void);
 
-protected:
-  virtual bool update(void) = 0;
-  virtual void print(void) = 0;
-  StateItem(JSON const& item);
+  protected:
+    StateItem(std::string const&, JSON const&);
 
-public:
-  virtual ~StateItem(void) = default;
+    void register_event_socket(int fd);
+    virtual void handle_events(void);
+    void unregister_event_socket(int fd) const;
 
-  static void init(JSON const& config);
-  static void updates(void);
-  static void forceUpdates(void);
-  static void printState(void);
-  static void deinit(void);
+    virtual bool update(void) = 0;
+    virtual void print(void) = 0;
+
+  public:
+    virtual ~StateItem(void) = default;
+
+    // This method initializes the settings for each type of item.
+    static void init(JSON const& config);
+    static void update_all(void);
+    static void force_update_all(void);
+    static void print_state(void);
+    static void deinit(void);
+
+    static void wait_for_events(void);
 };
 
 #endif

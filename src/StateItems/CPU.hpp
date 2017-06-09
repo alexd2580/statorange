@@ -8,7 +8,7 @@
 #include "../JSON/json_parser.hpp"
 #include "../util.hpp"
 
-class CPU : public StateItem, public Logger
+class CPU : public StateItem
 {
 private:
   std::vector<std::string> temp_file_paths;

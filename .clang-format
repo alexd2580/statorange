@@ -1,10 +1,11 @@
 ---
-Language:        Cpp
-BasedOnStyle:  LLVM
+Language:           Cpp
+BasedOnStyle:       LLVM
 
-BinPackArguments: false
-BinPackParameters: false
-BreakBeforeBraces: Allman
-PointerAlignment: Left
-SpaceBeforeParens: Never
-TabWidth:        4
+IndentWidth:        4
+BinPackArguments:   false
+BinPackParameters:  false
+BreakBeforeBraces:  Allman
+PointerAlignment:   Left
+SpaceBeforeParens:  Never
+TabWidth:           4

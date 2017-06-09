@@ -4,6 +4,7 @@
 #include <sys/types.h>
 
 #include "util.hpp"
+#include "Logger.hpp"
 
 class Address : public Logger
 {

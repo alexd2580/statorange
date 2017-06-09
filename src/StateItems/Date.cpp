@@ -11,7 +11,7 @@
 
 using namespace std;
 
-Date::Date(JSON const& item) : StateItem(item)
+Date::Date(JSON const& item) : StateItem("[Date]", item)
 {
   icon = parse_icon(item.get("icon").as_string_with_default(""));
   format.assign(item["format"]);

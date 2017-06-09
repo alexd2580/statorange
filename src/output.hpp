@@ -53,7 +53,7 @@ enum class Direction
   right
 };
 
-/** Matches al 4 cases **/
+/** Matches all 4 cases **/
 void separate(Direction d, std::ostream& o);
 void separate(Direction d,
               Color colors = Color::current,
@@ -69,7 +69,6 @@ void dynamic_section(float value,
 void startButton(std::string cmd, std::ostream& = std::cout);
 void stopButton(std::ostream& = std::cout);
 
-#include "i3state.hpp"
 
 enum class WorkspaceGroup
 {
@@ -80,6 +79,8 @@ enum class WorkspaceGroup
 };
 
 WorkspaceGroup parse_workspace_group(std::string const& s);
+
+#include "i3/I3State.hpp"
 
 void echo_lemon(I3State& i3, WorkspaceGroup show_window_names);
 

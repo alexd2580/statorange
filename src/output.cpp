@@ -293,7 +293,7 @@ void echo_lemon(I3State& i3, WorkspaceGroup show_names)
     cout << "%{l}";
     cout << "%{r}";
 
-    StateItem::printState();
+    StateItem::print_state();
 
     cout << "%{r}";
     cout << "%{S" << (int)output->position << "}";

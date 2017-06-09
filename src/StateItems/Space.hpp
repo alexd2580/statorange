@@ -17,7 +17,7 @@ struct SpaceItem
   std::string unit;
 };
 
-class Space : public StateItem, public Logger
+class Space : public StateItem
 {
 private:
   std::vector<SpaceItem> items;

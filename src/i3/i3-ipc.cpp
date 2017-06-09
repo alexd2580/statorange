@@ -12,6 +12,7 @@
 
 #include "i3-ipc-constants.hpp"
 #include "i3-ipc.hpp"
+#include"../util.hpp"
 
 using namespace std;
 
@@ -42,73 +43,19 @@ string ipc_type_to_string(unsigned int type)
   }
 }
 
-ssize_t write_all(int fd, char const* buf, size_t count, bool& die)
-{
-  size_t written = 0;
-
-  while(written < count)
-  {
-    errno = 0;
-    ssize_t n = write(fd, buf + written, count - written);
-    if(die)
-      return -1;
-    else if(n <= 0)
-    {
-      if(errno == EINTR || errno == EAGAIN) // try again
-        continue;
-      else if(errno == EPIPE) // can not write anymore
-        return -1;
-      return n;
-    }
-    written += (size_t)n;
-  }
-  return (ssize_t)written;
-}
-
-ssize_t read_all(int fd, char* buf, size_t count, bool& die)
-{
-  if(die)
-  {
-    cerr << "Skipping read_all. die is set to true." << endl;
-    return -1;
-  }
-
-  size_t raed = 0;
-
-  while(raed < count)
-  {
-    errno = 0;
-    ssize_t n = read(fd, buf + raed, count - raed);
-    if(die)
-    {
-      cerr << "Aborting read_all. die is set to true." << endl;
-      return -1;
-    }
-    else if(n <= 0)
-    {
-      cerr << "Read returned with 0/error. Errno: " << errno << endl;
-      if(errno == EINTR || errno == EAGAIN)
-        continue;
-      return n;
-    }
-    raed += (size_t)n;
-  }
-  return (ssize_t)raed;
-}
-
 auto kofn = [](auto k, auto n) {
   return string(std::to_string(k) + "/" + std::to_string(n));
 };
 
-bool send_message(int fd, uint32_t type, bool& die, string&& payload)
+bool send_message(int fd, uint32_t type, bool& die, string const& payload)
 {
-  // Prepare header
+  // Prepare header.
   i3_ipc_header_t header;
   memcpy(header.magic, I3_IPC_MAGIC, 6);
   header.type = type;
   header.size = (uint32_t)payload.length();
 
-  // Write Header
+  // Write Header.
   ssize_t sent = 0;
   sent = write_all(fd, (char*)&header, HEADER_SIZE, die);
   if(sent < (ssize_t)HEADER_SIZE)
@@ -124,7 +71,7 @@ bool send_message(int fd, uint32_t type, bool& die, string&& payload)
   }
 
   // Write payload if present
-  if(header.size != 0)
+  if(header.size > 0)
   {
     sent = write_all(fd, payload.c_str(), header.size, die);
     if(sent < (int)header.size)
@@ -148,12 +95,11 @@ bool send_message(int fd, uint32_t type, bool& die, string&& payload)
  * If the message type does not include a body, nullptr is returned.
  * If there was an error, *type is set to I3_INVALID_TYPE
  */
-std::unique_ptr<char[]> read_message(int fd, uint32_t* type, bool& die)
+std::unique_ptr<char[]> read_message(int fd, uint32_t& type, bool& die)
 {
   i3_ipc_header_t header;
   ssize_t n = 0;
   n = read_all(fd, (char*)&header, HEADER_SIZE, die);
-  *type = header.type;
 
   if(n < (ssize_t)HEADER_SIZE)
   {
@@ -164,22 +110,24 @@ std::unique_ptr<char[]> read_message(int fd, uint32_t* type, bool& die)
       string msg("Could not read header " + kofn(n, HEADER_SIZE));
       perror(msg.c_str());
     }
-    *type = I3_INVALID_TYPE;
-    return std::unique_ptr<char[]>();
+    type = I3_INVALID_TYPE;
+    return {};
   }
 
   if(strncmp(header.magic, I3_IPC_MAGIC, 6) != 0)
   {
     cerr << "Invalid magic string" << endl;
-    *type = I3_INVALID_TYPE;
-    return std::unique_ptr<char[]>();
+    type = I3_INVALID_TYPE;
+    return {};
   }
 
+  type = header.type;
   char* payload = nullptr;
 
   if(header.size > 0)
   {
-    payload = new char[header.size + 1]; // why +1?
+    // To make sure that there is a `\0` byte at the end.
+    payload = new char[header.size + 1];
     n = read_all(fd, payload, header.size, die);
     if(n < header.size)
     {
@@ -190,9 +138,9 @@ std::unique_ptr<char[]> read_message(int fd, uint32_t* type, bool& die)
         string msg("Could not read message " + kofn(n, header.size));
         perror(msg.c_str());
       }
-      *type = I3_INVALID_TYPE;
+      type = I3_INVALID_TYPE;
       delete[] payload;
-      return std::unique_ptr<char[]>();
+      return {};
     }
     payload[header.size] = '\0';
   }
@@ -251,7 +199,7 @@ int test_sockets(int argc, char* argv[])
   for(int i = 0; i < 100; i++)
   {
     uint32_t type;
-    auto payload = read_message(fd, &type, yay);
+    auto payload = read_message(fd, type, yay);
     cout << "Type " << type << ": " << payload.get() << endl << endl;
   }
 

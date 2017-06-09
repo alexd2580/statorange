@@ -23,7 +23,7 @@ enum class ShowType
   both           // shows both addresses
 };
 
-class Net : public StateItem, public Logger
+class Net : public StateItem
 {
 private:
   /** The interface name **/
