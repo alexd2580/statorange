@@ -1,5 +1,6 @@
-#include "output.hpp"
+#include <climits>
 #include <iostream>
+#include <memory>
 
 #include "StateItem.hpp"
 #include "StateItems/Battery.hpp"
@@ -9,25 +10,27 @@
 #include "StateItems/Net.hpp"
 #include "StateItems/Space.hpp"
 #include "StateItems/Volume.hpp"
+#include "output.hpp"
 
 using namespace std;
 
-chrono::seconds StateItem::min_cooldown;
-vector<StateItem*> StateItem::states;
+chrono::seconds StateItem::min_cooldown(std::numeric_limits<int>::max());
+vector<unique_ptr<StateItem>> StateItem::left_items;
+vector<unique_ptr<StateItem>> StateItem::center_items;
+vector<unique_ptr<StateItem>> StateItem::right_items;
+map<int, StateItem*> StateItem::event_sockets;
 
-StateItem::StateItem(string const& logname, JSON const& item)
-    : Logger(logname), last_updated(chrono::system_clock::time_point::min())
+StateItem::StateItem(JSON const& item)
+    : Logger(item["item"]),
+      module_name(item["item"]),
+      cooldown(chrono::seconds((long)item["cooldown"])),
+      icon(BarWriter::parse_icon(item.get("icon").as_string_with_default(""))),
+      button(item.has("button")),
+      button_command(item.get("button").as_string_with_default(""))
 {
-    module_name.assign(item["item"]);
-    cooldown = chrono::seconds(item["cooldown"]);
     min_cooldown = min(min_cooldown, cooldown);
-    button = false;
-
-    if(item.has("button"))
-    {
-        button_command.assign(item["button"]);
-        button = true;
-    }
+    last_updated = chrono::system_clock::time_point::min();
+    valid = false;
 }
 
 void StateItem::register_event_socket(int fd)
@@ -67,80 +70,116 @@ void StateItem::force_update(void)
     valid = update();
 }
 
-void StateItem::wrap_print(void)
+void StateItem::wrap_print(ostream& out, uint8_t display_number)
 {
     if(valid)
     {
         if(button)
-        {
-            startButton(button_command, cout);
-            print();
-            stopButton(cout);
-        }
+            BarWriter::button(out, button_command, [=](ostream& ostr) {
+                print(ostr, display_number);
+            });
         else
-            print();
+            print(out, display_number);
     }
     else
     {
-        separate(Direction::left, Color::warn);
-        cout << " Module " << module_name << " failed ";
-        separate(Direction::left, Color::white_on_black);
+        BarWriter::separator(
+            out, BarWriter::Separator::left, BarWriter::Coloring::warn);
+        out << " Module " << module_name << " failed ";
+        BarWriter::separator(
+            out,
+            BarWriter::Separator::left,
+            BarWriter::Coloring::white_on_black);
+    }
+}
+
+StateItem* StateItem::init_item(JSON const& json_item)
+{
+    string item = json_item["item"];
+    if(item == "CPU")
+        return new CPU(json_item);
+    else if(item == "Battery")
+        return new Battery(json_item);
+    else if(item == "Net")
+        return new Net(json_item);
+    else if(item == "Date")
+        return new Date(json_item);
+    else if(item == "Volume")
+        return new Volume(json_item);
+    else if(item == "Space")
+        return new Space(json_item);
+    else if(item == "IMAPMail")
+        return new IMAPMail(json_item);
+
+    // If no name matches - ignore.
+    return nullptr;
+}
+
+void StateItem::init_section(
+    JSON const& config,
+    string const& section_name,
+    vector<unique_ptr<StateItem>>& section)
+{
+    if(config.has(section_name))
+    {
+        for(auto const& json_item_uptr : config[section_name].as_vector())
+        {
+            auto new_item = init_item(*json_item_uptr);
+            if(new_item != nullptr)
+                section.emplace_back(new_item);
+        }
     }
 }
 
 void StateItem::init(JSON const& config)
 {
-    auto& order = config["order"];
-    auto length = order.size();
-
-    for(decltype(length) i = 0; i < length; i++)
-    {
-        auto& section = order[i];
-        string item = section["item"];
-        if(item.compare("CPU") == 0)
-            states.push_back(new CPU(section));
-        else if(item.compare("Battery") == 0)
-            states.push_back(new Battery(section));
-        else if(item.compare("Net") == 0)
-            states.push_back(new Net(section));
-        else if(item.compare("Date") == 0)
-            states.push_back(new Date(section));
-        else if(item.compare("Volume") == 0)
-            states.push_back(new Volume(section));
-        else if(item.compare("Space") == 0)
-            states.push_back(new Space(section));
-        else if(item.compare("IMAPMail") == 0)
-            states.push_back(new IMAPMail(section));
-    }
+    init_section(config, "left", left_items);
+    init_section(config, "center", center_items);
+    init_section(config, "right", right_items);
 }
 
 void StateItem::update_all(void)
 {
-    for(auto state : states)
+    for(auto& state : left_items)
+        state->wrap_update();
+    for(auto& state : center_items)
+        state->wrap_update();
+    for(auto& state : right_items)
         state->wrap_update();
 }
 
 void StateItem::force_update_all(void)
 {
-    for(auto state : states)
+    for(auto& state : left_items)
+        state->force_update();
+    for(auto& state : center_items)
+        state->force_update();
+    for(auto& state : right_items)
         state->force_update();
 }
 
-void StateItem::print_state(void)
+void StateItem::print_section(
+    ostream& out,
+    BarWriter::Alignment a,
+    vector<unique_ptr<StateItem>> const& section,
+    uint8_t display_number)
 {
-    for(auto state : states)
-        state->wrap_print();
+    auto printer = [&section, display_number](ostream& ostr) {
+        for(auto& state : section)
+            state->wrap_print(ostr, display_number);
+    };
+    BarWriter::align(out, a, printer);
 }
 
-void StateItem::deinit(void)
+void StateItem::print_state(ostream& out, uint8_t display)
 {
-    for(auto state : states)
-        delete state;
+    print_section(out, BarWriter::Alignment::left, left_items, display);
+    print_section(out, BarWriter::Alignment::center, center_items, display);
+    print_section(out, BarWriter::Alignment::right, right_items, display);
 }
 
 void StateItem::wait_for_events(void)
 {
-
     fd_set read_fds;
     struct timeval tv;
 

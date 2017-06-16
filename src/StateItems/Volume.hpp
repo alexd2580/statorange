@@ -2,27 +2,27 @@
 #define __VOLUMEXYZHEADER__
 
 #include <string>
+#include <ostream>
 
 #include "../StateItem.hpp"
 #include "../output.hpp"
 
 class Volume : public StateItem
 {
-private:
-  Icon icon;
-  std::string card;
-  std::string mixer;
+  private:
+    std::string card;
+    std::string mixer;
 
-  // VOLUME
-  bool mute;
-  unsigned short volume;
+    // VOLUME
+    bool mute;
+    unsigned short volume;
 
-  bool update(void);
-  void print(void);
+    bool update(void);
+    void print(std::ostream&, uint8_t);
 
-public:
-  Volume(JSON const& item);
-  virtual ~Volume(void) = default;
+  public:
+    Volume(JSON const& item);
+    virtual ~Volume(void) = default;
 };
 
 #endif

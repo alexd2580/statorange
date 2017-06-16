@@ -19,8 +19,6 @@
 
 #include "Application.hpp"
 #include "StateItem.hpp"
-#include "i3/I3State.hpp"
-#include "i3/i3-ipc.hpp"
 #include "output.hpp"
 #include "util.hpp"
 
@@ -102,9 +100,9 @@ int main(int argc, char* argv[])
     auto& log_path_json = config_json.get("log file path");
     string log_path(log_path_json.as_string_with_default("/dev/null"));
 
-    auto& ws_group_json = config_json.get("ws window names");
-    auto& ws_group_string = ws_group_json.as_string_with_default("");
-    WorkspaceGroup show_names_on(parse_workspace_group(ws_group_string));
+    // auto& ws_group_json = config_json.get("ws window names");
+    // auto& ws_group_string = ws_group_json.as_string_with_default("");
+    // WorkspaceGroup show_names_on(parse_workspace_group(ws_group_string));
 
     auto& show_failed_json = config_json.get("show failed modules");
     bool show_failed_modules(show_failed_json.as_bool_with_default(true));
@@ -120,9 +118,6 @@ int main(int argc, char* argv[])
     // Init StateItems.
     StateItem::init(config_json);
 
-    I3State i3State(socket_path);
-    i3State.init_layout();
-
     // signal handlers and event handlers
     Sigaction term = mk_handler(term_handler);
     register_handler(SIGINT, term);
@@ -131,10 +126,7 @@ int main(int argc, char* argv[])
     Sigaction notify = mk_handler(notify_handler);
     register_handler(SIGUSR1, notify);
 
-    int command_socket = init_socket(socket_path);
-
     l.log() << "Entering main loop" << endl;
-
     while(!Application::dead)
     {
         if(Application::force_update)
@@ -145,20 +137,19 @@ int main(int argc, char* argv[])
         else
             StateItem::update_all();
 
-        if(!i3State.valid)
-            break;
-
-        echo_lemon(i3State, show_names_on);
+        for(uint8_t i = 0; i < num_output_displays; i++)
+        {
+            auto printer = [&i](ostream& out) {
+                StateItem::print_state(out, i);
+            };
+            BarWriter::display(cout, i, printer);
+        }
+        cout << endl;
 
         StateItem::wait_for_events();
     }
-
     l.log() << "Exiting main loop" << endl;
-    close(command_socket);
 
-    StateItem::deinit();
-
-    l.log() << "Stopping Statorange" << endl;
     cout.flush();
     cerr.flush();
     log_file.flush();

@@ -9,7 +9,7 @@ class Logger
 {
 private:
   std::string const logname;
-  std::ostream& ostream;
+  std::ostream& log_ostream;
 
 public:
   Logger(std::string lname);

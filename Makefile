@@ -55,7 +55,7 @@ CXXWFLAGS    = $(CLANGWFLAGS)
 DEBUGFLAGS   = -g3 -O0 -pthread
 RELEASEFLAGS = -g0 -O2 -pthread
 CFLAGS       = -std=c11
-CXXFLAGS     = -std=c++14
+CXXFLAGS     = -std=c++1z -stdlib=libc++
 
 # ---------
 # AI-Stuff
@@ -67,7 +67,7 @@ CXXFLAGS     = -std=c++14
 # Linker flags
 # -----------------------------
 
-LIBS = pthread m dl asound ssl crypto
+LIBS = c++ pthread m dl asound ssl crypto
 
 # -----------------------------
 # Some automatic stuff

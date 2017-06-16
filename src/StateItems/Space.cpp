@@ -1,6 +1,6 @@
 #include <cmath>
 #include <iomanip>
-#include <iostream>
+#include <ostream>
 #include <string.h>
 #include <sys/statvfs.h>
 
@@ -10,7 +10,7 @@
 
 using namespace std;
 
-Space::Space(JSON const& item) : StateItem("[Space]", item)
+Space::Space(JSON const& item) : StateItem(item)
 {
     auto& mpoints = item["mount_points"];
 
@@ -20,7 +20,8 @@ Space::Space(JSON const& item) : StateItem("[Space]", item)
     {
         auto& mpt = mpoints[i];
         si.mount_point.assign(mpt["file"]);
-        si.icon = parse_icon(mpt.get("icon").as_string_with_default(""));
+        si.icon =
+            BarWriter::parse_icon(mpt.get("icon").as_string_with_default(""));
 
         si.size = 0;
         si.used = 0;
@@ -29,7 +30,7 @@ Space::Space(JSON const& item) : StateItem("[Space]", item)
     }
 }
 
-bool Space::getSpaceUsage(SpaceItem& dir)
+bool Space::get_space_usage(SpaceItem& dir)
 {
     struct statvfs s;
     statvfs(dir.mount_point.c_str(), &s);
@@ -72,22 +73,26 @@ bool Space::getSpaceUsage(SpaceItem& dir)
 bool Space::update(void)
 {
     for(auto& item : items)
-        if(!getSpaceUsage(item))
+        if(!get_space_usage(item))
             return false;
     return true;
 }
 
-void Space::print(void)
+void Space::print(ostream& out, uint8_t)
 {
     if(items.size() > 0)
     {
-        cout.precision(1);
+        out.precision(1);
         for(auto& item : items)
         {
-            separate(Direction::left, Color::neutral);
-            cout << std::fixed << item.icon << ' ' << item.mount_point << ' '
-                 << item.used << '/' << item.size << item.unit << ' ';
+            BarWriter::separator(
+                out, BarWriter::Separator::left, BarWriter::Coloring::neutral);
+            out << std::fixed << item.icon << ' ' << item.mount_point << ' '
+                << item.used << '/' << item.size << item.unit << ' ';
         }
-        separate(Direction::left, Color::white_on_black);
+        BarWriter::separator(
+            out,
+            BarWriter::Separator::left,
+            BarWriter::Coloring::white_on_black);
     }
 }

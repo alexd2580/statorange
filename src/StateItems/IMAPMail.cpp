@@ -258,20 +258,22 @@ bool IMAPMail::update(void)
     return success;
 }
 
-void IMAPMail::print(void)
+void IMAPMail::print(ostream& out, uint8_t)
 {
     if(unseen_mails != 0 && success)
     {
-        separate(Direction::left, Color::neutral, cout);
-        cout << icon << " " << tag << ": " << unseen_mails << " unseen mails ";
-        separate(Direction::left, Color::white_on_black, cout);
+        BarWriter::separator(
+            out, BarWriter::Separator::left, BarWriter::Coloring::neutral);
+        out << icon << " " << tag << ": " << unseen_mails << " unseen mails ";
+        BarWriter::separator(
+            out,
+            BarWriter::Separator::left,
+            BarWriter::Coloring::white_on_black);
     }
 }
 
-IMAPMail::IMAPMail(JSON const& item) : StateItem("[IMAPMail]", item)
+IMAPMail::IMAPMail(JSON const& item) : StateItem(item)
 {
-    icon = parse_icon(item.get("icon").as_string_with_default(""));
-
     hostname.assign(item["hostname"]);
     port = item["port"];
     address = Address(hostname, port);

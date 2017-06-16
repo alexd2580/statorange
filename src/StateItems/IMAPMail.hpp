@@ -5,6 +5,7 @@
 #include <queue>
 #include <resolv.h>
 #include <string>
+#include <ostream>
 
 #include "../Address.hpp"
 #include "../JSON/json_parser.hpp"
@@ -27,7 +28,6 @@ class IMAPMail : public StateItem
     std::string mailbox;
 
     std::string tag;
-    Icon icon;
     int unseen_mails;
     bool success;
 
@@ -52,7 +52,7 @@ class IMAPMail : public StateItem
     void disconnect_tcp(void);
 
     bool update(void);
-    void print(void);
+    void print(std::ostream&, uint8_t);
 
   public:
     IMAPMail(JSON const& item);

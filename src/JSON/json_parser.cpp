@@ -24,7 +24,9 @@ using namespace std;
 class JSONNull : public JSON
 {
   private:
-    JSONNull() {}
+    JSONNull()
+    {
+    }
 
   public:
     static JSONNull const static_null;
@@ -42,13 +44,25 @@ class JSONNull : public JSON
 
     virtual ~JSONNull(void) = default;
 
-    virtual bool is_null(void) const { return true; }
+    virtual bool is_null(void) const
+    {
+        return true;
+    }
 
-    virtual string get_type(void) const { return "null"; }
+    virtual string get_type(void) const
+    {
+        return "null";
+    }
 
-    virtual void print(size_t) const { cout << "null"; }
+    virtual void print(size_t) const
+    {
+        cout << "null";
+    }
 
-    string to_string(void) const { return "null"; }
+    string to_string(void) const
+    {
+        return "null";
+    }
 };
 
 JSONNull const JSONNull::static_null;
@@ -105,7 +119,10 @@ class JSONArray : public JSON
     }
 
     virtual ~JSONArray(void) = default;
-    string get_type(void) const { return "array"; }
+    string get_type(void) const
+    {
+        return "array";
+    }
 
     virtual void print(size_t indention) const
     {
@@ -124,19 +141,31 @@ class JSONArray : public JSON
     {
         return i >= elems.size() ? JSONNull::static_null : operator[](i);
     }
-    JSON const& operator[](size_t i) const { return *elems[i]; }
+    JSON const& operator[](size_t i) const
+    {
+        return *elems[i];
+    }
 
-    size_t size(void) const { return elems.size(); }
+    size_t size(void) const
+    {
+        return elems.size();
+    }
 
-    vector<unique_ptr<JSON>> const& as_vector(void) const { return elems; }
+    vector<unique_ptr<JSON>> const& as_vector(void) const
+    {
+        return elems;
+    }
 
-    string to_string(void) const { return "JSONArray"; }
+    string to_string(void) const
+    {
+        return "JSONArray";
+    }
 };
 
 /******************************************************************************/
 
-void printNamed(map<string, unique_ptr<JSON>>::const_iterator i,
-                size_t indention)
+void printNamed(
+    map<string, unique_ptr<JSON>>::const_iterator i, size_t indention)
 {
     cout << '"' << i->first << "\" : ";
     i->second->print(indention);
@@ -208,7 +237,10 @@ class JSONObject : public JSON
     }
 
     virtual ~JSONObject(void) = default;
-    virtual string get_type(void) const { return "object"; }
+    virtual string get_type(void) const
+    {
+        return "object";
+    }
 
     virtual void print(size_t indention) const
     {
@@ -260,7 +292,7 @@ class JSONObject : public JSON
         return operator[](skey);
     }
 
-    JSON const& operator[](string& key) const
+    JSON const& operator[](string const& key) const
     {
         auto it = fields.find(key);
         if(it == fields.end())
@@ -271,7 +303,10 @@ class JSONObject : public JSON
         return *it->second;
     }
 
-    string to_string(void) const { return "JSONObject"; }
+    string to_string(void) const
+    {
+        return "JSONObject";
+    }
 };
 
 /******************************************************************************/
@@ -282,21 +317,36 @@ class JSONString : public JSON
     string string_;
 
   public:
-    JSONString(char const*& pos) { string_.assign(escaped_string(pos)); }
+    JSONString(char const*& pos)
+    {
+        string_.assign(escaped_string(pos));
+    }
 
     virtual ~JSONString(void) = default;
 
-    virtual string get_type(void) const { return "string"; }
+    virtual string get_type(void) const
+    {
+        return "string";
+    }
 
-    virtual void print(size_t) const { cout << '"' << string_ << '"'; }
+    virtual void print(size_t) const
+    {
+        cout << '"' << string_ << '"';
+    }
 
-    operator string const&() const { return string_; }
+    operator string const&() const
+    {
+        return string_;
+    }
     string const& as_string_with_default(string const&) const
     {
         return string_;
     }
 
-    string to_string(void) const { return string_; }
+    string to_string(void) const
+    {
+        return string_;
+    }
 };
 
 /******************************************************************************/
@@ -307,13 +357,22 @@ class JSONNumber : public JSON
     double n;
 
   public:
-    JSONNumber(char const*& pos) { n = number(pos); }
+    JSONNumber(char const*& pos)
+    {
+        n = number(pos);
+    }
 
     virtual ~JSONNumber(void) = default;
 
-    string get_type(void) const { return "num"; }
+    string get_type(void) const
+    {
+        return "num";
+    }
 
-    virtual void print(size_t) const { cout << n; }
+    virtual void print(size_t) const
+    {
+        cout << n;
+    }
 
     __attribute__((pure)) virtual operator uint8_t() const
     {
@@ -323,7 +382,10 @@ class JSONNumber : public JSON
     {
         return (uint8_t)n;
     }
-    __attribute__((pure)) virtual operator int() const { return (int)n; }
+    __attribute__((pure)) virtual operator int() const
+    {
+        return (int)n;
+    }
     __attribute__((pure)) virtual int as_int_with_default(int) const
     {
         return (int)n;
@@ -337,18 +399,27 @@ class JSONNumber : public JSON
     {
         return (unsigned)n;
     }
-    __attribute__((pure)) virtual operator long() const { return (long)n; }
+    __attribute__((pure)) virtual operator long() const
+    {
+        return (long)n;
+    }
     __attribute__((pure)) virtual long as_long_with_default(long) const
     {
         return (long)n;
     }
-    __attribute__((pure)) virtual operator double() const { return n; }
+    __attribute__((pure)) virtual operator double() const
+    {
+        return n;
+    }
     __attribute__((pure)) virtual double as_double_with_default(double) const
     {
         return (double)n;
     }
 
-    string to_string(void) const { return ::to_string(n); }
+    string to_string(void) const
+    {
+        return ::to_string(n);
+    }
 };
 
 /******************************************************************************/
@@ -381,17 +452,29 @@ class JSONBool : public JSON
 
     virtual ~JSONBool(void) = default;
 
-    string get_type(void) const { return "bool"; }
+    string get_type(void) const
+    {
+        return "bool";
+    }
 
-    virtual void print(size_t) const { cout << (b ? "true" : "false"); }
+    virtual void print(size_t) const
+    {
+        cout << (b ? "true" : "false");
+    }
 
-    __attribute__((pure)) virtual operator bool() const { return b; }
+    __attribute__((pure)) virtual operator bool() const
+    {
+        return b;
+    }
     __attribute__((pure)) virtual bool as_bool_with_default(bool) const
     {
         return b;
     }
 
-    string to_string(void) const { return ::to_string(b); }
+    string to_string(void) const
+    {
+        return ::to_string(b);
+    }
 };
 
 /******************************************************************************/
@@ -427,7 +510,10 @@ unique_ptr<JSON> JSON::parse(char const*& pos)
     exit(1);
 }
 
-bool JSON::is_null(void) const { return false; }
+bool JSON::is_null(void) const
+{
+    return false;
+}
 
 void JSON::print(void) const
 {
@@ -436,7 +522,10 @@ void JSON::print(void) const
 }
 
 // JSONArray
-JSON const& JSON::get(size_t) const { return JSONNull::static_null; }
+JSON const& JSON::get(size_t) const
+{
+    return JSONNull::static_null;
+}
 JSON const& JSON::operator[](size_t) const
 {
     cerr << "Cannot access " << get_type() << " type using array subscription"
@@ -456,8 +545,14 @@ vector<unique_ptr<JSON>> const& JSON::as_vector(void) const
 }
 
 // JSONObject
-JSON const& JSON::get(char const*) const { return JSONNull::static_null; }
-JSON const& JSON::get(string const&) const { return get((char const*)nullptr); }
+JSON const& JSON::get(char const*) const
+{
+    return JSONNull::static_null;
+}
+JSON const& JSON::get(string const&) const
+{
+    return get((char const*)nullptr);
+}
 JSON const& JSON::operator[](char const*) const
 {
     cerr << "Cannot access " << get_type() << " type as a dictionary" << endl;
@@ -465,15 +560,18 @@ JSON const& JSON::operator[](char const*) const
 }
 JSON const& JSON::operator[](string const&) const
 {
-    return operator[]((char const*)nullptr);
+    cerr << "Cannot access " << get_type() << " type as a dictionary" << endl;
+    exit(1);
 }
 
 bool JSON::has(char const*) const
 {
-    cerr << "Cannot access " << get_type() << " type as a dictionary" << endl;
-    exit(1);
+    return operator[]("");
 }
-bool JSON::has(string const&) const { return has((char const*)nullptr); }
+bool JSON::has(string const&) const
+{
+    return has((char const*)nullptr);
+}
 
 // JSONString
 JSON::operator string const&() const
@@ -502,7 +600,10 @@ JSON::operator int() const
     cerr << "Cannot convert " << get_type() << " type to 'int'" << endl;
     exit(1);
 }
-int JSON::as_int_with_default(int default_value) const { return default_value; }
+int JSON::as_int_with_default(int default_value) const
+{
+    return default_value;
+}
 JSON::operator unsigned() const
 {
     cerr << "Cannot convert " << get_type() << " type to 'unsigned'" << endl;
