@@ -1,0 +1,46 @@
+cmake_minimum_required(VERSION 3.8)
+project(statorange CXX)
+
+SET(CMAKE_CXX_COMPILER /usr/bin/clang++)
+
+function(make_clang_warnings enabled_warnings_list disabled_warnings_list clang_warning_flags_list)
+    foreach(warning ${${enabled_warnings_list}})
+        list(APPEND warning_flags "-W${warning}")
+    endforeach(warning)
+    foreach(warning ${${disabled_warnings_list}})
+        list(APPEND warning_flags "-Wno-${warning}")
+    endforeach(warning)
+    set(${clang_warning_flags_list} ${warning_flags} PARENT_SCOPE)
+endfunction()
+
+set(enabled_warnings everything)
+set(disabled_warnings
+    padded
+    c++98-compat
+    old-style-cast
+    missing-prototypes
+    reserved-id-macro
+    weak-vtables
+    global-constructors
+    exit-time-destructors
+    disabled-macro-expansion
+)
+make_clang_warnings(enabled_warnings disabled_warnings clang_warning_flags)
+
+# Add the bandit header-only library.
+include_directories(SYSTEM 3rdparty/bandit)
+
+# The source files.
+file(GLOB_RECURSE SRC src/*.cpp)
+list(REMOVE_ITEM SRC src/statorange.cpp)
+
+add_compile_options(-std=c++1z -stdlib=libc++ ${clang_warning_flags})
+
+# The main executable
+add_executable(statorange src/statorange.cpp ${SRC})
+# The test executable(s).
+add_executable(test_suite tests/main.cpp ${SRC})
+
+# Add the test execution to cmake.
+enable_testing()
+add_test(test_suite test_suite)
