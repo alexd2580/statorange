@@ -15,9 +15,6 @@ class CPU : public StateItem
     std::vector<std::string> temp_file_paths;
     std::string load_file_path;
 
-    bool cached;
-    std::string print_string;
-
     // CPU
     std::vector<int> cpu_temps;
     float cpu_load;

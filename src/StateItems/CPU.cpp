@@ -2,13 +2,14 @@
 #include <cstdlib>
 #include <cstring>
 #include <ostream>
-#include <sstream>
 
 #include "../output.hpp"
 #include "../util.hpp"
 #include "CPU.hpp"
 
 using namespace std;
+using BarWriter::Separator;
+using BarWriter::Coloring;
 
 CPU::CPU(JSON const& item) : StateItem(item)
 {
@@ -19,15 +20,12 @@ CPU::CPU(JSON const& item) : StateItem(item)
 
     load_file_path.assign(item["load_file"]);
 
-    print_string = "";
-    cached = false;
     cpu_temps.clear();
     cpu_load = 0.0f;
 }
 
 bool CPU::update(void)
 {
-    cached = false;
     char line[11];
     char* res;
 
@@ -79,31 +77,17 @@ bool CPU::update(void)
 
 void CPU::print(ostream& out, uint8_t)
 {
-    if(!cached)
+    auto load_colors = BarWriter::section_colors(cpu_load, 0.7f, 3.0f);
+    BarWriter::separator(out, Separator::left, load_colors);
+    out.precision(2);
+    out << std::fixed << icon << ' ' << cpu_load << ' ';
+
+    auto n = temp_file_paths.size();
+    for(decltype(n) i = 0; i < n; i++)
     {
-        ostringstream o;
-        BarWriter::dynamic_separator(
-            o, BarWriter::Separator::left, cpu_load, 0.7f, 3.0f);
-        o.precision(2);
-        o << std::fixed << icon << ' ' << cpu_load << ' ';
-
-        auto n = temp_file_paths.size();
-        for(decltype(n) i = 0; i < n; i++)
-        {
-            BarWriter::dynamic_separator(
-                o,
-                BarWriter::Separator::left,
-                (float)cpu_temps[i],
-                50.0f,
-                90.0f);
-            o << ' ' << cpu_temps[i] << "°C ";
-        }
-        BarWriter::separator(
-            o, BarWriter::Separator::left, BarWriter::Coloring::white_on_black);
-
-        print_string = o.str();
-        cached = true;
+        auto temp_colors = BarWriter::section_colors(cpu_temps[i], 50, 90);
+        BarWriter::separator(out, Separator::left, temp_colors);
+        out << ' ' << cpu_temps[i] << "°C ";
     }
-
-    out << print_string;
+    BarWriter::separator(out, Separator::left, Coloring::white_on_black);
 }

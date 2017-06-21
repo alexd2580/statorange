@@ -1,5 +1,6 @@
 #include <climits>
 #include <iostream>
+#include <sstream>
 #include <memory>
 
 #include "StateItem.hpp"
@@ -31,6 +32,7 @@ StateItem::StateItem(JSON const& item)
     min_cooldown = min(min_cooldown, cooldown);
     last_updated = chrono::system_clock::time_point::min();
     valid = false;
+    cached = false;
 }
 
 void StateItem::register_event_socket(int fd)
@@ -59,8 +61,7 @@ void StateItem::wrap_update(void)
     auto now = chrono::system_clock::now();
     if(now > last_updated + cooldown)
     {
-        last_updated = now;
-        valid = update();
+        force_update();
     }
 }
 
@@ -68,29 +69,38 @@ void StateItem::force_update(void)
 {
     last_updated = chrono::system_clock::now();
     valid = update();
+    cached = false;
 }
 
 void StateItem::wrap_print(ostream& out, uint8_t display_number)
 {
-    if(valid)
+    if(!cached)
     {
-        if(button)
-            BarWriter::button(out, button_command, [=](ostream& ostr) {
-                print(ostr, display_number);
-            });
+        ostringstream cache;
+        if(valid)
+        {
+            if(button)
+                BarWriter::button(cache, button_command, [=](ostream& ostr) {
+                    print(ostr, display_number);
+                });
+            else
+                print(cache, display_number);
+        }
         else
-            print(out, display_number);
+        {
+            BarWriter::separator(
+                cache, BarWriter::Separator::left, BarWriter::Coloring::warn);
+            cache << " Module " << module_name << " failed ";
+            BarWriter::separator(
+                cache,
+                BarWriter::Separator::left,
+                BarWriter::Coloring::white_on_black);
+        }
+
+        print_string = cache.str();
+        cached = true;
     }
-    else
-    {
-        BarWriter::separator(
-            out, BarWriter::Separator::left, BarWriter::Coloring::warn);
-        out << " Module " << module_name << " failed ";
-        BarWriter::separator(
-            out,
-            BarWriter::Separator::left,
-            BarWriter::Coloring::white_on_black);
-    }
+    out << print_string;
 }
 
 StateItem* StateItem::init_item(JSON const& json_item)

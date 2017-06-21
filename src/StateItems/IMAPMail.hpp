@@ -1,11 +1,12 @@
 #ifndef __GMAILREQUIRESOAUTH___
 #define __GMAILREQUIRESOAUTH___
 
+#include <functional>
 #include <openssl/ssl.h>
+#include <ostream>
 #include <queue>
 #include <resolv.h>
 #include <string>
-#include <ostream>
 
 #include "../Address.hpp"
 #include "../JSON/json_parser.hpp"
@@ -36,27 +37,26 @@ class IMAPMail : public StateItem
     SSL_CTX* ctx;
     SSL* ssl;
 
-    bool connect_tcp(void);
+    std::queue<std::string> read_line_queue;
+
+  public:
+    IMAPMail(JSON const& item);
+    virtual ~IMAPMail();
+
+  private:
+    bool with_tcp(std::function<bool(void)>);
     void log_SSL_errors(void);
     bool init_SSL(void);
-    bool connect_ssl(void);
     bool show_certs(void);
-
-    std::queue<std::string> read_line_queue;
+    bool with_ssl(std::function<bool(void)>);
 
     bool send_cmd(std::string id, std::string cmd);
     bool read_resp(std::string& res);
     bool expect_resp(std::string id, std::string& res);
 
-    void disconnect_ssl(void);
-    void disconnect_tcp(void);
-
     bool update(void);
+    bool communicate(void);
     void print(std::ostream&, uint8_t);
-
-  public:
-    IMAPMail(JSON const& item);
-    virtual ~IMAPMail();
 };
 
 #endif

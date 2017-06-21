@@ -24,6 +24,9 @@ class StateItem : public Logger
     std::chrono::system_clock::time_point last_updated;
     bool valid;
 
+    bool cached;
+    std::string print_string;
+
     void wrap_update(void);
     void force_update(void);
     void wrap_print(std::ostream&, uint8_t);

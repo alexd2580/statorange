@@ -34,8 +34,6 @@ bool Net::get_IP_addresses(Logger& logger)
     struct ifaddrs* ifa;
     void* addr_ptr;
 
-    string iface;
-
     if(getifaddrs(&base) != 0)
         return true;
     ifa = base;
@@ -44,7 +42,7 @@ bool Net::get_IP_addresses(Logger& logger)
     {
         if(ifa->ifa_addr)
         {
-            iface = string(ifa->ifa_name);
+            string iface(ifa->ifa_name);
             logger.log() << "Found interface " << iface << endl;
             auto family = ifa->ifa_addr->sa_family;
             if(family == AF_INET || family == AF_INET6)
@@ -213,8 +211,7 @@ bool Net::update(void)
     iface_ipv6.assign(it->second.second);
 
     if(iface_type == ConnectionType::wireless)
-        if(!get_wireless_state())
-            return false;
+        return get_wireless_state();
 
     return true;
 }

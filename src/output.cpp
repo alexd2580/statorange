@@ -1,3 +1,4 @@
+#include <cmath>
 #include <cstring>
 #include <map>
 #include <string>
@@ -111,6 +112,14 @@ Icon parse_icon(string const& s)
     return Icon::no_icon;
 }
 
+pair<string, string> get_colors(Coloring c)
+{
+    auto const& color_pair = color_pairs[c];
+    auto const& next_bg = colors[color_pair.first];
+    auto const& next_fg = colors[color_pair.second];
+    return {next_bg, next_fg};
+}
+
 ostream& operator<<(ostream& o, Icon i)
 {
     return o << "%{T3}" << icons[i] << "%{T1}";
@@ -177,6 +186,12 @@ void separator(ostream& out, Separator d, Coloring next)
 }
 
 void separator(
+    ostream& out, Separator d, pair<string, string> const& color_pair)
+{
+    separator(out, d, color_pair.second, color_pair.first);
+}
+
+void separator(
     ostream& out, Separator d, string const& next_fg, string const& next_bg)
 {
     if(next_bg == current_bg)
@@ -213,32 +228,57 @@ void separator(
     current_bg = next_bg;
 }
 
-pair<string, string> section_colors(float value, float min, float max)
-{
-    if(value <= min || value >= max)
-    {
-        auto const& color_pair =
-            color_pairs[value <= min ? Coloring::neutral : Coloring::warn];
-        return {colors[color_pair.first], colors[color_pair.second]};
-    }
-    uint8_t byteV = (uint8_t)((value - min) * 256.0f / (max - min));
-    string res = make_hex_color(255, byteV, (uint8_t)(127 - byteV / 2), 0);
-    return {res, colors[Color::dwhite]};
-}
-
-void fixed_length_progress(
-    ostream& out,
-    uint8_t length,
-    float progress,
-    Separator left,
-    Separator right,
-    string color_left,
-    string color_right)
-{
-    separator(out, left, colors[Color::dwhite], color_left);
-    uint8_t filled = (uint8_t)round((float)length * progress);
-    out << std::string(filled, ' ');
-}
+// void fixed_length_progress(
+//     ostream& out,
+//     uint8_t min_text_length,
+//     float progress,
+//     Separator left,
+//     Separator right,
+//     pair<string, string> const& colors_left,
+//     pair<string, string> const& color_right,
+//     string const& text)
+// {
+//     uint8_t total_length = 2 * (min_text_length + 2) + 1;
+//     bool has_left_sep = left != Separator::none;
+//     bool has_right_sep = right != Separator::none;
+//     total_length += has_left_sep ? 1 : 0;
+//     total_length += has_right_sep ? 1 : 0;
+//
+//     uint8_t left_length = (uint8_t)floor((float)total_length * progress);
+//     uint8_t right_length = total_length - left_length;
+//
+//     bool text_is_left = progress > 0.5f;
+//
+//     // Left Part.
+//     if(round(progress) == 0.0f)
+//     {
+//         separator(out, left, colors_right);
+//     }
+//     else
+//     {
+//         // If the progress is zero then the first separator is empty-colored.
+//         separator(out, left, colors_left);
+//         uint8_t left_to_fill = left_length - (no_left_sep ? 0 : 1);
+//         if(text_is_left)
+//         {
+//             out << " " << text << " ";
+//             left_to_fill -= text.length() + 2;
+//         }
+//         out << string(left_to_fill, ' ');
+//     }
+//
+//     // Right part.
+//     if(round(progress) == 1.0f)
+//     {
+//     }
+//     else
+//     {
+//         uint8_t right_to_fill = right_length - (no_right_sep ? 0 : 1);
+//     }
+//
+//     // Closing separator.
+//     separator(out, right, Coloring::white_on_black);
+// }
 
 /**
  * Prints the buttons for switching workspaces.

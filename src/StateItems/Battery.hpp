@@ -20,9 +20,6 @@ class Battery : public StateItem
   private:
     std::string bat_file_loc;
 
-    bool cached;
-    std::string print_string;
-
     // BAT
     BatStatus status;
     long discharge_rate;

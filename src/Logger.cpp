@@ -28,7 +28,7 @@ ostream& Logger::log(string const& logname, ostream& stream)
   struct tm ptm;
   localtime_r(&tt, &ptm);
   char const* const log_time_format = "%Y-%m-%d %H:%M ";
-  return print_time(stream, &ptm, log_time_format) << logname << ' ';
+  return print_time(stream, &ptm, log_time_format) << "\t[" << logname << "]\t";
 }
 
 ostream& Logger::log(string const& logname)

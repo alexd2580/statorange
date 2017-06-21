@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.8)
 project(statorange CXX)
 
-SET(CMAKE_CXX_COMPILER /usr/bin/clang++)
+SET(CMAKE_CXX_COMPILER clang++)
 
 function(make_clang_warnings enabled_warnings_list disabled_warnings_list clang_warning_flags_list)
     foreach(warning ${${enabled_warnings_list}})
@@ -32,15 +32,35 @@ include_directories(SYSTEM 3rdparty/bandit)
 
 # The source files.
 file(GLOB_RECURSE SRC src/*.cpp)
-list(REMOVE_ITEM SRC src/statorange.cpp)
+file(GLOB_RECURSE STATORANGE src/statorange.cpp)
+list(REMOVE_ITEM SRC ${STATORANGE})
 
 add_compile_options(-std=c++1z -stdlib=libc++ ${clang_warning_flags})
+set(LIBS c++ asound ssl crypto)
 
 # The main executable
-add_executable(statorange src/statorange.cpp ${SRC})
+add_executable(statorange ${STATORANGE} ${SRC})
+target_link_libraries(statorange ${LIBS})
 # The test executable(s).
 add_executable(test_suite tests/main.cpp ${SRC})
+target_link_libraries(test_suite ${LIBS})
 
 # Add the test execution to cmake.
 enable_testing()
 add_test(test_suite test_suite)
+
+# Install the binary and the launcher.
+install(TARGETS statorange DESTINATION /usr/local/bin)
+install(PROGRAMS statorange_launcher DESTINATION /usr/local/bin)
+
+# Install the fonts.
+file(GLOB MISC_FONTS res/misc/*)
+install(
+    FILES ${MISC_FONTS}
+    DESTINATION /usr/local/lib/statorange/misc
+)
+file(GLOB TSPL_FONTS res/terminesspowerline/*)
+install(
+    FILES ${TSPL_FONTS}
+    DESTINATION /usr/local/lib/statorange/terminesspowerline
+)

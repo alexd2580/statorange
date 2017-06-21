@@ -11,12 +11,51 @@
 
 using namespace std;
 
-bool IMAPMail::connect_tcp(void)
+IMAPMail::IMAPMail(JSON const& item) : StateItem(item)
+{
+    hostname.assign(item["hostname"]);
+    port = item["port"];
+    address = Address(hostname, port);
+
+    ca_cert.assign(item.get("ca_file").as_string_with_default(""));
+    ca_path.assign(item.get("ca_path").as_string_with_default(""));
+
+    username.assign(item["username"]);
+    password.assign(item["password"]);
+    mailbox.assign(item["mailbox"]);
+
+    tag.assign(
+        item.get("tag").as_string_with_default(hostname + ":" + username));
+
+    ctx = nullptr;
+    server_fd = -1;
+    ssl = nullptr;
+
+    unseen_mails = 0;
+    success = false;
+}
+
+IMAPMail::~IMAPMail(void)
+{
+    if(ssl != nullptr)
+        SSL_free(ssl);
+    if(server_fd != -1)
+        close(server_fd);
+    if(ctx != nullptr)
+        SSL_CTX_free(ctx);
+}
+
+bool IMAPMail::with_tcp(function<bool(void)> f)
 {
     if(!address.run_DNS_lookup())
         return false;
     server_fd = address.open_TCP_socket();
-    return server_fd != -1;
+    if(server_fd == -1)
+        return false;
+    bool res = f();
+    close(server_fd);
+    server_fd = -1;
+    return res;
 }
 
 void IMAPMail::log_SSL_errors(void)
@@ -32,6 +71,12 @@ void IMAPMail::log_SSL_errors(void)
 
 bool IMAPMail::init_SSL(void)
 {
+    if(ctx != nullptr)
+    {
+        log() << "SSL already initialized" << endl;
+        return true;
+    }
+
     log() << "Initializing SSL" << endl;
     OpenSSL_add_ssl_algorithms();
     OpenSSL_add_all_algorithms();
@@ -56,6 +101,7 @@ bool IMAPMail::init_SSL(void)
     {
         log() << "Failed to load certificates" << endl;
         log_SSL_errors();
+        ctx = nullptr;
         return false;
     }
 
@@ -63,7 +109,28 @@ bool IMAPMail::init_SSL(void)
     return true;
 }
 
-bool IMAPMail::connect_ssl(void)
+bool IMAPMail::show_certs(void)
+{
+    X509* cert = SSL_get_peer_certificate(ssl);
+    if(cert == nullptr)
+    {
+        log() << "No certificates" << endl;
+        return false;
+    }
+
+    char* line;
+    log() << "Server certificates:" << endl;
+    line = X509_NAME_oneline(X509_get_subject_name(cert), nullptr, 0);
+    log() << "Subject: " << line << endl;
+    free(line);
+    line = X509_NAME_oneline(X509_get_issuer_name(cert), nullptr, 0);
+    log() << "Issuer: " << line << endl;
+    free(line);
+    X509_free(cert);
+    return true;
+}
+
+bool IMAPMail::with_ssl(function<bool(void)> f)
 {
     ssl = SSL_new(ctx);
     SSL_set_fd(ssl, server_fd);
@@ -73,33 +140,11 @@ bool IMAPMail::connect_ssl(void)
         log_SSL_errors();
         return false;
     }
-    else
-    {
-        log() << "Connected with " << SSL_get_cipher(ssl) << " encryption"
-              << endl;
-        return show_certs();
-    }
-}
-
-bool IMAPMail::show_certs(void)
-{
-    X509* cert = SSL_get_peer_certificate(ssl);
-    if(cert != nullptr)
-    {
-        char* line;
-        log() << "Server certificates:" << endl;
-        line = X509_NAME_oneline(X509_get_subject_name(cert), nullptr, 0);
-        log() << "Subject: " << line << endl;
-        free(line);
-        line = X509_NAME_oneline(X509_get_issuer_name(cert), nullptr, 0);
-        log() << "Issuer: " << line << endl;
-        free(line);
-        X509_free(cert);
-        return true;
-    }
-    else
-        log() << "No certificates" << endl;
-    return false;
+    log() << "Connected with " << SSL_get_cipher(ssl) << " encryption" << endl;
+    bool res = show_certs() ? f() : false;
+    SSL_free(ssl);
+    ssl = nullptr;
+    return res;
 }
 
 bool IMAPMail::send_cmd(string id, string cmd)
@@ -159,8 +204,7 @@ bool IMAPMail::read_resp(string& res)
 
 bool IMAPMail::expect_resp(string id, string& res)
 {
-    bool b = read_resp(res);
-    if(!b)
+    if(!read_resp(res))
         return false;
     string prefix = res.substr(0, id.length());
     if(prefix == id)
@@ -169,51 +213,35 @@ bool IMAPMail::expect_resp(string id, string& res)
         res = res.substr(id.length() + 1);
         return true;
     }
-    else
-    {
-        log() << "Prefix: \"" << prefix << "\"; Expected: \"" << id << '"'
-              << endl;
-        return expect_resp(id, res);
-    }
-}
 
-void IMAPMail::disconnect_ssl(void)
-{
-    SSL_free(ssl);
-    ssl = nullptr;
-}
-
-void IMAPMail::disconnect_tcp(void)
-{
-    close(server_fd);
-    server_fd = -1;
+    log() << "Prefix: \"" << prefix << "\"; Expected: \"" << id << '"' << endl;
+    return expect_resp(id, res);
 }
 
 bool IMAPMail::update(void)
 {
     success = false;
-    if(ctx == nullptr)
-    {
-        if(!init_SSL())
-            return false; // failed to initialize ssl, which is mandatory
-    }
+    if(!init_SSL())
+        return false; // failed to initialize ssl, which is mandatory
 
-    if(!connect_tcp())
-        return true; // just no internet
-    if(!connect_ssl())
-    {
-        disconnect_tcp();
-        return false; // could not securely connect
-    }
+    success =
+        with_tcp([this] { return with_ssl([this] { return communicate(); }); });
+    return success;
+}
 
+bool IMAPMail::communicate(void)
+{
     bool done = true;
-    string result;
-    string cmd = "LOGIN " + username + " " + password;
+    string cmd, result;
+
+    cmd = "LOGIN " + username + " " + password;
     done &= send_cmd("a001", cmd);
     done &= expect_resp("a001", result);
+
     cmd = "STATUS " + mailbox + " (UNSEEN)";
     done &= send_cmd("a002", cmd);
     done &= expect_resp("* STATUS", result);
+
     // the length of the mailbox-name word w/wo quotes
     auto mb_length = mailbox.length();
     string mb_name = result.substr(0, mb_length);
@@ -239,7 +267,6 @@ bool IMAPMail::update(void)
     try
     {
         unseen_mails = std::stoi(unseen);
-        success = true;
         log() << "You have " << unseen_mails << " unseen mails" << endl;
     }
     catch(std::invalid_argument&)
@@ -249,13 +276,12 @@ bool IMAPMail::update(void)
     }
 
     done &= expect_resp("a002", result);
+
     done &= send_cmd("a003", "LOGOUT");
     done &= expect_resp("a003", result);
 
-    disconnect_ssl();
-    disconnect_tcp();
     log() << "Done " << done << endl;
-    return success;
+    return done;
 }
 
 void IMAPMail::print(ostream& out, uint8_t)
@@ -270,38 +296,4 @@ void IMAPMail::print(ostream& out, uint8_t)
             BarWriter::Separator::left,
             BarWriter::Coloring::white_on_black);
     }
-}
-
-IMAPMail::IMAPMail(JSON const& item) : StateItem(item)
-{
-    hostname.assign(item["hostname"]);
-    port = item["port"];
-    address = Address(hostname, port);
-
-    ca_cert.assign(item.get("ca_file").as_string_with_default(""));
-    ca_cert.assign(item.get("ca_path").as_string_with_default(""));
-
-    username.assign(item["username"]);
-    password.assign(item["password"]);
-    mailbox.assign(item["mailbox"]);
-
-    tag.assign(
-        item.get("tag").as_string_with_default(hostname + ":" + username));
-
-    ctx = nullptr;
-    server_fd = -1;
-    ssl = nullptr;
-
-    unseen_mails = 0;
-    success = false;
-}
-
-IMAPMail::~IMAPMail(void)
-{
-    if(ssl != nullptr)
-        SSL_free(ssl);
-    if(server_fd != -1)
-        close(server_fd);
-    if(ctx != nullptr)
-        SSL_CTX_free(ctx);
 }

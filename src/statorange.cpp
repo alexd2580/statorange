@@ -12,7 +12,9 @@
 #include <fstream>
 #include <iostream>
 
+#include <pwd.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include "JSON/json_parser.hpp"
@@ -47,7 +49,7 @@ void register_handler(int sig, Sigaction& handler)
  */
 void term_handler(int signum)
 {
-    static Logger term("[Term handler]");
+    static Logger term("Term handler");
 
     Application::dead = true;
 
@@ -59,7 +61,7 @@ void term_handler(int signum)
  */
 void notify_handler(int signum)
 {
-    static Logger nlog("[Notify handler]");
+    static Logger nlog("Notify handler");
 
     Application::force_update = true;
 
@@ -69,51 +71,51 @@ void notify_handler(int signum)
 
 /******************************************************************************/
 
-unique_ptr<JSON> load_config(string const& config_path)
+unique_ptr<JSON> load_config(void)
 {
-    cerr << "Config path: " << config_path << endl;
-    string config_string;
-    if(!load_file(config_path, config_string))
-    {
-        cerr << "Could not load the config from " << config_path << endl;
-        return {};
-    }
+    struct passwd* pw = getpwuid(getuid());
+    string home_dir(pw->pw_dir);
+    string config_name("config.json");
+    vector<string> config_paths{"./" + config_name,
+                                home_dir + "/.config/statorange/" + config_name,
+                                home_dir + ".statorange/" + config_name};
 
-    char const* config_cstring = config_string.c_str();
-    return JSON::parse(config_cstring);
+    for(auto const& path : config_paths)
+    {
+        cerr << "Trying config path: " << path << endl;
+        string config_string;
+        if(load_file(path, config_string))
+        {
+            char const* config_cstring = config_string.c_str();
+            return JSON::parse(config_cstring);
+        }
+    }
+    return {};
 }
 
-int main(int argc, char* argv[])
+// string socket_path(argv[1]);
+// cerr << "Socket path: " << socket_path << endl;
+
+// auto& ws_group_json = config_json.get("ws window names");
+// auto& ws_group_string = ws_group_json.as_string_with_default("");
+// WorkspaceGroup show_names_on(parse_workspace_group(ws_group_string));
+
+// auto& show_failed_json = config_json.get("show failed modules");
+// bool show_failed_modules(show_failed_json.as_bool_with_default(true));
+
+int main(int, char* [])
 {
-    if(argc < 3)
-    {
-        cout << "Please supply the socket and config paths." << endl;
-        return EXIT_FAILURE;
-    }
-
-    string socket_path(argv[1]);
-    cerr << "Socket path: " << socket_path << endl;
-
-    auto config_json_raw = load_config(string(argv[2]));
-    auto& config_json = *config_json_raw;
-
-    auto& log_path_json = config_json.get("log file path");
-    string log_path(log_path_json.as_string_with_default("/dev/null"));
-
-    // auto& ws_group_json = config_json.get("ws window names");
-    // auto& ws_group_string = ws_group_json.as_string_with_default("");
-    // WorkspaceGroup show_names_on(parse_workspace_group(ws_group_string));
-
-    auto& show_failed_json = config_json.get("show failed modules");
-    bool show_failed_modules(show_failed_json.as_bool_with_default(true));
-
-    // Set the log file output.
-    fstream log_file;
-    log_file.open(log_path, fstream::out);
-    LoggerManager::set_stream(log_file);
-
-    Logger l("[Main]");
+    LoggerManager::set_stream(cerr);
+    Logger l("Main");
     l.log() << "Launching Statorange" << endl;
+
+    auto config_json_raw = load_config();
+    if(!config_json_raw)
+    {
+        l.log() << "Failed to load config." << endl;
+        return 1;
+    }
+    auto& config_json = *config_json_raw;
 
     // Init StateItems.
     StateItem::init(config_json);
@@ -149,11 +151,6 @@ int main(int argc, char* argv[])
         StateItem::wait_for_events();
     }
     l.log() << "Exiting main loop" << endl;
-
-    cout.flush();
-    cerr.flush();
-    log_file.flush();
-    log_file.close();
 
     return Application::exit_status;
 }

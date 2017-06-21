@@ -1,15 +1,13 @@
 
 #include <cstdlib>
 #include <cstring>
-#include <sstream>
 
 #include "../output.hpp"
 #include "Battery.hpp"
 
 using namespace std;
 
-Battery::Battery(JSON const& item)
-    : StateItem(item), cached(false), print_string("")
+Battery::Battery(JSON const& item) : StateItem(item)
 {
     bat_file_loc.assign(item["battery_file"]);
 
@@ -21,8 +19,6 @@ Battery::Battery(JSON const& item)
 
 bool Battery::update(void)
 {
-    cached = false;
-    // battery
     FILE* bfile = fopen(bat_file_loc.c_str(), "r");
     if(bfile == nullptr)
         status = BatStatus::not_found;
@@ -57,60 +53,47 @@ bool Battery::update(void)
 
 void Battery::print(ostream& out, uint8_t)
 {
-    if(!cached)
+    if(status != BatStatus::not_found)
     {
-        ostringstream o;
-        if(status != BatStatus::not_found)
+        switch(status)
         {
-            switch(status)
-            {
-            case BatStatus::charging:
-                BarWriter::separator(
-                    o,
-                    BarWriter::Separator::left,
-                    BarWriter::Coloring::neutral);
-                o << " BAT charging " << 100 * current_level / max_capacity
-                  << "% ";
-                break;
-            case BatStatus::full:
-                BarWriter::separator(
-                    o, BarWriter::Separator::left, BarWriter::Coloring::info);
-                o << " BAT full ";
-                break;
-            case BatStatus::discharging:
-            {
-                long rem_minutes = 60 * current_level / discharge_rate;
-                /*if(rem_minutes < 20) {  SEP_LEFT(warn_colors); }
-                else if(rem_minutes < 60) { SEP_LEFT(info_colors); }
-                else { SEP_LEFT(neutral_colors); }*/
-                BarWriter::dynamic_separator(
-                    o,
-                    BarWriter::Separator::left,
-                    (float)-rem_minutes,
-                    -60.0f,
-                    -10.0f);
-                o << " BAT " << (int)(100 * current_level / max_capacity)
-                  << "% ";
-                BarWriter::separator(o, BarWriter::Separator::left);
-
-                long rem_hr_only = rem_minutes / 60;
-                o << (rem_hr_only < 10 ? " 0" : " ") << rem_hr_only;
-
-                long rem_min_only = rem_minutes % 60;
-                o << (rem_min_only < 10 ? ":0" : ":") << rem_min_only << ' ';
-
-                break;
-            }
-            case BatStatus::not_found:
-                break;
-            }
+        case BatStatus::charging:
             BarWriter::separator(
-                o,
-                BarWriter::Separator::left,
-                BarWriter::Coloring::white_on_black);
+                out, BarWriter::Separator::left, BarWriter::Coloring::neutral);
+            out << " BAT charging " << 100 * current_level / max_capacity
+                << "% ";
+            break;
+        case BatStatus::full:
+            BarWriter::separator(
+                out, BarWriter::Separator::left, BarWriter::Coloring::info);
+            out << " BAT full ";
+            break;
+        case BatStatus::discharging:
+        {
+            long rem_minutes = 60 * current_level / discharge_rate;
+            /*if(rem_minutes < 20) {  SEP_LEFT(warn_colors); }
+            else if(rem_minutes < 60) { SEP_LEFT(info_colors); }
+            else { SEP_LEFT(neutral_colors); }*/
+            auto colors =
+                BarWriter::section_colors((float)-rem_minutes, -60.0f, -10.0f);
+            BarWriter::separator(out, BarWriter::Separator::left, colors);
+            out << " BAT " << (int)(100 * current_level / max_capacity) << "% ";
+            BarWriter::separator(out, BarWriter::Separator::left);
+
+            long rem_hr_only = rem_minutes / 60;
+            out << (rem_hr_only < 10 ? " 0" : " ") << rem_hr_only;
+
+            long rem_min_only = rem_minutes % 60;
+            out << (rem_min_only < 10 ? ":0" : ":") << rem_min_only << ' ';
+
+            break;
         }
-        print_string = o.str();
-        cached = true;
+        case BatStatus::not_found:
+            break;
+        }
+        BarWriter::separator(
+            out,
+            BarWriter::Separator::left,
+            BarWriter::Coloring::white_on_black);
     }
-    out << print_string;
 }

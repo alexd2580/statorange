@@ -1,21 +1,21 @@
 
-#include "Date.hpp"
 #include <chrono> // std::chrono::system_clock
 #include <ctime>
 #include <iomanip> // std::put_time
 #include <ostream>
 #include <sstream>
 
+#include "Date.hpp"
+
 #include "../output.hpp"
 #include "../util.hpp"
 
 using namespace std;
+using std::chrono::system_clock;
 
 Date::Date(JSON const& item) : StateItem(item), format(item["format"])
 {
 }
-
-using std::chrono::system_clock;
 
 bool Date::update(void)
 {
