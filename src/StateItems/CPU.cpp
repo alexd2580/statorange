@@ -11,14 +11,12 @@ using namespace std;
 using BarWriter::Separator;
 using BarWriter::Coloring;
 
-CPU::CPU(JSON const& item) : StateItem(item)
+CPU::CPU(JSON::Node const& item)
+    : StateItem(item), load_file_path(item["load_file"].string())
 {
-    auto& temp_paths = item["temperature_files"];
-    auto num_temps = temp_paths.size();
-    for(decltype(num_temps) i = 0; i < num_temps; i++)
-        temp_file_paths.push_back(temp_paths[i]);
-
-    load_file_path.assign(item["load_file"]);
+    auto const temp_paths = item["temperature_files"].array();
+    for(auto const& temp_path : temp_paths)
+        temp_file_paths.push_back(temp_path.string());
 
     cpu_temps.clear();
     cpu_load = 0.0f;

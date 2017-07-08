@@ -17,7 +17,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "JSON/json_parser.hpp"
+#include "json_parser.hpp"
 
 #include "Application.hpp"
 #include "StateItem.hpp"
@@ -51,9 +51,8 @@ void term_handler(int signum)
 {
     static Logger term("Term handler");
 
+    term.log() << "Termination requested: " << signum << std::endl;
     Application::dead = true;
-
-    return;
 }
 
 /**
@@ -63,15 +62,13 @@ void notify_handler(int signum)
 {
     static Logger nlog("Notify handler");
 
+    nlog.log() << "Received notify signal: " << signum << std::endl;
     Application::force_update = true;
-
-    // Forced update
-    return;
 }
 
 /******************************************************************************/
 
-unique_ptr<JSON> load_config(void)
+JSON::Node load_config(void)
 {
     struct passwd* pw = getpwuid(getuid());
     string home_dir(pw->pw_dir);
@@ -82,15 +79,23 @@ unique_ptr<JSON> load_config(void)
 
     for(auto const& path : config_paths)
     {
-        cerr << "Trying config path: " << path << endl;
+        Logger::log("Config loader") << "Trying config path: " << path << endl;
         string config_string;
         if(load_file(path, config_string))
         {
-            char const* config_cstring = config_string.c_str();
-            return JSON::parse(config_cstring);
+            try
+            {
+                return JSON::Node(config_string.c_str());
+            }
+            catch(char const* err_msg)
+            {
+                Logger::log("Config path") << "Failed to load config from '"
+                                           << path << "':" << std::endl
+                                           << err_msg << std::endl;
+            }
         }
     }
-    return {};
+    return JSON::Node({});
 }
 
 // string socket_path(argv[1]);
@@ -100,22 +105,21 @@ unique_ptr<JSON> load_config(void)
 // auto& ws_group_string = ws_group_json.as_string_with_default("");
 // WorkspaceGroup show_names_on(parse_workspace_group(ws_group_string));
 
-// auto& show_failed_json = config_json.get("show failed modules");
-// bool show_failed_modules(show_failed_json.as_bool_with_default(true));
-
-int main(int, char* [])
+int main(int argc, char* argv[])
 {
+    Application::argc = argc;
+    Application::argv = argv;
+
     LoggerManager::set_stream(cerr);
     Logger l("Main");
     l.log() << "Launching Statorange" << endl;
 
-    auto config_json_raw = load_config();
-    if(!config_json_raw)
+    auto config_json = load_config();
+    if(!config_json.exists())
     {
         l.log() << "Failed to load config." << endl;
         return 1;
     }
-    auto& config_json = *config_json_raw;
 
     // Init StateItems.
     StateItem::init(config_json);
@@ -141,7 +145,7 @@ int main(int, char* [])
 
         for(uint8_t i = 0; i < num_output_displays; i++)
         {
-            auto printer = [&i](ostream& out) {
+            auto printer = [i](ostream& out) {
                 StateItem::print_state(out, i);
             };
             BarWriter::display(cout, i, printer);

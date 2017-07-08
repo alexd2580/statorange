@@ -7,9 +7,7 @@
 
 using namespace std;
 
-Battery::Battery(JSON const& item) : StateItem(item)
-{
-    bat_file_loc.assign(item["battery_file"]);
+Battery::Battery(JSON::Node const& item) : StateItem(item), bat_file_loc(item["battery_file"].string()) {
 
     status = BatStatus::not_found;
     discharge_rate = 0;

@@ -54,6 +54,15 @@ double number(char const*& string)
     return n;
 }
 
+std::string number_str(char const*& str)
+{
+    char* endptr;
+    strtod(str, &endptr);
+    char const* start = str;
+    str = endptr;
+    return string(start, (size_t)(endptr - start));
+}
+
 string escaped_string(char const*& string)
 {
     char c = next(string);
@@ -146,11 +155,14 @@ bool load_file(string const& name, string& content)
     return false;
 }
 
-#include <chrono>  // std::chrono::system_clock
+#include <chrono> // std::chrono::system_clock
 #include <iomanip> // std::put_time
 
 ostream& print_time(ostream& out, struct tm* ptm, char const* const format)
 {
+#ifndef __GLIBCXX__
+#define __GLIBCXX__ 0
+#endif
 #if __GLIBCXX__ >= 20151204
     return out << put_time(ptm, format);
 #else
@@ -162,7 +174,7 @@ ostream& print_time(ostream& out, struct tm* ptm, char const* const format)
 #endif
 }
 
-ssize_t write_all(int fd, char const* buf, size_t count, bool& die)
+ssize_t write_all(int fd, char const* buf, size_t count)
 {
     size_t bytes_written = 0;
 
@@ -170,9 +182,7 @@ ssize_t write_all(int fd, char const* buf, size_t count, bool& die)
     {
         errno = 0;
         ssize_t n = write(fd, buf + bytes_written, count - bytes_written);
-        if(die)
-            return -1;
-        else if(n <= 0)
+        if(n <= 0)
         {
             if(errno == EINTR || errno == EAGAIN) // try again
                 continue;
@@ -185,26 +195,15 @@ ssize_t write_all(int fd, char const* buf, size_t count, bool& die)
     return (ssize_t)bytes_written;
 }
 
-ssize_t read_all(int fd, char* buf, size_t count, bool& die)
+ssize_t read_all(int fd, char* buf, size_t count)
 {
-    if(die)
-    {
-        cerr << "Skipping read_all. die is set to true." << endl;
-        return -1;
-    }
-
     size_t bytes_read = 0;
 
     while(bytes_read < count)
     {
         errno = 0;
         ssize_t n = read(fd, buf + bytes_read, count - bytes_read);
-        if(die)
-        {
-            cerr << "Aborting read_all. die is set to true." << endl;
-            return -1;
-        }
-        else if(n <= 0)
+        if(n <= 0)
         {
             cerr << "Read returned with 0/error. Errno: " << errno << endl;
             if(errno == EINTR || errno == EAGAIN)

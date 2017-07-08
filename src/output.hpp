@@ -43,6 +43,8 @@ enum class Alignment
 // Icon glyphs from Terminusicons2
 enum class Icon
 {
+    no_icon,
+
     clock, // Clock
     cpu, // CPU
     mem, // MEM
@@ -58,7 +60,13 @@ enum class Icon
     contact, // Contact
     wsp, // Workspace
     wlan, // WIFI
-    no_icon
+
+    right_fill,
+    sep_left,
+    sep_right,
+    sep_l_vertical,
+    sep_l_left,
+    sep_l_right,
 };
 
 std::pair<std::string, std::string> get_colors(Coloring);

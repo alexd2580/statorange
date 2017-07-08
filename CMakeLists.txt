@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.8)
 project(statorange CXX)
 
+add_subdirectory(fmt)
+
 SET(CMAKE_CXX_COMPILER clang++)
 
 function(make_clang_warnings enabled_warnings_list disabled_warnings_list clang_warning_flags_list)
@@ -17,6 +19,7 @@ set(enabled_warnings everything)
 set(disabled_warnings
     padded
     c++98-compat
+    c++98-compat-pedantic
     old-style-cast
     missing-prototypes
     reserved-id-macro
@@ -27,8 +30,8 @@ set(disabled_warnings
 )
 make_clang_warnings(enabled_warnings disabled_warnings clang_warning_flags)
 
-# Add the bandit header-only library.
-include_directories(SYSTEM 3rdparty/bandit)
+# Add system include paths.
+include_directories(SYSTEM bandit fmt)
 
 # The source files.
 file(GLOB_RECURSE SRC src/*.cpp)
@@ -36,7 +39,7 @@ file(GLOB_RECURSE STATORANGE src/statorange.cpp)
 list(REMOVE_ITEM SRC ${STATORANGE})
 
 add_compile_options(-std=c++1z -stdlib=libc++ ${clang_warning_flags})
-set(LIBS c++ asound ssl crypto)
+set(LIBS c++ asound ssl crypto fmt)
 
 # The main executable
 add_executable(statorange ${STATORANGE} ${SRC})
@@ -58,9 +61,4 @@ file(GLOB MISC_FONTS res/misc/*)
 install(
     FILES ${MISC_FONTS}
     DESTINATION /usr/local/lib/statorange/misc
-)
-file(GLOB TSPL_FONTS res/terminesspowerline/*)
-install(
-    FILES ${TSPL_FONTS}
-    DESTINATION /usr/local/lib/statorange/terminesspowerline
 )

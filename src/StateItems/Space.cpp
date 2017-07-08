@@ -10,23 +10,16 @@
 
 using namespace std;
 
-Space::Space(JSON const& item) : StateItem(item)
+Space::Space(JSON::Node const& item) : StateItem(item)
 {
-    auto& mpoints = item["mount_points"];
-
-    items.clear();
-    SpaceItem si;
-    for(decltype(mpoints.size()) i = 0; i < mpoints.size(); i++)
+    for(auto const mpt : item["mount_points"].array())
     {
-        auto& mpt = mpoints[i];
-        si.mount_point.assign(mpt["file"]);
-        si.icon =
-            BarWriter::parse_icon(mpt.get("icon").as_string_with_default(""));
-
-        si.size = 0;
-        si.used = 0;
-        si.unit = "B";
-        items.push_back(si);
+        items.emplace_back(
+            mpt["file"].string(),
+            BarWriter::parse_icon(mpt["icon"].string()),
+            0,
+            0,
+            "B");
     }
 }
 

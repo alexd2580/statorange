@@ -17,7 +17,7 @@ class Date : public StateItem
     void print(std::ostream&, uint8_t);
 
   public:
-    Date(JSON const& item);
+    Date(JSON::Node const& item);
     virtual ~Date(void) = default;
 };
 

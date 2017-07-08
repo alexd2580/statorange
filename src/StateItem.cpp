@@ -1,12 +1,13 @@
 #include <climits>
 #include <iostream>
-#include <sstream>
 #include <memory>
+#include <sstream>
 
 #include "StateItem.hpp"
 #include "StateItems/Battery.hpp"
 #include "StateItems/CPU.hpp"
 #include "StateItems/Date.hpp"
+#include "StateItems/I3Workspaces.hpp"
 #include "StateItems/IMAPMail.hpp"
 #include "StateItems/Net.hpp"
 #include "StateItems/Space.hpp"
@@ -14,20 +15,27 @@
 #include "output.hpp"
 
 using namespace std;
+using JSON::Number;
 
 chrono::seconds StateItem::min_cooldown(std::numeric_limits<int>::max());
 vector<unique_ptr<StateItem>> StateItem::left_items;
 vector<unique_ptr<StateItem>> StateItem::center_items;
 vector<unique_ptr<StateItem>> StateItem::right_items;
+bool StateItem::show_failed_modules;
 map<int, StateItem*> StateItem::event_sockets;
 
-StateItem::StateItem(JSON const& item)
-    : Logger(item["item"]),
-      module_name(item["item"]),
-      cooldown(chrono::seconds((long)item["cooldown"])),
-      icon(BarWriter::parse_icon(item.get("icon").as_string_with_default(""))),
-      button(item.has("button")),
-      button_command(item.get("button").as_string_with_default(""))
+BarWriter::Icon StateItem::parse_icon_from_json(JSON::Node const& item)
+{
+    return BarWriter::parse_icon(item["icon"].string());
+}
+
+StateItem::StateItem(JSON::Node const& item)
+    : Logger(item["item"].string()),
+      module_name(item["item"].string()),
+      cooldown(chrono::seconds(item["cooldown"].number<uint32_t>())),
+      icon(parse_icon_from_json(item)),
+      button(item["button"].exists() && item["button"].string().length() > 0),
+      button_command(item["button"].string())
 {
     min_cooldown = min(min_cooldown, cooldown);
     last_updated = chrono::system_clock::time_point::min();
@@ -46,9 +54,10 @@ void StateItem::register_event_socket(int fd)
     event_sockets[fd] = this;
 }
 
-void StateItem::handle_events(void)
+bool StateItem::handle_events(int)
 {
     log() << "No `handle_events` defined for this `StateItem`!" << endl;
+    return false;
 }
 
 void StateItem::unregister_event_socket(int fd) const
@@ -86,14 +95,16 @@ void StateItem::wrap_print(ostream& out, uint8_t display_number)
             else
                 print(cache, display_number);
         }
-        else
+        else if(show_failed_modules)
         {
             BarWriter::separator(
-                cache, BarWriter::Separator::left, BarWriter::Coloring::warn);
+                cache,
+                BarWriter::Separator::vertical,
+                BarWriter::Coloring::warn);
             cache << " Module " << module_name << " failed ";
             BarWriter::separator(
                 cache,
-                BarWriter::Separator::left,
+                BarWriter::Separator::vertical,
                 BarWriter::Coloring::white_on_black);
         }
 
@@ -103,49 +114,60 @@ void StateItem::wrap_print(ostream& out, uint8_t display_number)
     out << print_string;
 }
 
-StateItem* StateItem::init_item(JSON const& json_item)
+StateItem* StateItem::init_item(JSON::Node const& json_item)
 {
-    string item = json_item["item"];
-    if(item == "CPU")
-        return new CPU(json_item);
-    else if(item == "Battery")
-        return new Battery(json_item);
-    else if(item == "Net")
-        return new Net(json_item);
-    else if(item == "Date")
-        return new Date(json_item);
-    else if(item == "Volume")
-        return new Volume(json_item);
-    else if(item == "Space")
-        return new Space(json_item);
-    else if(item == "IMAPMail")
-        return new IMAPMail(json_item);
+    try
+    {
+        string const& item = json_item["item"].string();
+        if(item == "CPU")
+            return new CPU(json_item);
+        else if(item == "Battery")
+            return new Battery(json_item);
+        else if(item == "Net")
+            return new Net(json_item);
+        else if(item == "Date")
+            return new Date(json_item);
+        else if(item == "Volume")
+            return new Volume(json_item);
+        else if(item == "Space")
+            return new Space(json_item);
+        else if(item == "IMAPMail")
+            return new IMAPMail(json_item);
+        else if(item == "I3Workspaces")
+            return new I3Workspaces(json_item);
+    }
+    catch(string const& error)
+    {
+        Logger::log("StateItem") << error << endl;
+    }
 
     // If no name matches - ignore.
     return nullptr;
 }
 
 void StateItem::init_section(
-    JSON const& config,
+    JSON::Node const& config,
     string const& section_name,
     vector<unique_ptr<StateItem>>& section)
 {
-    if(config.has(section_name))
+    if(config[section_name].exists())
     {
-        for(auto const& json_item_uptr : config[section_name].as_vector())
+        for(auto const& json_item : config[section_name].array())
         {
-            auto new_item = init_item(*json_item_uptr);
+            auto new_item = init_item(json_item);
             if(new_item != nullptr)
                 section.emplace_back(new_item);
         }
     }
 }
 
-void StateItem::init(JSON const& config)
+void StateItem::init(JSON::Node const& config)
 {
     init_section(config, "left", left_items);
     init_section(config, "center", center_items);
     init_section(config, "right", right_items);
+
+    show_failed_modules = config["show failed modules"].boolean();
 }
 
 void StateItem::update_all(void)
@@ -204,6 +226,8 @@ void StateItem::wait_for_events(void)
 
     tv.tv_sec = StateItem::min_cooldown.count();
     tv.tv_usec = 0;
+    Logger::log("StateItem")
+        << "Setting socket timeout to " << (int)tv.tv_sec << " seconds" << endl;
 
     int select_res = select(max_fd + 1, &read_fds, nullptr, nullptr, &tv);
     switch(select_res)
@@ -213,13 +237,20 @@ void StateItem::wait_for_events(void)
         break;
     case 0:
         // Timeout exceeded
+        Logger::log("StateItem") << "Timeout" << endl;
         break;
     default:
+        Logger::log("StateItem")
+            << (int)select_res << " sockets are ready for reading" << endl;
         for(auto const& event_socket : event_sockets)
         {
             if(FD_ISSET(event_socket.first, &read_fds))
             {
-                event_socket.second->handle_events();
+                auto item = event_socket.second;
+                Logger::log("StateItem") << "Module " << item->module_name
+                                         << " can process events on socket "
+                                         << event_socket.first << endl;
+                item->valid = item->handle_events(event_socket.first);
             }
         }
         break;

@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "JSON/json_parser.hpp"
+#include "json_parser.hpp"
 #include "Logger.hpp"
 #include "output.hpp"
 
@@ -19,6 +19,7 @@ class StateItem : public Logger
     static std::vector<std::unique_ptr<StateItem>> left_items;
     static std::vector<std::unique_ptr<StateItem>> center_items;
     static std::vector<std::unique_ptr<StateItem>> right_items;
+    static bool show_failed_modules;
     static std::map<int, StateItem*> event_sockets;
 
     std::chrono::system_clock::time_point last_updated;
@@ -35,15 +36,16 @@ class StateItem : public Logger
     std::string const module_name;
     std::chrono::seconds const cooldown;
     // The icon is a core component of the config. However, it is not printed
-    // automatically and nees to be printed manually.
+    // automatically and needs to be printed manually.
     BarWriter::Icon const icon;
     bool const button;
     std::string const button_command;
 
-    StateItem(JSON const&);
+    static BarWriter::Icon parse_icon_from_json(JSON::Node const&);
+    StateItem(JSON::Node const&);
 
     void register_event_socket(int fd);
-    virtual void handle_events(void);
+    virtual bool handle_events(int fd);
     void unregister_event_socket(int fd) const;
 
     virtual bool update(void) = 0;
@@ -53,15 +55,15 @@ class StateItem : public Logger
     virtual ~StateItem(void) = default;
 
   private:
-    static StateItem* init_item(JSON const& json_item);
+    static StateItem* init_item(JSON::Node const& json_item);
     static void init_section(
-        JSON const& config,
+        JSON::Node const& config,
         std::string const& section_name,
         std::vector<std::unique_ptr<StateItem>>& section);
 
   public:
     // This method initializes the settings for each type of item.
-    static void init(JSON const& config);
+    static void init(JSON::Node const& config);
     static void update_all(void);
     static void force_update_all(void);
 

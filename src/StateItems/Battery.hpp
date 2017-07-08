@@ -4,7 +4,7 @@
 #include <ostream>
 #include <string>
 
-#include "../JSON/json_parser.hpp"
+#include "../json_parser.hpp"
 #include "../StateItem.hpp"
 
 enum class BatStatus
@@ -15,23 +15,22 @@ enum class BatStatus
     discharging
 };
 
-class Battery : public StateItem
+class Battery final : public StateItem
 {
   private:
-    std::string bat_file_loc;
+    std::string const bat_file_loc;
 
-    // BAT
     BatStatus status;
     long discharge_rate;
     long max_capacity;
     long current_level;
 
-    bool update(void);
-    void print(std::ostream&, uint8_t);
+    bool update(void) override;
+    void print(std::ostream&, uint8_t) override;
 
   public:
-    Battery(JSON const&);
-    virtual ~Battery(void) = default;
+    Battery(JSON::Node const&);
+    ~Battery(void) = default;
 };
 
 #endif

@@ -8,7 +8,6 @@
 
 class Address : public Logger
 {
-
 private:
   std::string hostname;
   unsigned int port;

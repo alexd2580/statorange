@@ -60,14 +60,10 @@ static map<Coloring, pair<Color, Color> const> color_pairs{
 };
 
 // Char glyps for powerline fonts
-static string const sep_right_fill{"▐"}; // Right block half
-static string const sep_left{""}; // Powerline separator left
-static string const sep_right{""}; // Powerline separator right
-static string const sep_l_vertical{"│"}; // Vertical bar
-static string const sep_l_left{""}; // Powerline light separator left
-static string const sep_l_right{""}; // Powerline light sepatator right
 
 static map<Icon, string> icons{
+    {Icon::no_icon, ""},
+
     {Icon::clock, "Õ"}, // Clock icon
     {Icon::cpu, "Ï"}, // CPU icon
     {Icon::mem, "Þ"}, // MEM icon
@@ -83,7 +79,14 @@ static map<Icon, string> icons{
     {Icon::contact, "Á"}, // Contact icon
     {Icon::wsp, "É"}, // Workspace icon
     {Icon::wlan, "Ø"}, // WIFI icon
-    {Icon::no_icon, ""},
+
+    // Private use.
+    {Icon::right_fill, "▐"}, // Right block half
+    {Icon::sep_left, "Ü"}, // Powerline separator left
+    {Icon::sep_right, "Ú"}, // Powerline separator right
+    {Icon::sep_l_vertical, "│"}, // Vertical bar
+    {Icon::sep_l_left, "Ý"}, // Powerline light separator left
+    {Icon::sep_l_right, "Ú"}, // Powerline light sepatator right
 };
 
 //#pragma clang diagnostic pop
@@ -122,7 +125,7 @@ pair<string, string> get_colors(Coloring c)
 
 ostream& operator<<(ostream& o, Icon i)
 {
-    return o << "%{T3}" << icons[i] << "%{T1}";
+    return o << "%{T2}" << icons[i] << "%{T1}";
 }
 
 void make_hex(string::iterator dst, uint8_t a)
@@ -198,10 +201,10 @@ void separator(
     {
         auto const& separator =
             d == Separator::left
-                ? sep_l_left
+                ? Icon::sep_l_left
                 : d == Separator::vertical
-                      ? sep_l_vertical
-                      : d == Separator::right ? sep_l_right : "";
+                      ? Icon::sep_l_vertical
+                      : d == Separator::right ? Icon::sep_l_right : Icon::no_icon;
         out << "%{F#FF000000}" << separator;
     }
     else
@@ -212,13 +215,13 @@ void separator(
             out << "%{B" << next_bg << "}";
             break;
         case Separator::left:
-            out << "%{F" << next_bg << "}" << sep_left << "%{R}";
+            out << "%{F" << next_bg << "}" << Icon::sep_left << "%{R}";
             break;
         case Separator::vertical:
-            out << "%{F" << next_bg << "}" << sep_right_fill << "%{R}";
+            out << "%{F" << next_bg << "}" << Icon::right_fill << "%{R}";
             break;
         case Separator::right:
-            out << "%{R}%{B" << next_bg << "}" << sep_right;
+            out << "%{R}%{B" << next_bg << "}" << Icon::sep_right;
             break;
         }
     }

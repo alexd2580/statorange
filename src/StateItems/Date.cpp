@@ -13,7 +13,7 @@
 using namespace std;
 using std::chrono::system_clock;
 
-Date::Date(JSON const& item) : StateItem(item), format(item["format"])
+Date::Date(JSON::Node const& item) : StateItem(item), format(item["format"].string())
 {
 }
 

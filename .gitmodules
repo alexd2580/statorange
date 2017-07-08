@@ -1,3 +1,6 @@
 [submodule "bandit"]
 	path = bandit
 	url = https://github.com/banditcpp/bandit.git
+[submodule "fmt"]
+	path = fmt
+	url = https://github.com/fmtlib/fmt.git

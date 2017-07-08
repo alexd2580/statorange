@@ -10,11 +10,11 @@ using namespace std;
 /******************************************************************************/
 /******************************************************************************/
 
-Volume::Volume(JSON const& item) : StateItem(item)
+Volume::Volume(JSON::Node const& item)
+    : StateItem(item),
+      card(item["card"].string()),
+      mixer(item["mixer"].string())
 {
-    card.assign(item["card"]);
-    mixer.assign(item["mixer"]);
-
     mute = true;
     volume = 0;
 }

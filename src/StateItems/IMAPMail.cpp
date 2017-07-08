@@ -11,21 +11,18 @@
 
 using namespace std;
 
-IMAPMail::IMAPMail(JSON const& item) : StateItem(item)
+IMAPMail::IMAPMail(JSON::Node const& item)
+    : StateItem(item),
+      ca_cert(item["ca_file"].string()),
+      ca_path(item["ca_path"].string()),
+      hostname(item["hostname"].string()),
+      port(item["port"].number<uint32_t>()),
+      username(item["username"].string()),
+      password(item["password"].string()),
+      mailbox(item["mailbox"].string()),
+      tag(item["tag"].string(hostname + ":" + username))
 {
-    hostname.assign(item["hostname"]);
-    port = item["port"];
     address = Address(hostname, port);
-
-    ca_cert.assign(item.get("ca_file").as_string_with_default(""));
-    ca_path.assign(item.get("ca_path").as_string_with_default(""));
-
-    username.assign(item["username"]);
-    password.assign(item["password"]);
-    mailbox.assign(item["mailbox"]);
-
-    tag.assign(
-        item.get("tag").as_string_with_default(hostname + ":" + username));
 
     ctx = nullptr;
     server_fd = -1;
@@ -218,17 +215,6 @@ bool IMAPMail::expect_resp(string id, string& res)
     return expect_resp(id, res);
 }
 
-bool IMAPMail::update(void)
-{
-    success = false;
-    if(!init_SSL())
-        return false; // failed to initialize ssl, which is mandatory
-
-    success =
-        with_tcp([this] { return with_ssl([this] { return communicate(); }); });
-    return success;
-}
-
 bool IMAPMail::communicate(void)
 {
     bool done = true;
@@ -282,6 +268,17 @@ bool IMAPMail::communicate(void)
 
     log() << "Done " << done << endl;
     return done;
+}
+
+bool IMAPMail::update(void)
+{
+    success = false;
+    if(!init_SSL())
+        return false; // failed to initialize ssl, which is mandatory
+
+    success =
+        with_tcp([this] { return with_ssl([this] { return communicate(); }); });
+    return success;
 }
 
 void IMAPMail::print(ostream& out, uint8_t)

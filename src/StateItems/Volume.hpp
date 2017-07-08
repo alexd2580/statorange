@@ -10,10 +10,9 @@
 class Volume : public StateItem
 {
   private:
-    std::string card;
-    std::string mixer;
+    std::string const card;
+    std::string const mixer;
 
-    // VOLUME
     bool mute;
     unsigned short volume;
 
@@ -21,7 +20,7 @@ class Volume : public StateItem
     void print(std::ostream&, uint8_t);
 
   public:
-    Volume(JSON const& item);
+    Volume(JSON::Node const& item);
     virtual ~Volume(void) = default;
 };
 

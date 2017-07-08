@@ -6,6 +6,31 @@
 
 using namespace std;
 
+ConnectionType parse_connection_type(std::string const& contype)
+{
+    if(contype == "wireless")
+        return ConnectionType::wireless;
+    else if(contype == "ethernet")
+        return ConnectionType::ethernet;
+    throw "Couldn't parse connection type.";
+}
+
+ShowType parse_show_type(std::string const& showtype)
+{
+    if(showtype == "ipv4")
+        return ShowType::IPv4;
+    else if(showtype == "ipv6")
+        return ShowType::IPv6;
+    else if(showtype == "both")
+        return ShowType::both;
+    else if(showtype == "none")
+        return ShowType::none;
+    else if(showtype == "ipv6_fallback")
+        return ShowType::IPv6_fallback;
+
+    return ShowType::none;
+}
+
 time_t Net::min_cooldown = 1000; // TODO magicnumber
 map<string, pair<string, string>> Net::addresses;
 
@@ -168,29 +193,13 @@ bool Net::get_wireless_state(void)
     }
 }
 
-Net::Net(JSON const& item) : StateItem(item)
+Net::Net(JSON::Node const& item)
+    : StateItem(item),
+      iface(item["interface"].string()),
+      iface_type(parse_connection_type(item["type"].string())),
+      iface_show(parse_show_type(item["show"].string()))
 {
-    iface.assign(item["interface"]);
-
-    string contype = item["type"];
-    if(contype.compare("wireless") == 0)
-        iface_type = ConnectionType::wireless;
-    else if(contype.compare("ethernet") == 0)
-        iface_type = ConnectionType::ethernet;
-
-    string showtype = item["show"];
-    if(showtype.compare("ipv4") == 0)
-        iface_show = ShowType::IPv4;
-    else if(showtype.compare("ipv6") == 0)
-        iface_show = ShowType::IPv6;
-    else if(showtype.compare("both") == 0)
-        iface_show = ShowType::both;
-    else if(showtype.compare("none") == 0)
-        iface_show = ShowType::none;
-    else if(showtype.compare("ipv6_fallback") == 0)
-        iface_show = ShowType::IPv6_fallback;
-
-    time_t this_cooldown = item["cooldown"];
+    time_t this_cooldown = item["cooldown"].number<time_t>();
     min_cooldown = min(min_cooldown, this_cooldown);
 }
 
@@ -262,6 +271,8 @@ void Net::print(ostream& out, uint8_t)
             break;
         }
         BarWriter::separator(
-            out, BarWriter::Separator::left, BarWriter::Coloring::white_on_black);
+            out,
+            BarWriter::Separator::left,
+            BarWriter::Coloring::white_on_black);
     }
 }

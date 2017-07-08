@@ -9,26 +9,26 @@
 #include <string>
 
 #include "../Address.hpp"
-#include "../JSON/json_parser.hpp"
 #include "../StateItem.hpp"
+#include "../json_parser.hpp"
 #include "../output.hpp"
 #include "../util.hpp"
 
-class IMAPMail : public StateItem
+class IMAPMail final : public StateItem
 {
   private:
-    std::string ca_cert;
-    std::string ca_path;
+    std::string const ca_cert;
+    std::string const ca_path;
 
-    std::string hostname;
-    unsigned int port;
+    std::string const hostname;
+    uint32_t const port;
     Address address;
 
-    std::string username;
-    std::string password;
-    std::string mailbox;
+    std::string const username;
+    std::string const password;
+    std::string const mailbox;
 
-    std::string tag;
+    std::string const tag;
     int unseen_mails;
     bool success;
 
@@ -40,8 +40,8 @@ class IMAPMail : public StateItem
     std::queue<std::string> read_line_queue;
 
   public:
-    IMAPMail(JSON const& item);
-    virtual ~IMAPMail();
+    IMAPMail(JSON::Node const& item);
+    ~IMAPMail(void);
 
   private:
     bool with_tcp(std::function<bool(void)>);
@@ -54,9 +54,9 @@ class IMAPMail : public StateItem
     bool read_resp(std::string& res);
     bool expect_resp(std::string id, std::string& res);
 
-    bool update(void);
     bool communicate(void);
-    void print(std::ostream&, uint8_t);
+    bool update(void) override;
+    void print(std::ostream&, uint8_t) override;
 };
 
 #endif
