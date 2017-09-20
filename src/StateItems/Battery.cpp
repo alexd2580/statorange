@@ -1,14 +1,16 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <fmt/printf.h>
 
 #include "../output.hpp"
 #include "Battery.hpp"
 
 using namespace std;
 
-Battery::Battery(JSON::Node const& item) : StateItem(item), bat_file_loc(item["battery_file"].string()) {
-
+Battery::Battery(JSON::Node const& item)
+    : StateItem(item), bat_file_loc(item["battery_file"].string())
+{
     status = BatStatus::not_found;
     discharge_rate = 0;
     max_capacity = 0;
@@ -58,13 +60,13 @@ void Battery::print(ostream& out, uint8_t)
         case BatStatus::charging:
             BarWriter::separator(
                 out, BarWriter::Separator::left, BarWriter::Coloring::neutral);
-            out << " BAT charging " << 100 * current_level / max_capacity
-                << "% ";
+            fmt::print(
+                out, " BAT charging {}%", 100 * current_level / max_capacity);
             break;
         case BatStatus::full:
             BarWriter::separator(
                 out, BarWriter::Separator::left, BarWriter::Coloring::info);
-            out << " BAT full ";
+            fmt::print(out, " BAT full");
             break;
         case BatStatus::discharging:
         {
@@ -75,15 +77,12 @@ void Battery::print(ostream& out, uint8_t)
             auto colors =
                 BarWriter::section_colors((float)-rem_minutes, -60.0f, -10.0f);
             BarWriter::separator(out, BarWriter::Separator::left, colors);
-            out << " BAT " << (int)(100 * current_level / max_capacity) << "% ";
+            fmt::print(out, " BAT {}%", 100 * current_level / max_capacity);
             BarWriter::separator(out, BarWriter::Separator::left);
 
             long rem_hr_only = rem_minutes / 60;
-            out << (rem_hr_only < 10 ? " 0" : " ") << rem_hr_only;
-
             long rem_min_only = rem_minutes % 60;
-            out << (rem_min_only < 10 ? ":0" : ":") << rem_min_only << ' ';
-
+            fmt::print(out, "{:0=}{:0=}", rem_hr_only, rem_min_only);
             break;
         }
         case BatStatus::not_found:

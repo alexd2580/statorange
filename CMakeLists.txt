@@ -39,18 +39,19 @@ file(GLOB_RECURSE STATORANGE src/statorange.cpp)
 list(REMOVE_ITEM SRC ${STATORANGE})
 
 add_compile_options(-std=c++1z -stdlib=libc++ ${clang_warning_flags})
-set(LIBS c++ asound ssl crypto fmt)
+set(LIBS c++ asound ssl crypto fmt::fmt-header-only)
 
 # The main executable
 add_executable(statorange ${STATORANGE} ${SRC})
 target_link_libraries(statorange ${LIBS})
-# The test executable(s).
-add_executable(test_suite tests/main.cpp ${SRC})
-target_link_libraries(test_suite ${LIBS})
 
-# Add the test execution to cmake.
-enable_testing()
-add_test(test_suite test_suite)
+# # The test executable(s).
+# add_executable(test_suite tests/main.cpp ${SRC})
+# target_link_libraries(test_suite ${LIBS})
+#
+# # Add the test execution to cmake.
+# enable_testing()
+# add_test(test_suite test_suite)
 
 # Install the binary and the launcher.
 install(TARGETS statorange DESTINATION /usr/local/bin)

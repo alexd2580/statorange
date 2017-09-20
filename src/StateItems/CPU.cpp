@@ -22,7 +22,7 @@ CPU::CPU(JSON::Node const& item)
     cpu_load = 0.0f;
 }
 
-bool CPU::update(void)
+bool CPU::update()
 {
     char line[11];
     char* res;
