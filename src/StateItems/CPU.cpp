@@ -1,91 +1,65 @@
-
 #include <cstdlib>
 #include <cstring>
 #include <ostream>
 
-#include "../output.hpp"
-#include "../util.hpp"
 #include "CPU.hpp"
 
-using namespace std;
-using BarWriter::Separator;
-using BarWriter::Coloring;
+#include "../Lemonbar.hpp"
+#include "../util.hpp"
 
-CPU::CPU(JSON::Node const& item)
-    : StateItem(item), load_file_path(item["load_file"].string())
-{
+bool CPU::read_line(std::string const& path, char* data, uint32_t num) {
+    std::unique_ptr<FILE, int (*)(FILE*)> file(fopen(path.c_str(), "r"), fclose);
+    if(file.get() == nullptr) {
+        return false;
+    }
+    return fgets(data, (int32_t)num, file.get()) == data;
+}
+
+std::pair<bool, bool> CPU::update_raw() {
+    char line[11];
+    bool success = true;
+
+    cpu_temps.clear();
+    for(auto const& path : temp_file_paths) {
+        if(read_line(path, line, 10)) {
+            cpu_temps.push_back((uint32_t)strtol(line, nullptr, 0) / 1000);
+        } else {
+            log() << "Couldn't read temperature file [" << path << "]:" << std::endl << strerror(errno) << std::endl;
+            cpu_temps.emplace_back(999);
+            success = false;
+        }
+    }
+
+    if(read_line(load_file_path, line, 10)) {
+        cpu_load = strtof(line, nullptr);
+    } else {
+        log() << "Couldn't read load file [" << load_file_path << "]:" << std::endl << strerror(errno) << std::endl;
+        cpu_load = 999.0f;
+        success = false;
+    }
+    // This fluctuates so hard that checking whether something has changed makes no sense.
+    return {success, true};
+}
+
+void CPU::print_raw(Lemonbar& bar, uint8_t) {
+    auto load_colors = Lemonbar::section_colors(cpu_load, 0.7f, 3.0f);
+    bar.separator(Lemonbar::Separator::left, load_colors.first, load_colors.second);
+    bar().precision(2);
+    bar() << std::fixed << icon << ' ' << cpu_load << ' ';
+
+    for(uint32_t temp : cpu_temps) {
+        auto temp_colors = Lemonbar::section_colors<uint32_t>(temp, 50, 90);
+        bar.separator(Lemonbar::Separator::left, temp_colors.first, temp_colors.second);
+        bar() << ' ' << temp << "°C ";
+    }
+    bar.separator(Lemonbar::Separator::left, Lemonbar::Coloring::white_on_black);
+}
+
+CPU::CPU(JSON::Node const& item) : StateItem(item), load_file_path(item["load_file"].string()) {
     auto const temp_paths = item["temperature_files"].array();
-    for(auto const& temp_path : temp_paths)
+    for(auto const& temp_path : temp_paths) {
         temp_file_paths.push_back(temp_path.string());
-
+    }
     cpu_temps.clear();
     cpu_load = 0.0f;
-}
-
-bool CPU::update()
-{
-    char line[11];
-    char* res;
-
-    cpu_temps.clear();
-    auto n = temp_file_paths.size();
-    for(decltype(n) i = 0; i < n; i++)
-    {
-        auto path = temp_file_paths[i].c_str();
-        FILE* tfile = fopen(path, "r");
-        if(tfile == nullptr)
-        {
-            log() << "Couldn't read temperature file [" << path << "]:" << endl
-                  << strerror(errno) << endl;
-            cpu_temps.push_back(999);
-            continue;
-        }
-        res = fgets(line, 10, tfile);
-        fclose(tfile);
-        if(res != line)
-        {
-            log() << "Couldn't read temperature file [" << path << "]:" << endl
-                  << strerror(errno) << endl;
-            cpu_temps.push_back(999);
-            continue;
-        }
-        cpu_temps.push_back((int)strtol(line, nullptr, 0) / 1000);
-    }
-
-    FILE* lfile = fopen(load_file_path.c_str(), "r");
-    if(lfile == nullptr)
-    {
-        log() << "Couldn't read load file [" << load_file_path << "]:" << endl
-              << strerror(errno) << endl;
-        cpu_load = 999.0f;
-        return true;
-    }
-    res = fgets(line, 10, lfile);
-    fclose(lfile);
-    if(res != line)
-    {
-        log() << "Couldn't read load file [" << load_file_path << "]:" << endl
-              << strerror(errno) << endl;
-        cpu_load = 999.0f;
-        return true;
-    }
-    cpu_load = strtof(line, nullptr);
-    return true;
-}
-
-void CPU::print(ostream& out, uint8_t)
-{
-    auto load_colors = BarWriter::section_colors(cpu_load, 0.7f, 3.0f);
-    BarWriter::separator(out, Separator::left, load_colors);
-    out.precision(2);
-    out << std::fixed << icon << ' ' << cpu_load << ' ';
-
-    auto n = temp_file_paths.size();
-    for(decltype(n) i = 0; i < n; i++)
-    {
-        auto temp_colors = BarWriter::section_colors(cpu_temps[i], 50, 90);
-        BarWriter::separator(out, Separator::left, temp_colors);
-        out << ' ' << cpu_temps[i] << "°C ";
-    }
-    BarWriter::separator(out, Separator::left, Coloring::white_on_black);
 }

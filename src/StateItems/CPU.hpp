@@ -5,25 +5,27 @@
 #include <string>
 #include <vector>
 
-#include "../json_parser.hpp"
+#include "../Lemonbar.hpp"
 #include "../StateItem.hpp"
-#include "../util.hpp"
+#include "../json_parser.hpp"
 
-class CPU : public StateItem
-{
+class CPU final : public StateItem {
   private:
     std::string const load_file_path;
     std::vector<std::string> temp_file_paths;
 
-    std::vector<int> cpu_temps;
+    std::vector<uint32_t> cpu_temps;
     float cpu_load;
 
-    bool update(void) override;
-    void print(std::ostream&, uint8_t) override;
+    // Returns the success of the operation.
+    static bool read_line(std::string const& path, char* data, uint32_t num);
+
+    std::pair<bool, bool> update_raw() override;
+    void print_raw(Lemonbar&, uint8_t) override;
 
   public:
-    CPU(JSON::Node const& item);
-    virtual ~CPU(void) = default;
+    explicit CPU(JSON::Node const& item);
+    virtual ~CPU() override = default;
 };
 
 #endif

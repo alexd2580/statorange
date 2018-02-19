@@ -99,7 +99,7 @@ class Node final
         switch(c)
         {
         case '\0':
-            throw "Unexpected end of string.";
+            return std::shared_ptr<Null>(new Null());
         case '{':
             return std::shared_ptr<Object>(new Object(str));
         case '[':
@@ -120,14 +120,8 @@ class Node final
         throw fmt::format("No valid Value detected: {}.", c);
     }
 
-    Node(char const* str)
-    {
-        value = parse(str);
-    }
-    Node(std::shared_ptr<Value> ptr)
-    {
-        value = ptr;
-    }
+    Node(char const* str) { value = parse(str); }
+    Node(std::shared_ptr<Value> ptr) { value = ptr; }
 
     bool exists(void) const
     {
@@ -145,10 +139,7 @@ class Node final
         iterator_type iterator;
 
       public:
-        ObjectConstIterator(iterator_type iterator_)
-        {
-            iterator = iterator_;
-        }
+        ObjectConstIterator(iterator_type iterator_) { iterator = iterator_; }
         ObjectConstIterator& operator++(void)
         {
             iterator++;
@@ -220,10 +211,7 @@ class Node final
         iterator_type iterator;
 
       public:
-        ArrayConstIterator(iterator_type iterator_)
-        {
-            iterator = iterator_;
-        }
+        ArrayConstIterator(iterator_type iterator_) { iterator = iterator_; }
         ArrayConstIterator& operator++(void)
         {
             iterator++;
@@ -233,10 +221,7 @@ class Node final
         {
             return iterator != other.iterator;
         }
-        Node const operator*(void)
-        {
-            return Node(*iterator);
-        }
+        Node const operator*(void) { return Node(*iterator); }
     };
     class ArrayWrapper
     {
@@ -252,10 +237,7 @@ class Node final
             : source_json(json), array(array_)
         {
         }
-        size_t size(void) const
-        {
-            return array.size();
-        }
+        size_t size(void) const { return array.size(); }
         ArrayConstIterator begin(void) const
         {
             return ArrayConstIterator(array.cbegin());

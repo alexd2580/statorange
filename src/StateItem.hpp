@@ -6,78 +6,68 @@
 #include <memory>
 #include <ostream>
 #include <string>
+#include <utility>
 #include <vector>
 
-#include "json_parser.hpp"
+#include "Lemonbar.hpp"
 #include "Logger.hpp"
-#include "output.hpp"
+#include "json_parser.hpp"
 
-class StateItem : public Logger
-{
+class StateItem : public Logger {
   private:
+    // The min cooldown is computed as the minimum of all item cooldowns.
     static std::chrono::seconds min_cooldown;
-    static std::vector<std::unique_ptr<StateItem>> left_items;
-    static std::vector<std::unique_ptr<StateItem>> center_items;
-    static std::vector<std::unique_ptr<StateItem>> right_items;
-    static bool show_failed_modules;
+
     static std::map<int, StateItem*> event_sockets;
 
-    std::chrono::system_clock::time_point last_updated;
-    bool valid;
-
-    bool cached;
-    std::string print_string;
-
-    void wrap_update(void);
-    void force_update(void);
-    void wrap_print(std::ostream&, uint8_t);
-
-  protected:
+    // Name of this module.
     std::string const module_name;
+
+    // The cooldown of this module.
     std::chrono::seconds const cooldown;
-    // The icon is a core component of the config. However, it is not printed
-    // automatically and needs to be printed manually.
-    BarWriter::Icon const icon;
+
+    // Is this module a button?
     bool const button;
+    // The command string of the button (if `button == true`).
     std::string const button_command;
 
-    static BarWriter::Icon parse_icon_from_json(JSON::Node const&);
-    StateItem(JSON::Node const&);
+    // Set in the base class methods on update.
+    std::chrono::system_clock::time_point last_updated;
+
+    // Display a notice if this module's update method failed (valid is set to false).
+    bool const show_failed;
+
+    // Set in the base class methods from the result of the specialized classes' `update` result.
+    bool valid;
+    bool changed;
+
+  protected:
+    // The icon is a core component of the config. However, it is not printed automatically.
+    Lemonbar::Icon const icon;
+
+    static Lemonbar::Icon parse_icon_from_json(JSON::Node const&);
+
+    explicit StateItem(JSON::Node const&);
 
     void register_event_socket(int fd);
-    virtual bool handle_events(int fd);
     void unregister_event_socket(int fd) const;
 
-    virtual bool update(void) = 0;
-    virtual void print(std::ostream&, uint8_t) = 0;
+    // First bool describes whether `update` has succeeded.
+    // Second bool describes whether `update` has registered a state-change.
+    virtual std::pair<bool, bool> update_raw() = 0;
+    virtual std::pair<bool, bool> handle_stream_data_raw(int fd);
+    virtual void print_raw(Lemonbar&, uint8_t) = 0;
+
+    bool handle_stream_data(int fd);
 
   public:
-    virtual ~StateItem(void) = default;
+    virtual ~StateItem() = default;
 
-  private:
-    static StateItem* init_item(JSON::Node const& json_item);
-    static void init_section(
-        JSON::Node const& config,
-        std::string const& section_name,
-        std::vector<std::unique_ptr<StateItem>>& section);
+    // Result is true if the state item needs to be redrawn.
+    bool update(bool force = false);
+    void print(Lemonbar&, uint8_t);
 
-  public:
-    // This method initializes the settings for each type of item.
-    static void init(JSON::Node const& config);
-    static void update_all(void);
-    static void force_update_all(void);
-
-  private:
-    static void print_section(
-        std::ostream& out,
-        BarWriter::Alignment a,
-        std::vector<std::unique_ptr<StateItem>> const& section,
-        uint8_t display_number);
-
-  public:
-    static void print_state(std::ostream&, uint8_t);
-
-    static void wait_for_events(void);
+    static bool wait_for_events(int signal_fd = 0);
 };
 
 #endif

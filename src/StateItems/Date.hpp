@@ -3,22 +3,23 @@
 
 #include <ostream>
 #include <string>
+#include <utility>
 
+#include "../Lemonbar.hpp"
 #include "../StateItem.hpp"
-#include "../output.hpp"
+#include "../json_parser.hpp"
 
-class Date : public StateItem
-{
+class Date final : public StateItem {
   private:
     std::string const format;
     std::string time;
 
-    bool update(void);
-    void print(std::ostream&, uint8_t);
+    std::pair<bool, bool> update_raw() override;
+    void print_raw(Lemonbar&, uint8_t) override;
 
   public:
-    Date(JSON::Node const& item);
-    virtual ~Date(void) = default;
+    explicit Date(JSON::Node const& item);
+    virtual ~Date() override = default;
 };
 
 #endif

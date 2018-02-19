@@ -3,6 +3,7 @@
  * NEITHER VALIDATED, NOR EXCESSIVELY TESTED
  */
 
+#include <atomic>
 #include <cassert>
 #include <csignal>
 #include <cstdlib>
@@ -11,150 +12,333 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
+#include <memory>
 
 #include <pwd.h>
+#include <sys/signalfd.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
 
 #include "json_parser.hpp"
 
-#include "Application.hpp"
+#include "StateItems/Date.hpp"
+#include "StateItems/Space.hpp"
+#include "StateItems/CPU.hpp"
+// #include "StateItems/Battery.hpp"
+// #include "StateItems/I3Workspaces.hpp"
+// #include "StateItems/IMAPMail.hpp"
+// #include "StateItems/Net.hpp"
+// #include "StateItems/Volume.hpp"
+#include "Lemonbar.hpp"
+#include "Logger.hpp"
 #include "StateItem.hpp"
-#include "output.hpp"
 #include "util.hpp"
 
-using namespace std;
+/******************************************************************************/
+
+// typedef struct sigaction Sigaction;
+// Sigaction mk_handler(sighandler_t handler)
+// {
+//     Sigaction handler_action;
+//     handler_action.sa_handler = handler;
+//     sigemptyset(&handler_action.sa_mask);
+//     // sa.sa_flags = SA_RESTART | SA_NODEFER;
+//     handler_action.sa_flags = 0;
+//     return handler_action;
+// }
+//
+// void register_handler(int sig, Sigaction& handler)
+// {
+//     sigaction(sig, &handler, nullptr);
+// }
 
 /******************************************************************************/
 
-typedef struct sigaction Sigaction;
-Sigaction mk_handler(sighandler_t handler)
-{
-    Sigaction handler_action;
-    handler_action.sa_handler = handler;
-    sigemptyset(&handler_action.sa_mask);
-    // sa.sa_flags = SA_RESTART | SA_NODEFER;
-    handler_action.sa_flags = 0;
-    return handler_action;
-}
+class Statorange : Logger {
+  private:
+    JSON::Node config_json;
 
-void register_handler(int sig, Sigaction& handler)
-{
-    sigaction(sig, &handler, nullptr);
-}
+    int signal_fd;
 
-/**
- * Handler for sigint and sigterm.
- */
-void term_handler(int signum)
-{
-    static Logger term("Term handler");
+    bool force_update = true;
+    bool dead = false;
 
-    term.log() << "Termination requested: " << signum << std::endl;
-    Application::dead = true;
-}
+    bool show_failed_modules;
 
-/**
- * Used to force a systemstate update (sigusr1)
- */
-void notify_handler(int signum)
-{
-    static Logger nlog("Notify handler");
+    using StateItems = std::vector<std::unique_ptr<StateItem>>;
+    StateItems left_items;
+    StateItems center_items;
+    StateItems right_items;
 
-    nlog.log() << "Received notify signal: " << signum << std::endl;
-    Application::force_update = true;
-}
+    Lemonbar bar;
 
-/******************************************************************************/
+    bool load_config() {
+        log() << "Searching config" << std::endl;
 
-JSON::Node load_config(void)
-{
-    struct passwd* pw = getpwuid(getuid());
-    string home_dir(pw->pw_dir);
-    string config_name("config.json");
-    vector<string> config_paths{"./" + config_name,
-                                home_dir + "/.config/statorange/" + config_name,
-                                home_dir + ".statorange/" + config_name};
+        struct passwd* pw = getpwuid(getuid());
+        std::string home_dir(pw->pw_dir);
+        std::string config_name("config.json");
+        std::vector<std::string> config_paths{"./" + config_name, home_dir + "/.config/statorange/" + config_name,
+                                              home_dir + ".statorange/" + config_name};
 
-    for(auto const& path : config_paths)
-    {
-        Logger::log("Config loader") << "Trying config path: " << path << endl;
-        string config_string;
-        if(load_file(path, config_string))
-        {
-            try
-            {
-                return JSON::Node(config_string.c_str());
+        for(auto const& path : config_paths) {
+            log() << "Testing path: " << path << std::endl;
+            std::string config_string;
+            if(load_file(path, config_string)) {
+                try {
+                    config_json = JSON::Node(config_string.c_str());
+                } catch(char const* err_msg) {
+                    log() << "Failed to load config from '" << path << "':" << std::endl << err_msg << std::endl;
+                }
             }
-            catch(char const* err_msg)
-            {
-                Logger::log("Config path") << "Failed to load config from '"
-                                           << path << "':" << std::endl
-                                           << err_msg << std::endl;
+        }
+
+        if(!config_json.exists()) {
+            log() << "Failed to load config" << std::endl;
+            return false;
+        }
+
+        return true;
+    }
+
+    void init_item(JSON::Node const& json_item, StateItems& section) {
+#define CREATE_ITEM(itemclass)                                                                                         \
+    if(item == #itemclass)                                                                                             \
+        section.push_back(std::unique_ptr<StateItem>(new itemclass(json_item)));
+
+        try {
+            std::string const& item = json_item["item"].string();
+            CREATE_ITEM(Date)
+            CREATE_ITEM(Space)
+            CREATE_ITEM(CPU)
+            // else if(item == "Battery")
+            //     return new Battery(json_item);
+            // else if(item == "Net")
+            //     return new Net(json_item);
+            // else if(item == "Volume")
+            //     return new Volume(json_item);
+            // else if(item == "IMAPMail")
+            //     return new IMAPMail(json_item);
+            // else if(item == "I3Workspaces")
+            //     return new I3Workspaces(json_item);
+        } catch(std::string const& error) {
+            // Errors will be ignored.
+            log() << error << std::endl;
+        }
+    }
+
+    void init_section(std::string const& section_name, StateItems& section) {
+        if(config_json[section_name].exists()) {
+            for(auto const& json_item : config_json[section_name].array()) {
+                init_item(json_item, section);
             }
         }
     }
-    return JSON::Node({});
+
+    bool apply_config() {
+        show_failed_modules = config_json["show failed modules"].boolean();
+
+        init_section("left", left_items);
+        init_section("center", center_items);
+        init_section("right", right_items);
+
+        return true;
+    }
+
+    void setup_signal_handler() {
+        log() << "Setting up signal handlers" << std::endl;
+
+        sigset_t mask;
+        sigemptyset(&mask);
+        sigaddset(&mask, SIGINT);
+        sigaddset(&mask, SIGTERM);
+        sigaddset(&mask, SIGQUIT);
+        sigaddset(&mask, SIGUSR1);
+
+        /* Block signals so that they aren't handled
+           according to their default dispositions */
+
+        if(sigprocmask(SIG_BLOCK, &mask, nullptr) == -1) {
+            log() << "Failed to set up signal blocker, signals may terminate the "
+                     "application"
+                  << std::endl;
+        }
+
+        signal_fd = signalfd(-1, &mask, 0);
+        if(signal_fd == -1) {
+            log() << "Failed to set up signal handler, signals will be ignored" << std::endl;
+            signal_fd = 0;
+        }
+    }
+
+    // Chech the signal FD and handle the signals.
+    void handle_signals() {
+        int32_t fd_has_input = 0;
+        while(true) {
+            fd_has_input = has_input(signal_fd);
+            if(fd_has_input == 0) {
+                // No more data here.
+                return;
+            }
+            if(fd_has_input < 0) {
+                log_errno();
+                log() << "failed to select readable fd" << std::endl;
+                return;
+            }
+
+            log() << "Signal buffer contains signal info" << std::endl;
+            struct signalfd_siginfo signal_info;
+            constexpr size_t signal_info_size = sizeof(struct signalfd_siginfo);
+            ssize_t s = read_all(signal_fd, (char*)&signal_info, signal_info_size);
+            if(s != signal_info_size) {
+                log_errno();
+                log() << "Failed to read struct signalfd_siginfo from signal fd" << std::endl;
+                log() << "Aborting signal handling due to broken read" << std::endl;
+                break;
+            }
+
+            switch(signal_info.ssi_signo) {
+            case SIGINT:
+            case SIGQUIT:
+            case SIGTERM:
+                log() << "Got exit signal " << signal_info.ssi_signo << std::endl;
+                dead = true;
+                break;
+            case SIGUSR1:
+                log() << "Got SIGUSR1" << std::endl;
+                force_update = true;
+                break;
+            default:
+                log() << "Got unexpected signal " << signal_info.ssi_signo << std::endl;
+                break;
+            }
+        }
+    }
+
+    bool update() {
+        bool updated = false;
+        for(auto& state : left_items) {
+            updated = state->update(force_update) || updated;
+        }
+        for(auto& state : center_items) {
+            updated = state->update(force_update) || updated;
+        }
+        for(auto& state : right_items) {
+            updated = state->update(force_update) || updated;
+        }
+        force_update = false;
+        return updated;
+    }
+
+    void print_section(Lemonbar::Alignment a, StateItems const& section, uint8_t display_number) {
+        bar.align_begin(a);
+        for(auto& state : section) {
+            state->print(bar, display_number);
+        }
+        bar.align_end();
+    }
+
+    void print() {
+        const uint8_t num_output_displays = 3;
+        for(uint8_t i = 0; i < num_output_displays; i++) {
+            bar.display_begin(i);
+            print_section(Lemonbar::Alignment::left, left_items, i);
+            print_section(Lemonbar::Alignment::center, center_items, i);
+            print_section(Lemonbar::Alignment::right, right_items, i);
+            bar.display_end();
+        }
+        bar() << std::endl;
+    }
+
+  public:
+    explicit Statorange(std::ostream& ostr) : Logger("Main"), config_json(""), bar(ostr) {
+        signal_fd = 0;
+        show_failed_modules = true;
+    }
+    ~Statorange() = default;
+
+    int run(int argc, char* argv[]) {
+        log() << "Launching Statorange" << std::endl;
+
+        if(!load_config()) {
+            return 1;
+        }
+        if(!apply_config()) {
+            return 1;
+        }
+
+        setup_signal_handler();
+
+        while(!dead) {
+            if(update()) {
+                print();
+            }
+
+            StateItem::wait_for_events(signal_fd);
+            handle_signals();
+        }
+
+        return 0;
+    }
+};
+
+int main(int argc, char* argv[]) {
+    const std::string normal_font("-f -misc-fixed-medium-r-semicondensed--12------iso10646-1");
+    const std::string powerline_icons("-f -xos4-terminusicons2mono-medium-r-normal--12------iso8859-1");
+    const std::string lemonbar_cmd("lemonbar " + normal_font + " " + powerline_icons + " -a 30 -u -1");
+    const std::string font_path_minus("xset fp- /usr/local/lib/statorange/misc");
+    const std::string font_path_plus("xset fp+ /usr/local/lib/statorange/misc");
+    const std::string lemonbar_with_fonts(font_path_minus + ";" + font_path_plus + ";" + lemonbar_cmd);
+    auto lemonbar_pipe = run_command(lemonbar_with_fonts, "w");
+    FileStream lemonbar_streambuf(lemonbar_pipe.get());
+    std::ostream lemonbar_stream(&lemonbar_streambuf);
+
+    Statorange app(lemonbar_stream);
+    return app.run(argc, argv);
 }
 
-// string socket_path(argv[1]);
-// cerr << "Socket path: " << socket_path << endl;
+// std::string socket_path(argv[1]);
+// cerr << "Socket path: " << socket_path << std::endl;
 
 // auto& ws_group_json = config_json.get("ws window names");
 // auto& ws_group_string = ws_group_json.as_string_with_default("");
 // WorkspaceGroup show_names_on(parse_workspace_group(ws_group_string));
 
-int main(int argc, char* argv[])
-{
-    Application::argc = argc;
-    Application::argv = argv;
-
-    LoggerManager::set_stream(cerr);
-    Logger l("Main");
-    l.log() << "Launching Statorange" << endl;
-
-    auto config_json = load_config();
-    if(!config_json.exists())
-    {
-        l.log() << "Failed to load config." << endl;
-        return 1;
-    }
-
-    // Init StateItems.
-    StateItem::init(config_json);
-
-    // signal handlers and event handlers
-    Sigaction term = mk_handler(term_handler);
-    register_handler(SIGINT, term);
-    register_handler(SIGTERM, term);
-
-    Sigaction notify = mk_handler(notify_handler);
-    register_handler(SIGUSR1, notify);
-
-    l.log() << "Entering main loop" << endl;
-    while(!Application::dead)
-    {
-        if(Application::force_update)
-        {
-            StateItem::force_update_all();
-            Application::force_update = false;
-        }
-        else
-            StateItem::update_all();
-
-        for(uint8_t i = 0; i < num_output_displays; i++)
-        {
-            auto printer = [i](ostream& out) {
-                StateItem::print_state(out, i);
-            };
-            BarWriter::display(cout, i, printer);
-        }
-        cout << endl;
-
-        StateItem::wait_for_events();
-    }
-    l.log() << "Exiting main loop" << endl;
-
-    return Application::exit_status;
-}
+// int main(int argc, char* argv[])
+// {
+//
+//     // signal handlers and event handlers
+//     Sigaction term = mk_handler(term_handler);
+//     register_handler(SIGINT, term);
+//     register_handler(SIGTERM, term);
+//
+//     Sigaction notify = mk_handler(notify_handler);
+//     register_handler(SIGUSR1, notify);
+//
+//     l.log() << "Entering main loop" << std::endl;
+//     while(!Application::dead)
+//     {
+//         if(Application::force_update)
+//         {
+//             StateItem::force_update_all();
+//             Application::force_update = false;
+//         }
+//         else
+//             StateItem::update_all();
+//
+//         for(uint8_t i = 0; i < num_output_displays; i++)
+//         {
+//             auto printer = [i](ostream& out) {
+//                 StateItem::print_state(out, i);
+//             };
+//             BarWriter::display(cout, i, printer);
+//         }
+//         cout << std::endl;
+//
+//         StateItem::wait_for_events();
+//     }
+//     l.log() << "Exiting main loop" << std::endl;
+//
+//     return Application::exit_status;
+// }

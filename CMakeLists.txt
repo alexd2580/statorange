@@ -38,7 +38,8 @@ file(GLOB_RECURSE SRC src/*.cpp)
 file(GLOB_RECURSE STATORANGE src/statorange.cpp)
 list(REMOVE_ITEM SRC ${STATORANGE})
 
-add_compile_options(-std=c++1z -stdlib=libc++ ${clang_warning_flags})
+# add_compile_options(-std=c++2a -stdlib=libc++ ${clang_warning_flags})
+add_compile_options(-std=c++2a ${clang_warning_flags})
 set(LIBS c++ asound ssl crypto fmt::fmt-header-only)
 
 # The main executable

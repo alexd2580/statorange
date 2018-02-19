@@ -4,34 +4,26 @@
 #include <iomanip> // std::put_time
 #include <ostream>
 #include <sstream>
+#include <utility> // std::pair
 
 #include "Date.hpp"
 
-#include "../output.hpp"
+#include "../Lemonbar.hpp"
 #include "../util.hpp"
 
-using namespace std;
-using std::chrono::system_clock;
+Date::Date(JSON::Node const& item) : StateItem(item), format(item["format"].string()) {}
 
-Date::Date(JSON::Node const& item) : StateItem(item), format(item["format"].string())
-{
-}
-
-bool Date::update(void)
-{
-    time_t tt = system_clock::to_time_t(system_clock::now());
+std::pair<bool, bool> Date::update_raw() {
+    time_t tt = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     struct tm* ptm = localtime(&tt);
-    ostringstream o;
-    print_time(o, ptm, format.c_str());
-    time = o.str();
-    return true;
+    std::ostringstream o;
+    print_time(o, *ptm, format.c_str());
+    const bool changed = time != (time = o.str());
+    return {true, changed};
 }
 
-void Date::print(ostream& out, uint8_t)
-{
-    BarWriter::separator(
-        out, BarWriter::Separator::left, BarWriter::Coloring::active);
-    out << icon << ' ' << time << ' ';
-    BarWriter::separator(
-        out, BarWriter::Separator::left, BarWriter::Coloring::white_on_black);
+void Date::print_raw(Lemonbar& bar, uint8_t) {
+    bar.separator(Lemonbar::Separator::left, Lemonbar::Coloring::active);
+    bar() << icon << ' ' << time << ' ';
+    bar.separator(Lemonbar::Separator::left, Lemonbar::Coloring::white_on_black);
 }
