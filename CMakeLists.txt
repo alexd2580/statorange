@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
 project(statorange CXX)
 
-add_subdirectory(fmt)
-
 SET(CMAKE_CXX_COMPILER clang++)
 
 function(make_clang_warnings enabled_warnings_list disabled_warnings_list clang_warning_flags_list)
@@ -31,7 +29,7 @@ set(disabled_warnings
 make_clang_warnings(enabled_warnings disabled_warnings clang_warning_flags)
 
 # Add system include paths.
-include_directories(SYSTEM bandit fmt)
+include_directories(SYSTEM bandit)
 
 # The source files.
 file(GLOB_RECURSE SRC src/*.cpp)
@@ -40,7 +38,7 @@ list(REMOVE_ITEM SRC ${STATORANGE})
 
 # add_compile_options(-std=c++2a -stdlib=libc++ ${clang_warning_flags})
 add_compile_options(-std=c++2a ${clang_warning_flags})
-set(LIBS c++ asound ssl crypto fmt::fmt-header-only)
+set(LIBS c++ asound ssl crypto)
 
 # The main executable
 add_executable(statorange ${STATORANGE} ${SRC})
