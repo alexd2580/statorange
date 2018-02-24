@@ -25,7 +25,7 @@
 #include "StateItems/Date.hpp"
 #include "StateItems/Space.hpp"
 #include "StateItems/CPU.hpp"
-// #include "StateItems/Battery.hpp"
+#include "StateItems/Battery.hpp"
 // #include "StateItems/I3Workspaces.hpp"
 // #include "StateItems/IMAPMail.hpp"
 // #include "StateItems/Net.hpp"
@@ -112,8 +112,7 @@ class Statorange : Logger {
             CREATE_ITEM(Date)
             CREATE_ITEM(Space)
             CREATE_ITEM(CPU)
-            // else if(item == "Battery")
-            //     return new Battery(json_item);
+            CREATE_ITEM(Battery)
             // else if(item == "Net")
             //     return new Net(json_item);
             // else if(item == "Volume")
