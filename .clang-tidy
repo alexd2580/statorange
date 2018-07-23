@@ -3,7 +3,7 @@ Checks:          'clang-diagnostic-*,clang-analyzer-*,-clang-analyzer-alpha*'
 WarningsAsErrors: ''
 HeaderFilterRegex: ''
 AnalyzeTemporaryDtors: false
-CheckOptions:    
+CheckOptions:
   - key:             cert-oop11-cpp.UseCERTSemantics
     value:           '1'
   - key:             google-readability-braces-around-statements.ShortStatementLines

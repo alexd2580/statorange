@@ -38,7 +38,7 @@ list(REMOVE_ITEM SRC ${STATORANGE})
 
 # add_compile_options(-std=c++2a -stdlib=libc++ ${clang_warning_flags})
 add_compile_options(-std=c++2a ${clang_warning_flags})
-set(LIBS c++ asound ssl crypto)
+set(LIBS asound ssl crypto)
 
 # The main executable
 add_executable(statorange ${STATORANGE} ${SRC})

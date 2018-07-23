@@ -61,6 +61,11 @@ class StateItem : public Logger {
     bool handle_stream_data(int fd);
 
   public:
+    StateItem(const StateItem&) = delete;
+    StateItem(StateItem&&) = delete;
+    StateItem& operator=(const StateItem&) = delete;
+    StateItem& operator=(StateItem&&) = delete;
+
     virtual ~StateItem() = default;
 
     // Result is true if the state item needs to be redrawn.

@@ -283,9 +283,10 @@ class Statorange : Logger {
 };
 
 int main(int argc, char* argv[]) {
-    const std::string normal_font("-f -misc-fixed-medium-r-semicondensed--12------iso10646-1");
-    const std::string powerline_icons("-f -xos4-terminusicons2mono-medium-r-normal--12------iso8859-1");
-    const std::string lemonbar_cmd("lemonbar " + normal_font + " " + powerline_icons + " -a 30 -u -1");
+    // const std::string normal_font("-f -misc-fixed-medium-r-semicondensed--12------iso10646-1");
+    const std::string text_font("-f -xos4-terminus2-medium-r-normal--12------iso8859-1");
+    const std::string icon_font("-f -xos4-terminusicons2mono-medium-r-normal--12------iso8859-1");
+    const std::string lemonbar_cmd("lemonbar " + text_font + " " + icon_font + " -a 30 -u -1");
     const std::string font_path_minus("xset fp- /usr/local/lib/statorange/misc");
     const std::string font_path_plus("xset fp+ /usr/local/lib/statorange/misc");
     const std::string lemonbar_with_fonts(font_path_minus + ";" + font_path_plus + ";" + lemonbar_cmd);
