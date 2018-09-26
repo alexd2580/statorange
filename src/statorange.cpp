@@ -22,13 +22,13 @@
 
 #include "json_parser.hpp"
 
-#include "StateItems/Date.hpp"
-#include "StateItems/Space.hpp"
-#include "StateItems/CPU.hpp"
 #include "StateItems/Battery.hpp"
+#include "StateItems/CPU.hpp"
+#include "StateItems/Date.hpp"
+#include "StateItems/Net.hpp"
+#include "StateItems/Space.hpp"
 // #include "StateItems/I3Workspaces.hpp"
 // #include "StateItems/IMAPMail.hpp"
-// #include "StateItems/Net.hpp"
 // #include "StateItems/Volume.hpp"
 #include "Lemonbar.hpp"
 #include "Logger.hpp"
@@ -104,8 +104,13 @@ class Statorange : Logger {
 
     void init_item(JSON::Node const& json_item, StateItems& section) {
 #define CREATE_ITEM(itemclass)                                                                                         \
-    if(item == #itemclass)                                                                                             \
-        section.push_back(std::unique_ptr<StateItem>(new itemclass(json_item)));
+    if(item == #itemclass) {                                                                                           \
+        log() << "Creating item of type " << item << std::endl;                                                        \
+        \
+        section.push_back(std::unique_ptr<StateItem>(new itemclass(json_item)));                                       \
+        \
+                                                                                                                 \
+    }
 
         try {
             std::string const& item = json_item["item"].string();
@@ -113,8 +118,7 @@ class Statorange : Logger {
             CREATE_ITEM(Space)
             CREATE_ITEM(CPU)
             CREATE_ITEM(Battery)
-            // else if(item == "Net")
-            //     return new Net(json_item);
+            CREATE_ITEM(Net)
             // else if(item == "Volume")
             //     return new Volume(json_item);
             // else if(item == "IMAPMail")
@@ -187,9 +191,9 @@ class Statorange : Logger {
             }
 
             log() << "Signal buffer contains signal info" << std::endl;
-            struct signalfd_siginfo signal_info;
+            struct signalfd_siginfo signal_info {};
             constexpr size_t signal_info_size = sizeof(struct signalfd_siginfo);
-            ssize_t s = read_all(signal_fd, (char*)&signal_info, signal_info_size);
+            ssize_t s = read_all(signal_fd, static_cast<char*>(static_cast<void*>(&signal_info)), signal_info_size);
             if(s != signal_info_size) {
                 log_errno();
                 log() << "Failed to read struct signalfd_siginfo from signal fd" << std::endl;
@@ -255,9 +259,10 @@ class Statorange : Logger {
         signal_fd = 0;
         show_failed_modules = true;
     }
-    ~Statorange() = default;
 
     int run(int argc, char* argv[]) {
+        (void)argc;
+        (void)argv;
         log() << "Launching Statorange" << std::endl;
 
         if(!load_config()) {

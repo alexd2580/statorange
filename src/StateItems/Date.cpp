@@ -6,10 +6,10 @@
 #include <sstream>
 #include <utility> // std::pair
 
-#include "Date.hpp"
+#include "StateItems/Date.hpp"
 
-#include "../Lemonbar.hpp"
-#include "../util.hpp"
+#include "Lemonbar.hpp"
+#include "util.hpp"
 
 Date::Date(JSON::Node const& item) : StateItem(item), format(item["format"].string()) {}
 

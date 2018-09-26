@@ -4,10 +4,10 @@
 #include <ostream>
 #include <sys/statvfs.h>
 
-#include "Space.hpp"
+#include "StateItems/Space.hpp"
 
-#include "../Lemonbar.hpp"
-#include "../util.hpp"
+#include "Lemonbar.hpp"
+#include "util.hpp"
 
 std::ostream& operator<<(std::ostream& out, SpaceItem const& item) {
     out << item.icon << ' ' << item.mount_point << ' ';

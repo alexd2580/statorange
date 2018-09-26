@@ -116,7 +116,7 @@ bool has_input(int fd, int microsec) {
     FD_ZERO(&rfds);
     FD_SET(fd, &rfds);
 
-    struct timeval tv;
+    struct timeval tv {};
     tv.tv_sec = 0;
     tv.tv_usec = microsec;
 
@@ -160,10 +160,12 @@ ssize_t write_all(int fd, char const* buf, size_t count) {
         errno = 0;
         ssize_t n = write(fd, buf + bytes_written, count - bytes_written);
         if(n <= 0) {
-            if(errno == EINTR || errno == EAGAIN) // try again
+            if(errno == EINTR || errno == EAGAIN) { // try again
                 continue;
-            else if(errno == EPIPE) // can not write anymore
+            }
+            if(errno == EPIPE) { // can not write anymore
                 return -1;
+            }
             return n;
         }
         bytes_written += (size_t)n;
@@ -180,8 +182,9 @@ ssize_t read_all(int fd, char* buf, size_t count) {
         if(n <= 0) {
             // TODO use the logger here.
             cerr << "Read returned with 0/error. Errno: " << errno << endl;
-            if(errno == EINTR || errno == EAGAIN)
+            if(errno == EINTR || errno == EAGAIN) {
                 continue;
+            }
             return n;
         }
         bytes_read += (size_t)n;
@@ -208,11 +211,11 @@ std::string make_hex_color(uint8_t a, uint8_t r, uint8_t g, uint8_t b) {
     return res;
 }
 
-FileStream::FileStream(int fd) : fd(fd) {}
+FileStream::FileStream(int new_fd) : fd(new_fd) {}
 FileStream::FileStream(FILE* f) : FileStream(fileno(f)) {}
 
 int FileStream::underflow() {
-    if (buffered_char == EOF) {
+    if(buffered_char == EOF) {
         char c;
         buffered_char = read_all(fd, &c, 1) == 1 ? (int)c : EOF;
     }
@@ -220,11 +223,11 @@ int FileStream::underflow() {
 }
 
 int FileStream::uflow() {
-    if (buffered_char == EOF) {
+    if(buffered_char == EOF) {
         char c;
-        return read_all(fd, &c, 1) == 1 ? (int)c : EOF;
+        return read_all(fd, &c, 1) == 1 ? static_cast<int>(c) : EOF;
     }
-    char c = buffered_char;
+    auto c = static_cast<char>(buffered_char);
     buffered_char = EOF;
     return c;
 }
@@ -234,8 +237,13 @@ int FileStream::overflow(int i) {
     return write_all(fd, &c, 1) == 1 ? i : EOF;
 }
 
-#include<memory>
+#include <memory>
 
-std::unique_ptr<FILE, int(*)(FILE*)> run_command(std::string const& command, std::string const& mode) {
-    return std::unique_ptr<FILE, int(*)(FILE*)>(popen(command.c_str(), mode.c_str()), pclose);
+std::unique_ptr<FILE, int (*)(FILE*)> run_command(std::string const& command, std::string const& mode) {
+    return std::unique_ptr<FILE, int (*)(FILE*)>(popen(command.c_str(), mode.c_str()), pclose);
 }
+
+#include <unistd.h>
+
+UniqueSocket::UniqueSocket(int new_sockfd) : UniqueResource(new_sockfd, close) {}
+UniqueSocket::operator int() { return resource; }

@@ -1,12 +1,12 @@
-#ifndef __BATTERYXYZHEADER_LOL___
-#define __BATTERYXYZHEADER_LOL___
+#ifndef STATEITEMS_BATTERY_HPP
+#define STATEITEMS_BATTERY_HPP
 
 #include <ostream>
 #include <string>
 
-#include "../Lemonbar.hpp"
-#include "../StateItem.hpp"
-#include "../json_parser.hpp"
+#include "Lemonbar.hpp"
+#include "StateItem.hpp"
+#include "json_parser.hpp"
 
 class Battery final : public StateItem {
   private:

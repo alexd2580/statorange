@@ -5,9 +5,9 @@
 #include <string>
 #include <vector>
 
-#include "../Lemonbar.hpp"
-#include "../StateItem.hpp"
-#include "../json_parser.hpp"
+#include "Lemonbar.hpp"
+#include "StateItem.hpp"
+#include "json_parser.hpp"
 
 class CPU final : public StateItem {
   private:

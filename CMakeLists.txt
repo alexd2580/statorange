@@ -1,20 +1,21 @@
 cmake_minimum_required(VERSION 3.8)
-project(statorange CXX)
+project(statorange VERSION 2.0.0 LANGUAGES CXX)
 
-SET(CMAKE_CXX_COMPILER clang++)
+set(CMAKE_CXX_COMPILER clang++)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-function(make_clang_warnings enabled_warnings_list disabled_warnings_list clang_warning_flags_list)
-    foreach(warning ${${enabled_warnings_list}})
-        list(APPEND warning_flags "-W${warning}")
-    endforeach(warning)
-    foreach(warning ${${disabled_warnings_list}})
-        list(APPEND warning_flags "-Wno-${warning}")
-    endforeach(warning)
-    set(${clang_warning_flags_list} ${warning_flags} PARENT_SCOPE)
+function(make_clang_warnings ENABLED_WARNINGS_LIST DISABLED_WARNINGS_LIST CLANG_WARNING_FLAGS_LIST)
+    foreach(WARNING ${${ENABLED_WARNINGS_LIST}})
+        list(APPEND WARNING_FLAGS "-W${WARNING}")
+    endforeach(WARNING)
+    foreach(WARNING ${${DISABLED_WARNINGS_LIST}})
+        list(APPEND WARNING_FLAGS "-Wno-${WARNING}")
+    endforeach(WARNING)
+    set(${CLANG_WARNING_FLAGS_LIST} ${WARNING_FLAGS} PARENT_SCOPE)
 endfunction()
 
-set(enabled_warnings everything)
-set(disabled_warnings
+set(ENABLED_WARNINGS everything)
+set(DISABLED_WARNINGS
     padded
     c++98-compat
     c++98-compat-pedantic
@@ -26,39 +27,38 @@ set(disabled_warnings
     exit-time-destructors
     disabled-macro-expansion
 )
-make_clang_warnings(enabled_warnings disabled_warnings clang_warning_flags)
+make_clang_warnings(ENABLED_WARNINGS DISABLED_WARNINGS CLANG_WARNING_FLAGS)
 
 # Add system include paths.
-include_directories(SYSTEM bandit)
+# include_directories(SYSTEM bandit)
 
 # The source files.
-file(GLOB_RECURSE SRC src/*.cpp)
-file(GLOB_RECURSE STATORANGE src/statorange.cpp)
-list(REMOVE_ITEM SRC ${STATORANGE})
+file(GLOB_RECURSE SOURCES src/*.cpp)
+# file(GLOB_RECURSE STATORANGE src/statorange.cpp)
+# list(REMOVE_ITEM SOURCES ${STATORANGE})
 
-# add_compile_options(-std=c++2a -stdlib=libc++ ${clang_warning_flags})
-add_compile_options(-std=c++2a ${clang_warning_flags})
 set(LIBS asound ssl crypto)
 
 # The main executable
-add_executable(statorange ${STATORANGE} ${SRC})
+add_executable(statorange ${SOURCES})
+target_include_directories(statorange PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_compile_options(statorange PRIVATE ${CLANG_WARNING_FLAGS})
+target_compile_features(statorange PRIVATE cxx_std_20)
 target_link_libraries(statorange ${LIBS})
 
 # # The test executable(s).
-# add_executable(test_suite tests/main.cpp ${SRC})
+# add_executable(test_suite tests/main.cpp ${SOURCES})
 # target_link_libraries(test_suite ${LIBS})
 #
 # # Add the test execution to cmake.
 # enable_testing()
 # add_test(test_suite test_suite)
 
-# Install the binary and the launcher.
+# Install the binary.
 install(TARGETS statorange DESTINATION /usr/local/bin)
-install(PROGRAMS statorange_launcher DESTINATION /usr/local/bin)
 
 # Install the fonts.
-file(GLOB MISC_FONTS res/misc/*)
 install(
-    FILES ${MISC_FONTS}
+    DIRECTORY ${PROJECT_SOURCE_DIR}/res/misc
     DESTINATION /usr/local/lib/statorange/misc
 )

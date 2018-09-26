@@ -1,7 +1,8 @@
-#ifndef __STRUTIL_LOL___
-#define __STRUTIL_LOL___
+#ifndef UTIL_HPP
+#define UTIL_HPP
 
 #include <cstddef>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <ostream>
@@ -63,21 +64,53 @@ class FileStream : public std::streambuf {
     const int fd;
     int buffered_char = EOF;
 
+  public:
+    explicit FileStream(int fd);
+    explicit FileStream(FILE* f);
+
     FileStream(const FileStream&) = delete;
     FileStream(FileStream&&) = delete;
     FileStream& operator=(const FileStream&) = delete;
     FileStream& operator=(FileStream&&) = delete;
 
-  public:
-    explicit FileStream(int fd);
-    explicit FileStream(FILE* f);
-    virtual ~FileStream() override = default ;
+    ~FileStream() override = default;
 
-    virtual int underflow() override;
-    virtual int uflow() override;
-    virtual int overflow(int c) override;
+    int underflow() override;
+    int uflow() override;
+    int overflow(int c) override;
 };
 
-std::unique_ptr<FILE, int(*)(FILE*)> run_command(std::string const& command, std::string const& mode);
+std::unique_ptr<FILE, int (*)(FILE*)> run_command(std::string const& command, std::string const& mode);
+
+template <typename Resource, typename _ = void>
+class UniqueResource {
+    using Release = std::function<_(Resource)>;
+
+  protected:
+    Resource resource;
+    Release release;
+
+  public:
+    explicit UniqueResource(Resource new_resource, Release new_release)
+        : resource(new_resource), release(new_release) {}
+
+    UniqueResource(UniqueResource const& other) = delete;
+    UniqueResource& operator=(UniqueResource const& other) = delete;
+
+    UniqueResource(UniqueResource&& other) noexcept : resource(other.resource), release(other.release) {}
+    UniqueResource& operator=(UniqueResource&& other) noexcept {
+        release(resource);
+        resource = other.resource;
+        release = other.release;
+    }
+
+    virtual ~UniqueResource() { release(resource); }
+};
+
+class UniqueSocket final : public UniqueResource<int> {
+  public:
+    explicit UniqueSocket(int new_sockfd);
+    operator int(); // NOLINT: Implicit `int()` conversions are expected behavior.
+};
 
 #endif

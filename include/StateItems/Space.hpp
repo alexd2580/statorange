@@ -5,9 +5,9 @@
 #include <string>
 #include <vector>
 
-#include "../Lemonbar.hpp"
-#include "../StateItem.hpp"
-#include "../json_parser.hpp"
+#include "Lemonbar.hpp"
+#include "StateItem.hpp"
+#include "json_parser.hpp"
 
 struct SpaceItem {
     std::string const mount_point;

@@ -2,27 +2,28 @@
 #include <cstring>
 #include <ostream>
 
-#include "CPU.hpp"
+#include "StateItems/CPU.hpp"
 
-#include "../Lemonbar.hpp"
-#include "../util.hpp"
+#include "Lemonbar.hpp"
+#include "util.hpp"
 
 bool CPU::read_line(std::string const& path, char* data, uint32_t num) {
-    std::unique_ptr<FILE, int (*)(FILE*)> file(fopen(path.c_str(), "r"), fclose);
-    if(file.get() == nullptr) {
+    std::unique_ptr<FILE, int (*)(FILE*)> file(fopen(path.c_str(), "re"), fclose);
+    if(file == nullptr) {
         return false;
     }
-    return fgets(data, (int32_t)num, file.get()) == data;
+    return fgets(data, static_cast<int32_t>(num), file.get()) == data;
 }
 
 std::pair<bool, bool> CPU::update_raw() {
     char line[11];
+    auto line_ptr = static_cast<char*>(line);
     bool success = true;
 
     cpu_temps.clear();
     for(auto const& path : temp_file_paths) {
-        if(read_line(path, line, 10)) {
-            cpu_temps.push_back((uint32_t)strtol(line, nullptr, 0) / 1000);
+        if(read_line(path, line_ptr, 10)) {
+            cpu_temps.push_back(static_cast<uint32_t>(strtol(line_ptr, nullptr, 0) / 1000));
         } else {
             log() << "Couldn't read temperature file [" << path << "]:" << std::endl << strerror(errno) << std::endl;
             cpu_temps.emplace_back(999);
@@ -30,8 +31,8 @@ std::pair<bool, bool> CPU::update_raw() {
         }
     }
 
-    if(read_line(load_file_path, line, 10)) {
-        cpu_load = strtof(line, nullptr);
+    if(read_line(load_file_path, line_ptr, 10)) {
+        cpu_load = strtof(line_ptr, nullptr);
     } else {
         log() << "Couldn't read load file [" << load_file_path << "]:" << std::endl << strerror(errno) << std::endl;
         cpu_load = 999.0f;

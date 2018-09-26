@@ -5,9 +5,9 @@
 #include <string>
 #include <utility>
 
-#include "../Lemonbar.hpp"
-#include "../StateItem.hpp"
-#include "../json_parser.hpp"
+#include "Lemonbar.hpp"
+#include "StateItem.hpp"
+#include "json_parser.hpp"
 
 class Date final : public StateItem {
   private:
