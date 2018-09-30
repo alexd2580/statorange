@@ -30,21 +30,28 @@ set(DISABLED_WARNINGS
 make_clang_warnings(ENABLED_WARNINGS DISABLED_WARNINGS CLANG_WARNING_FLAGS)
 
 # Add system include paths.
-# include_directories(SYSTEM bandit)
 
 # The source files.
 file(GLOB_RECURSE SOURCES src/*.cpp)
-# file(GLOB_RECURSE STATORANGE src/statorange.cpp)
-# list(REMOVE_ITEM SOURCES ${STATORANGE})
+file(GLOB_RECURSE STATORANGE src/statorange.cpp)
+list(REMOVE_ITEM SOURCES ${STATORANGE})
+file(GLOB_RECURSE TEST_SOURCES tests/*.cpp)
 
-set(LIBS asound ssl crypto)
+set(LIBS asound ssl crypto c++)
 
 # The main executable
-add_executable(statorange ${SOURCES})
+add_executable(statorange ${SOURCES} ${STATORANGE})
 target_include_directories(statorange PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_compile_options(statorange PRIVATE ${CLANG_WARNING_FLAGS})
+target_compile_options(statorange PRIVATE -stdlib=libc++ ${CLANG_WARNING_FLAGS})
 target_compile_features(statorange PRIVATE cxx_std_20)
 target_link_libraries(statorange ${LIBS})
+
+add_executable(statorange_test ${SOURCES} ${TEST_SOURCES})
+target_include_directories(statorange_test SYSTEM PRIVATE bandit)
+target_include_directories(statorange_test PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_compile_options(statorange_test PRIVATE -stdlib=libc++ ${CLANG_WARNING_FLAGS})
+target_compile_features(statorange_test PRIVATE cxx_std_20)
+target_link_libraries(statorange_test ${LIBS})
 
 # # The test executable(s).
 # add_executable(test_suite tests/main.cpp ${SOURCES})
