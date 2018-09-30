@@ -13,73 +13,60 @@
 
 #include "util.hpp"
 
-using namespace std;
+// std::string const shell_file_loc = "/bin/sh";
+// std::string const terminal_cmd = "x-terminal-emulator -e";
 
-string const shell_file_loc = "/bin/sh";
-string const terminal_cmd = "x-terminal-emulator -e";
+StringPointer::StringPointer(char const* new_base) : base(new_base), offset(0) {}
 
-char next(char const*& string) {
-    string++;
-    return *(string - 1);
+StringPointer::operator char const*() const { // NOLINT: Implicit conversion desired.
+    return base + offset;                     // NOLINT: Pointer arithmetic intended.
 }
 
-void whitespace(char const*& string) {
-    char c = *string;
+char StringPointer::peek() const { return base[offset]; } // NOLINT: Pointer arithmetic intended.
+
+void StringPointer::skip(size_t num) { offset += num; }
+
+char StringPointer::next() {
+    return base[offset++]; // NOLINT: Pointer arithmetic intended.
+}
+
+void StringPointer::whitespace() {
+    char c = peek();
     while((c == ' ' || c == '\n' || c == '\t') && c != '\0') {
-        string++;
-        c = *string;
+        c = base[offset++]; // NOLINT: Pointer arithmetic intended.
     }
 }
 
-void nonspace(char const*& string) {
-    char c = *string;
+void StringPointer::nonspace() {
+    char c = peek();
     while(c != ' ' && c != '\n' && c != '\t' && c != '\0') {
-        string++;
-        c = *string;
+        c = base[offset++]; // NOLINT: Pointer arithmetic intended.
     }
 }
 
-double number(char const*& string) {
-    char* endptr;
-    double n = strtod(string, &endptr);
-    if(endptr == string) {
-        cerr << "Could not convert string to number" << endl;
-        exit(1);
-    }
-    string = endptr;
-    return n;
-}
-
-std::string number_str(char const*& str) {
-    char* endptr;
-    strtod(str, &endptr);
-    char const* start = str;
-    str = endptr;
-    return string(start, (size_t)(endptr - start));
-}
-
-string escaped_string(char const*& string) {
-    char c = next(string);
+std::string StringPointer::escaped_string() {
+    char c = peek();
     if(c != '"') {
-        cerr << "Expected [\"], got: [" << c << "]." << endl;
+        std::cerr << "Expected [\"], got: [" << c << "]." << std::endl;
         exit(1);
     }
 
-    ostringstream o;
-    char const* start = string;
-    c = next(string);
+    std::ostringstream o;
+    ssize_t start = offset;
+    c = next();
 
     while(c != '"' && c != '\0') {
-        if(c == '\\') // if an escaped char is found
+        if(c == '\\') // If an escaped char is found.
         {
-            // `string` points to one character ahead.
-            size_t len = (size_t)(string - start - 1);
-            o << std::string(start, len);
-            c = next(string);
+            // `str` points to one character ahead.
+            // Push the existing string and grab the next character.
+            ssize_t len = offset - start - 1;
+            o << std::string(base + start, static_cast<size_t>(len)); // NOLINT: Pointer arithmetic intended.
+            c = next();
 
             switch(c) {
             case '\0':
-                cerr << "Unexpected EOS when parsing escaped character." << endl;
+                std::cerr << "Unexpected EOS when parsing escaped character." << std::endl;
                 exit(1);
             case 'n':
                 o << '\n';
@@ -91,30 +78,30 @@ string escaped_string(char const*& string) {
                 o << '\r';
                 break;
             default:
-                cerr << "Invalid escape sequence: '\\" << c << "'" << endl;
+                std::cerr << "Invalid escape sequence: '\\" << c << "'" << std::endl;
                 o << c;
                 break;
             }
-            start = string;
+            start = offset;
         }
-        c = next(string);
+        c = next();
     }
 
     if(c == '\0') {
-        cerr << "Unexpected EOS" << endl;
+        std::cerr << "Unexpected EOS" << std::endl;
         exit(1);
     }
 
-    size_t len = (size_t)(string - start - 1);
-    o << std::string(start, len);
+    ssize_t len = offset - start - 1;
+    o << std::string(base + start, static_cast<size_t>(len)); // NOLINT: Pointer arithmetic intended.
 
     return o.str();
 }
 
 bool has_input(int fd, int microsec) {
     fd_set rfds;
-    FD_ZERO(&rfds);
-    FD_SET(fd, &rfds);
+    FD_ZERO(&rfds);    // NOLINT: Macro use with inline assembler intended.
+    FD_SET(fd, &rfds); // NOLINT: Macro use with inline assembler intended.
 
     struct timeval tv {};
     tv.tv_sec = 0;
@@ -123,8 +110,8 @@ bool has_input(int fd, int microsec) {
     return select(fd + 1, &rfds, nullptr, nullptr, &tv) == 1;
 }
 
-bool load_file(string const& name, string& content) {
-    fstream file(name.c_str(), fstream::in);
+bool load_file(std::string const& name, std::string& content) {
+    std::fstream file(name.c_str(), std::fstream::in);
     if(file.is_open()) {
         // We use the standard getline function to read the file into
         // a std::string, stoping only at "\0"
@@ -133,7 +120,6 @@ bool load_file(string const& name, string& content) {
         file.close();
         return ret;
     }
-
     return false;
 }
 
@@ -141,15 +127,16 @@ bool load_file(string const& name, string& content) {
 #include <ctime>   // strftime
 #include <iomanip> // std::put_time
 
-ostream& print_time(ostream& out, struct tm& ptm, char const* const format) {
+std::ostream& print_time(std::ostream& out, struct tm& ptm, char const* const format) {
 #ifndef __GLIBCXX__
 #define __GLIBCXX__ 0
 #endif
 #if __GLIBCXX__ >= 20151205
-    return out << put_time(&ptm, format);
+    return out << std::put_time(&ptm, format);
 #else
     char str[256];
-    return out << (strftime(str, 256, format, &ptm) != 0) ? str : "???";
+    auto str_ptr = static_cast<char*>(str);
+    return out << (strftime(str_ptr, 256, format, &ptm) != 0 ? str_ptr : "???");
 #endif
 }
 
@@ -158,6 +145,7 @@ ssize_t write_all(int fd, char const* buf, size_t count) {
 
     while(bytes_written < count) {
         errno = 0;
+        // NOLINTNEXTLINE: Pointer arithmetic intended.
         ssize_t n = write(fd, buf + bytes_written, count - bytes_written);
         if(n <= 0) {
             if(errno == EINTR || errno == EAGAIN) { // try again
@@ -168,9 +156,9 @@ ssize_t write_all(int fd, char const* buf, size_t count) {
             }
             return n;
         }
-        bytes_written += (size_t)n;
+        bytes_written += static_cast<size_t>(n);
     }
-    return (ssize_t)bytes_written;
+    return static_cast<ssize_t>(bytes_written);
 }
 
 ssize_t read_all(int fd, char* buf, size_t count) {
@@ -178,24 +166,23 @@ ssize_t read_all(int fd, char* buf, size_t count) {
 
     while(bytes_read < count) {
         errno = 0;
+        // NOLINTNEXTLINE: Pointer arithmetic intended.
         ssize_t n = read(fd, buf + bytes_read, count - bytes_read);
         if(n <= 0) {
-            // TODO use the logger here.
-            cerr << "Read returned with 0/error. Errno: " << errno << endl;
+            std::cerr << "Read returned with 0/error. Errno: " << errno << std::endl;
             if(errno == EINTR || errno == EAGAIN) {
                 continue;
             }
             return n;
         }
-        bytes_read += (size_t)n;
+        bytes_read += static_cast<size_t>(n);
     }
-    assert(bytes_read == count);
-    return (ssize_t)bytes_read;
+    assert(bytes_read == count); // NOLINT: Calling `assert` triggers array-decay-lint.
+    return static_cast<ssize_t>(bytes_read);
 }
 
-static std::string const hex_chars = "0123456789ABCDEF";
-
 void make_hex(std::string::iterator dst, uint8_t a) {
+    static std::string const hex_chars = "0123456789ABCDEF";
     *dst = hex_chars[a / 16];
     *(dst + 1) = hex_chars[a % 16];
 }
@@ -217,7 +204,7 @@ FileStream::FileStream(FILE* f) : FileStream(fileno(f)) {}
 int FileStream::underflow() {
     if(buffered_char == EOF) {
         char c;
-        buffered_char = read_all(fd, &c, 1) == 1 ? (int)c : EOF;
+        buffered_char = read_all(fd, &c, 1) == 1 ? static_cast<int>(c) : EOF;
     }
     return buffered_char;
 }
@@ -233,17 +220,18 @@ int FileStream::uflow() {
 }
 
 int FileStream::overflow(int i) {
-    char c = (char)i;
+    auto c = static_cast<char>(i);
     return write_all(fd, &c, 1) == 1 ? i : EOF;
 }
 
+UniqueFile open_file(std::string const& path) { return {fopen(path.c_str(), "re"), fclose}; }
+
 #include <memory>
 
-std::unique_ptr<FILE, int (*)(FILE*)> run_command(std::string const& command, std::string const& mode) {
-    return std::unique_ptr<FILE, int (*)(FILE*)>(popen(command.c_str(), mode.c_str()), pclose);
+UniqueFile run_command(std::string const& command, std::string const& mode) {
+    // NOLINTNEXTLINE: TODO: Replace by CERT-ENV33-C compliant solution.
+    return {popen(command.c_str(), mode.c_str()), pclose};
 }
-
-#include <unistd.h>
 
 UniqueSocket::UniqueSocket(int new_sockfd) : UniqueResource(new_sockfd, close) {}
 UniqueSocket::operator int() { return resource; }

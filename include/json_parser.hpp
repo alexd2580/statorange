@@ -1,5 +1,5 @@
-#ifndef __COMPACT_JSON_PARSER__
-#define __COMPACT_JSON_PARSER__
+#ifndef JSON_PARSER_HPP
+#define JSON_PARSER_HPP
 
 #include <map>
 #include <memory>
@@ -14,10 +14,10 @@ class Node;
 
 class Value {
   protected:
-    Value(void) = default;
+    Value() = default;
 
   public:
-    virtual ~Value(void) = default;
+    virtual ~Value() = default;
 };
 
 class Node;
@@ -27,8 +27,8 @@ class Object final : public Value {
 
   private:
     std::map<std::string, std::shared_ptr<Value>> map;
-    void parse_kv_pair(char const*& str);
-    Object(char const*& str);
+    void parse_kv_pair(StringPointer& str); // NOLINT: Reference intended.
+    explicit Object(StringPointer& str);    // NOLINT: Reference intended.
 };
 
 class Array final : public Value {
@@ -36,7 +36,7 @@ class Array final : public Value {
 
   private:
     std::vector<std::shared_ptr<Value>> vector;
-    Array(char const*& str);
+    explicit Array(StringPointer& str); // NOLINT: Reference intended.
 };
 
 class String final : public Value {
@@ -44,7 +44,7 @@ class String final : public Value {
 
   private:
     std::string string_value;
-    explicit String(char const*& str);
+    explicit String(StringPointer& str); // NOLINT: Reference intended.
 };
 
 class Number final : public Value {
@@ -52,7 +52,7 @@ class Number final : public Value {
 
   private:
     std::string string_value;
-    explicit Number(char const*& str);
+    explicit Number(StringPointer& str); // NOLINT: Reference intended.
 };
 
 class Bool final : public Value {
@@ -60,7 +60,7 @@ class Bool final : public Value {
 
   private:
     bool b;
-    explicit Bool(char const*& str);
+    explicit Bool(StringPointer& str); // NOLINT: Reference intended.
 };
 
 class Null final : public Value {
@@ -68,8 +68,8 @@ class Null final : public Value {
 
   private:
     static std::shared_ptr<Null> static_null;
-    Null(void) = default;
-    Null(char const*& str);
+    Null() = default;
+    explicit Null(StringPointer& str); // NOLINT: Reference intended.
 };
 
 class Node final {
@@ -77,13 +77,13 @@ class Node final {
     std::shared_ptr<Value> value;
 
     template <typename ValueType>
-    ValueType const* as(void) const {
+    auto const* as() const {
         return dynamic_cast<ValueType*>(value.get());
     }
 
   public:
-    static std::shared_ptr<Value> parse(char const*& str) {
-        whitespace(str);
+    static std::shared_ptr<Value> parse(StringPointer& str) { // NOLINT: Reference intended.
+        str.whitespace();
         // Lookahead, don't consume `c`.
         char c = *str;
         switch(c) {
@@ -101,22 +101,26 @@ class Node final {
         case 'n':
             return std::shared_ptr<Null>(new Null(str));
         default:
-            if((c >= '0' && c <= '9') || c == '.' || c == '+' || c == '-')
+            if((c >= '0' && c <= '9') || c == '.' || c == '+' || c == '-') {
                 return std::shared_ptr<Number>(new Number(str));
+            }
             break;
         }
 
         std::ostringstream out;
-        out << "No valid Value detected: [" << c << "](" << (int)c << ").";
+        out << "No valid Value detected: [" << c << "](" << static_cast<int>(c) << ").";
         throw out.str();
     }
 
-    Node(char const* str) { value = parse(str); }
-    Node(std::shared_ptr<Value> ptr) { value = ptr; }
+    explicit Node(char const* str) {
+        StringPointer sp(str);
+        value = parse(sp);
+    }
+    explicit Node(std::shared_ptr<Value> ptr) { value = std::move(ptr); }
 
-    bool exists(void) const {
+    bool exists() const {
         // We expect the pointer to not be convertible to `Null`.
-        return value.get() != nullptr && dynamic_cast<Null*>(value.get()) == nullptr;
+        return value != nullptr && dynamic_cast<Null*>(value.get()) == nullptr;
     }
 
     // Object functions.
@@ -127,13 +131,16 @@ class Node final {
         iterator_type iterator;
 
       public:
-        ObjectConstIterator(iterator_type iterator_) { iterator = iterator_; }
-        ObjectConstIterator& operator++(void) {
+        explicit ObjectConstIterator(iterator_type new_iterator) { iterator = new_iterator; }
+        // NOLINTNEXTLINE: `operator++` overload desired.
+        ObjectConstIterator& operator++() {
             iterator++;
             return *this;
         }
+        // NOLINTNEXTLINE: `operator!=` overload desired.
         bool operator!=(ObjectConstIterator const& other) const { return iterator != other.iterator; }
-        std::pair<std::string const&, Node const> operator*(void) {
+        // NOLINTNEXTLINE: `operator*` overload desired.
+        std::pair<std::string const&, Node const> operator*() {
             return std::make_pair(iterator->first, Node(iterator->second));
         }
     };
@@ -145,26 +152,31 @@ class Node final {
         container_type const& map;
 
       public:
-        ObjectWrapper(std::shared_ptr<Value> json, container_type const& map_) : source_json(json), map(map_) {}
-        ObjectConstIterator begin(void) const { return ObjectConstIterator(map.cbegin()); }
-        ObjectConstIterator end(void) const { return ObjectConstIterator(map.cend()); }
+        ObjectWrapper(std::shared_ptr<Value> json, container_type const& map_)
+            : source_json(std::move(json)), map(map_) {}
+        ObjectConstIterator begin() const { return ObjectConstIterator{map.cbegin()}; }
+        ObjectConstIterator end() const { return ObjectConstIterator{map.cend()}; }
     };
-    const ObjectWrapper object(void) const {
-        Object const* object_ptr = as<Object>();
-        if(object_ptr == nullptr)
-            throw "Cannot iterate ovev non-object JSON type.";
+    const ObjectWrapper object() const {
+        auto const* object_ptr = as<Object>();
+        if(object_ptr == nullptr) {
+            throw "Cannot iterate over non-object JSON type.";
+        }
         return ObjectWrapper(value, object_ptr->map);
     }
     const Node object_at(std::string const& key) const {
-        Object const* object_ptr = as<Object>();
-        if(object_ptr == nullptr)
+        auto const* object_ptr = as<Object>();
+        if(object_ptr == nullptr) {
             return Node(Null::static_null);
+        }
 
         const auto& map = object_ptr->map;
         auto const iter = map.find(key);
         return Node(iter == map.cend() ? Null::static_null : iter->second);
     }
+    // NOLINTNEXTLINE: `operator[]` overload desired.
     const Node operator[](std::string const& key) const { return object_at(key); }
+    // NOLINTNEXTLINE: `operator[]` overload desired.
     const Node operator[](char const* key) const { return object_at(std::string(key)); }
 
     // Array functions.
@@ -175,13 +187,16 @@ class Node final {
         iterator_type iterator;
 
       public:
-        ArrayConstIterator(iterator_type iterator_) { iterator = iterator_; }
-        ArrayConstIterator& operator++(void) {
+        explicit ArrayConstIterator(iterator_type iterator_) { iterator = iterator_; }
+        // NOLINTNEXTLINE: `operator++` overload desired.
+        ArrayConstIterator& operator++() {
             iterator++;
             return *this;
         }
+        // NOLINTNEXTLINE: `operator!=` overload desired.
         bool operator!=(ArrayConstIterator const& other) const { return iterator != other.iterator; }
-        Node const operator*(void) { return Node(*iterator); }
+        // NOLINTNEXTLINE: `operator*` overload desired.
+        Node const operator*() { return Node(*iterator); }
     };
     class ArrayWrapper {
       private:
@@ -191,54 +206,52 @@ class Node final {
         container_type const& array;
 
       public:
-        ArrayWrapper(std::shared_ptr<Value> const json, container_type const& array_)
-            : source_json(json), array(array_) {}
-        size_t size(void) const { return array.size(); }
-        ArrayConstIterator begin(void) const { return ArrayConstIterator(array.cbegin()); }
-        ArrayConstIterator end(void) const { return ArrayConstIterator(array.cend()); }
+        ArrayWrapper(std::shared_ptr<Value> json, container_type const& array_)
+            : source_json(std::move(json)), array(array_) {}
+        size_t size() const { return array.size(); }
+        ArrayConstIterator begin() const { return ArrayConstIterator{array.cbegin()}; }
+        ArrayConstIterator end() const { return ArrayConstIterator{array.cend()}; }
     };
-    const ArrayWrapper array(void) const {
-        Array const* array_ptr = as<Array>();
-        if(array_ptr == nullptr)
+    const ArrayWrapper array() const {
+        auto const* array_ptr = as<Array>();
+        if(array_ptr == nullptr) {
             throw "Cannot iterate ovev non-array JSON type.";
+        }
         return ArrayWrapper(value, array_ptr->vector);
     }
     const Node array_at(size_t index) const {
-        Array const* array_ptr = as<Array>();
-        if(array_ptr == nullptr)
+        auto const* array_ptr = as<Array>();
+        if(array_ptr == nullptr) {
             return Node(Null::static_null);
-
+        }
         const auto& vector = array_ptr->vector;
         return Node(index >= vector.size() ? Null::static_null : vector[index]);
     }
     template <typename IndexType, typename std::enable_if_t<std::is_integral<IndexType>::value>::type* = nullptr>
-    Node operator[](IndexType index) const {
-        return array_at((size_t)index);
+    Node operator[](IndexType index) const { // NOLINT: `operator[]` overload desired.
+        return array_at(static_cast<size_t>(index));
     }
 
     // String functions.
     std::string const& string(std::string const& default_value = "") const {
-        String const* string_ptr = as<String>();
-        if(string_ptr != nullptr)
-            return string_ptr->string_value;
-        return default_value;
+        auto const* string_ptr = as<String>();
+        return string_ptr != nullptr ? string_ptr->string_value : default_value;
     }
 
     // Number functions.
     template <typename T>
     T number(T default_value = 0) const {
-        Number const* number_ptr = as<Number>();
-        if(number_ptr != nullptr)
-            return convertToNumber<T>(number_ptr->string_value.c_str(), default_value);
+        auto const* number_ptr = as<Number>();
+        if(number_ptr != nullptr) {
+            return convert_to_number<T>(number_ptr->string_value.c_str(), default_value);
+        }
         return default_value;
     }
 
     // Bool functions.
     bool boolean(bool default_value = false) const {
-        Bool const* bool_ptr = as<Bool>();
-        if(bool_ptr != nullptr)
-            return bool_ptr->b;
-        return default_value;
+        auto const* bool_ptr = as<Bool>();
+        return bool_ptr != nullptr ? bool_ptr->b : default_value;
     }
 };
 } // namespace JSON

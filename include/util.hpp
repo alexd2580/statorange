@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <functional>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <ostream>
 #include <stack>
@@ -11,47 +12,102 @@
 
 // Convert to unsigned integer.
 template <typename T, typename std::enable_if_t<std::is_integral<T>::value && std::is_unsigned<T>::value>* = nullptr>
-T convertToNumber(const char* c_str, T default_value) {
-    char* endptr = nullptr;
-    unsigned long long result = strtoull(c_str, &endptr, 10);
-    bool valid = endptr != c_str && errno != ERANGE && result <= std::numeric_limits<T>::max();
-    return valid ? (T)result : default_value;
+// NOLINTNEXTLINE: Desired call signature.
+T convert_to_number(const char* c_str, bool& valid, char*& endptr) {
+    uint64_t result = strtoull(c_str, &endptr, 10);
+    valid = endptr != c_str && errno != ERANGE && result <= std::numeric_limits<T>::max();
+    return static_cast<T>(result);
 }
 
 // Convert to signed integer.
 template <typename T, typename std::enable_if_t<std::is_integral<T>::value && std::is_signed<T>::value>* = nullptr>
-T convertToNumber(const char* c_str, T default_value) {
-    char* endptr = nullptr;
-    long long result = strtoll(c_str, &endptr, 10);
-    bool valid = endptr != c_str && errno != ERANGE && result <= std::numeric_limits<T>::max() &&
-                 result >= std::numeric_limits<T>::min();
-    return valid ? (T)result : default_value;
+// NOLINTNEXTLINE: Desired call signature.
+T convert_to_number(const char* c_str, bool& valid, char*& endptr) {
+    int64_t result = strtoll(c_str, &endptr, 10);
+    valid = endptr != c_str && errno != ERANGE && result <= std::numeric_limits<T>::max() &&
+            result >= std::numeric_limits<T>::min();
+    return static_cast<T>(result);
 }
 
 // Convert to floating point.
 template <typename T, typename std::enable_if_t<std::is_floating_point<T>::value>* = nullptr>
-T convertToNumber(const char* c_str, T default_value) {
-    char* endptr = nullptr;
+// NOLINTNEXTLINE: Desired call signature.
+T convert_to_number(const char* c_str, bool& valid, char*& endptr) {
     long double result = strtold(c_str, &endptr);
-    bool valid = endptr != c_str && errno != ERANGE && result <= std::numeric_limits<T>::max() &&
-                 result >= std::numeric_limits<T>::lowest();
-    return valid ? (T)result : default_value;
+    valid = endptr != c_str && errno != ERANGE && result <= std::numeric_limits<T>::max() &&
+            result >= std::numeric_limits<T>::lowest();
+    return static_cast<T>(result);
 }
 
-char next(char const*& string);
-void whitespace(char const*& string);
-void nonspace(char const*& string);
-double number(char const*& string);
-std::string number_str(char const*& string);
-std::string escaped_string(char const*& string);
+template <typename T>
+T convert_to_number(const char* c_str, T default_value) {
+    char* endptr = nullptr;
+    bool valid = false;
+    auto result = convert_to_number<T>(c_str, valid, endptr);
+    return valid ? result : default_value;
+}
+
+template <typename T>
+// NOLINTNEXTLINE: Desired call signature.
+T convert_to_number(const char* c_str, bool& valid) {
+    char* endptr = nullptr;
+    return convert_to_number<T>(c_str, valid, endptr);
+}
+
+class StringPointer final {
+  private:
+    char const* const base;
+    ssize_t offset;
+
+  public:
+    explicit StringPointer(char const* base);
+    operator char const*() const;    // NOLINT: Implicit conversion desired.
+
+    char peek() const;
+    void skip(size_t offset);
+    char next();
+    void whitespace();
+    void nonspace();
+    // NOLINTNEXTLINE: Desired call signature.
+    std::string escaped_string();
+
+    template <typename T>
+    T number() {
+        bool valid;
+        char* endptr;
+        // NOLINTNEXTLINE: Pointer arithmetic intended.
+        auto n = convert_to_number<T>(base + offset, valid, endptr);
+        // NOLINTNEXTLINE: Pointer arithmetic intended.
+        if(endptr == base + offset) {
+            std::cerr << "Could not convert string to number" << std::endl;
+            exit(1);
+        }
+        offset = endptr - base;
+        return n;
+    }
+
+    template <typename T>
+    std::string number_str() {
+        bool valid;
+        char* endptr;
+        // NOLINTNEXTLINE: Pointer arithmetic intended.
+        convert_to_number<T>(base + offset, valid, endptr);
+        ssize_t start = offset;
+        offset = endptr - base;
+        // NOLINTNEXTLINE: Pointer arithmetic intended.
+        return std::string(base + start, static_cast<size_t>(offset - start));
+    }
+};
 
 // In a fail case errno is set appropriately.
 bool has_input(int fd, int microsec = 0);
 
 void store_string(char* dst, size_t dst_size, char* src, size_t src_size);
 
+// NOLINTNEXTLINE: Desired call signature.
 bool load_file(std::string const& name, std::string& content);
 
+// NOLINTNEXTLINE: Desired call signature.
 std::ostream& print_time(std::ostream& out, struct tm& ptm, char const* const format);
 
 ssize_t read_all(int fd, char* buf, size_t count);
@@ -80,7 +136,10 @@ class FileStream : public std::streambuf {
     int overflow(int c) override;
 };
 
-std::unique_ptr<FILE, int (*)(FILE*)> run_command(std::string const& command, std::string const& mode);
+using UniqueFile = std::unique_ptr<FILE, int (*)(FILE*)>;
+
+UniqueFile open_file(std::string const& path);
+UniqueFile run_command(std::string const& command, std::string const& mode);
 
 template <typename Resource, typename _ = void>
 class UniqueResource {

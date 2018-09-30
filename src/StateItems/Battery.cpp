@@ -8,16 +8,13 @@
 #include "Lemonbar.hpp"
 
 std::pair<bool, bool> Battery::update_raw() {
-    ANON_LOG << "UPDAYE" << std::endl;
     std::unique_ptr<FILE, int (*)(FILE*)> file(fopen(bat_file_loc.c_str(), "re"), fclose);
     if(file == nullptr) {
-        ANON_LOG << "NOT FOUND" << std::endl;
         status = Status::not_found;
     } else {
         char line[201];
         auto line_ptr = static_cast<char*>(line);
         while(fgets(line_ptr, 200, file.get()) != nullptr) {
-            ANON_LOG << line_ptr << std::endl;
             if(strncmp(line_ptr + 13, "STATUS", 6) == 0) {
                 if(strncmp(line_ptr + 20, "Full", 4) == 0) {
                     status = Status::full;
@@ -42,7 +39,6 @@ std::pair<bool, bool> Battery::update_raw() {
 }
 
 void Battery::print_raw(Lemonbar& bar, uint8_t) {
-    ANON_LOG << (int)status << std::endl;
     if(status == Status::not_found) {
         return;
     }

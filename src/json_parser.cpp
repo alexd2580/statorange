@@ -8,34 +8,34 @@
 #include "util.hpp"
 
 namespace JSON {
-void Object::parse_kv_pair(char const*& str) {
-    std::string key(escaped_string(str));
-    whitespace(str);
-    char c = next(str);
+void Object::parse_kv_pair(StringPointer& str) {
+    std::string key(str.escaped_string());
+    str.whitespace();
+    char c = str.next();
     if(c != ':') {
         throw std::string("Expected ':', got: '") + c + "'.";
     }
 
-    whitespace(str);
+    str.whitespace();
     map.emplace(move(key), Node::parse(str));
 }
 
-Object::Object(char const*& str) {
-    char c = *str;
+Object::Object(StringPointer& str) {
+    char c = str.peek();
     if(c != '{') {
         throw std::string("Expected '{', got: '") + c + "'.";
     }
 
     while(true) {
-        whitespace(str);
-        c = next(str);
+        str.whitespace();
+        c = str.next();
         char delimiter = map.empty() ? '{' : ',';
         if(c == delimiter) {
-            whitespace(str);
+            str.whitespace();
             // Lookahead, don't consume `c`.
-            c = *str;
+            c = str.peek();
             if(c == '}' && map.empty()) {
-                str++;
+                str.skip(1);
                 break;
             }
             parse_kv_pair(str);
@@ -49,22 +49,22 @@ Object::Object(char const*& str) {
     }
 }
 
-Array::Array(char const*& str) {
-    char c = *str;
+Array::Array(StringPointer& str) {
+    char c = str.peek();
     if(c != '[') {
         throw "Array not starting at the given position.";
     }
 
     while(true) {
-        whitespace(str);
-        c = next(str);
+        str.whitespace();
+        c = str.next();
         char delimiter = vector.empty() ? '[' : ',';
         if(c == delimiter) {
-            whitespace(str);
+            str.whitespace();
             // Lookahead (don't consume `c`).
-            c = *str;
+            c = str.peek();
             if(c == ']' && vector.empty()) {
-                str++;
+                str.skip(1);
                 break;
             }
 
@@ -79,25 +79,25 @@ Array::Array(char const*& str) {
     }
 }
 
-String::String(char const*& str) { string_value = escaped_string(str); }
+String::String(StringPointer& str) { string_value = str.escaped_string(); }
 
-Number::Number(char const*& str) { string_value = number_str(str); }
+Number::Number(StringPointer& str) { string_value = str.number_str<long double>(); }
 
-Bool::Bool(char const*& str) {
+Bool::Bool(StringPointer& str) {
     if(strncmp(str, "false", 5) == 0) {
         b = false;
-        str += 5;
+        str.skip(5);
     } else if(strncmp(str, "true", 4) == 0) {
         b = true;
-        str += 4;
+        str.skip(4);
     } else {
         throw std::string("Could not detect neither true nor false: '") + std::string(str, 5) + "'.";
     }
 }
 
-Null::Null(char const*& str) {
+Null::Null(StringPointer& str) {
     if(strncmp(str, "null", 4) == 0) {
-        str += 4;
+        str.skip(4);
     } else {
         throw std::string("Could not detect null: '") + std::string(str, 4) + "'.";
     }
