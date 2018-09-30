@@ -29,13 +29,11 @@ set(DISABLED_WARNINGS
 )
 make_clang_warnings(ENABLED_WARNINGS DISABLED_WARNINGS CLANG_WARNING_FLAGS)
 
-# Add system include paths.
-
 # The source files.
 file(GLOB_RECURSE SOURCES src/*.cpp)
 file(GLOB_RECURSE STATORANGE src/statorange.cpp)
 list(REMOVE_ITEM SOURCES ${STATORANGE})
-file(GLOB_RECURSE TEST_SOURCES tests/*.cpp)
+file(GLOB_RECURSE UNIT_TEST_SOURCES tests/*.cpp)
 
 set(LIBS asound ssl crypto c++)
 
@@ -46,20 +44,16 @@ target_compile_options(statorange PRIVATE -stdlib=libc++ ${CLANG_WARNING_FLAGS})
 target_compile_features(statorange PRIVATE cxx_std_20)
 target_link_libraries(statorange ${LIBS})
 
-add_executable(statorange_test ${SOURCES} ${TEST_SOURCES})
-target_include_directories(statorange_test SYSTEM PRIVATE bandit)
-target_include_directories(statorange_test PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_compile_options(statorange_test PRIVATE -stdlib=libc++ ${CLANG_WARNING_FLAGS})
-target_compile_features(statorange_test PRIVATE cxx_std_20)
-target_link_libraries(statorange_test ${LIBS})
+add_executable(statorange_unit_tests ${SOURCES} ${UNIT_TEST_SOURCES})
+target_include_directories(statorange_unit_tests SYSTEM PRIVATE bandit)
+target_include_directories(statorange_unit_tests PRIVATE ${PROJECT_SOURCE_DIR}/include)
+target_compile_options(statorange_unit_tests PRIVATE -stdlib=libc++ ${CLANG_WARNING_FLAGS})
+target_compile_features(statorange_unit_tests PRIVATE cxx_std_20)
+target_link_libraries(statorange_unit_tests ${LIBS})
 
-# # The test executable(s).
-# add_executable(test_suite tests/main.cpp ${SOURCES})
-# target_link_libraries(test_suite ${LIBS})
-#
-# # Add the test execution to cmake.
-# enable_testing()
-# add_test(test_suite test_suite)
+# Add the test execution to cmake.
+enable_testing()
+add_test(statorange_unit_tests statorange_unit_tests)
 
 # Install the binary.
 install(TARGETS statorange DESTINATION /usr/local/bin)
