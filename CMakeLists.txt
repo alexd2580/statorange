@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.8)
 project(statorange VERSION 2.0.0 LANGUAGES CXX)
 
+add_subdirectory(fmt)
+add_subdirectory(bandit)
+
 set(CMAKE_CXX_COMPILER clang++)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -35,17 +38,18 @@ file(GLOB_RECURSE STATORANGE src/statorange.cpp)
 list(REMOVE_ITEM SOURCES ${STATORANGE})
 file(GLOB_RECURSE UNIT_TEST_SOURCES tests/*.cpp)
 
-set(LIBS asound ssl crypto c++)
+set(LIBS asound ssl crypto c++ fmt)
 
 # The main executable
 add_executable(statorange ${SOURCES} ${STATORANGE})
+target_include_directories(statorange SYSTEM PRIVATE fmt)
 target_include_directories(statorange PRIVATE ${PROJECT_SOURCE_DIR}/include)
 target_compile_options(statorange PRIVATE -stdlib=libc++ ${CLANG_WARNING_FLAGS})
 target_compile_features(statorange PRIVATE cxx_std_20)
 target_link_libraries(statorange ${LIBS})
 
 add_executable(statorange_unit_tests ${SOURCES} ${UNIT_TEST_SOURCES})
-target_include_directories(statorange_unit_tests SYSTEM PRIVATE bandit)
+target_include_directories(statorange_unit_tests SYSTEM PRIVATE bandit fmt)
 target_include_directories(statorange_unit_tests PRIVATE ${PROJECT_SOURCE_DIR}/include)
 target_compile_options(statorange_unit_tests PRIVATE -stdlib=libc++ ${CLANG_WARNING_FLAGS})
 target_compile_features(statorange_unit_tests PRIVATE cxx_std_20)
