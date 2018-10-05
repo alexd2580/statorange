@@ -11,6 +11,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include<fmt/format.h>
+
 #include "util.hpp"
 
 // std::string const shell_file_loc = "/bin/sh";
@@ -54,8 +56,9 @@ void StringPointer::nonspace() {
 std::string StringPointer::escaped_string() {
     char c = peek();
     if(c != '"') {
-        throw ParseException("Expected [\"], got: [" + c + "].");
+        throw ParseException(fmt::format("Expected [\"], got [{}].", c));
     }
+    skip(1);
 
     std::ostringstream o;
     ssize_t start = offset;
@@ -82,10 +85,14 @@ std::string StringPointer::escaped_string() {
             case 'r':
                 o << '\r';
                 break;
-            default:
-                std::cerr << "Invalid escape sequence: '\\" << c << "'" << std::endl;
-                o << c;
+            case '\\':
+                o << '\\';
                 break;
+            case '"':
+                o << '"';
+                break;
+            default:
+                throw ParseException(fmt::format("Invalid escape sequence [\\{}].", c));
             }
             start = offset;
         }
@@ -93,7 +100,7 @@ std::string StringPointer::escaped_string() {
     }
 
     if(c == '\0') {
-        throw ParseException("Unexpected EOS");
+        throw ParseException("Unexpected EOS.");
     }
 
     ssize_t len = offset - start - 1;

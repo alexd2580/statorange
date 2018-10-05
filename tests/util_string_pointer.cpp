@@ -13,14 +13,11 @@ using namespace snowhouse;
 go_bandit([] {
     describe("StringPointer", [] {
         describe("constructor", [] {
-            // TODO: Fix throw.
-            // it("throws when supplying `nullptr`", [] {
-            //     try {
-            //         StringPointer sp(nullptr);
-            //         AssertThat(true, IsFalse());
-            //     } catch(std::string _) {
-            //     }
-            // });
+            it("throws when supplying `nullptr`", [] {
+                AssertThrows(ParseException, StringPointer(nullptr));
+                AssertThat(LastException<ParseException>().what(),
+                           Equals("Cannot create `StringPointer` to `nullptr`."));
+            });
             it("successfully creates new `StringPointer`s", [] {
                 std::vector<char const*> values{"", "asdasd", "The lazy dog jumps over the fox"};
                 for(auto const& value : values) {
@@ -115,29 +112,81 @@ go_bandit([] {
             });
         });
         describe("escaped_string", [] {
-            it("skips non-whitespace characters", [] {
-                StringPointer sp(" abcdefg\tabc.,:\n123456.654321 \n");
-                AssertThat(sp.next(), Equals(' '));
-                sp.nonspace();
-                AssertThat(sp.next(), Equals('\t'));
-                sp.nonspace();
-                AssertThat(sp.next(), Equals('\n'));
-                sp.nonspace();
-                AssertThat(sp.next(), Equals(' '));
-                sp.nonspace();
-                AssertThat(sp.next(), Equals('\n'));
-                sp.nonspace();
-                char const* first_0(sp);
-                AssertThat(sp.peek(), Equals('\0'));
-                sp.nonspace();
-                char const* second_0(sp);
-                AssertThat(sp.peek(), Equals('\0'));
-                AssertThat(first_0, Equals(second_0));
+            it("parses escaped strings", [] {
+                AssertThat(StringPointer(R"("")").escaped_string(), Equals(""));
+                AssertThat(StringPointer(R"("abcdef")").escaped_string(), Equals("abcdef"));
+                AssertThat(StringPointer(R"("abc\r\ndef")").escaped_string(), Equals("abc\r\ndef"));
+                AssertThat(StringPointer(R"("abc\"\"def")").escaped_string(), Equals(R"(abc""def)"));
+                StringPointer sp(R"("abc""def")");
+                AssertThat(sp.escaped_string(), Equals("abc"));
+                AssertThat(sp.escaped_string(), Equals("def"));
             });
-
+            it(R"(throws when the input doesn't start with a ")", [] {
+                AssertThrows(ParseException, StringPointer("").escaped_string());
+                AssertThat(LastException<ParseException>().what(), Equals(R"(Expected ["], got [)"));
+                AssertThrows(ParseException, StringPointer(R"(a "string")").escaped_string());
+                AssertThat(LastException<ParseException>().what(), Equals(R"(Expected ["], got [a].)"));
+            });
+            it(R"(throws when the input doesn't end with a ")", [] {
+                AssertThrows(ParseException, StringPointer(R"(")").escaped_string());
+                AssertThat(LastException<ParseException>().what(), Equals("Unexpected EOS."));
+                AssertThrows(ParseException, StringPointer(R"("a string)").escaped_string());
+                AssertThat(LastException<ParseException>().what(), Equals("Unexpected EOS."));
+            });
+            it("throws when the escaped string contains invalid escape sequences", [] {
+                ;
+                AssertThrows(ParseException, StringPointer(R"("\q")").escaped_string());
+                AssertThat(LastException<ParseException>().what(), Equals(R"(Invalid escape sequence [\q].)"));
+                AssertThrows(ParseException, StringPointer(R"("\%")").escaped_string());
+                AssertThat(LastException<ParseException>().what(), Equals(R"(Invalid escape sequence [\%].)"));
+            });
+            it("throws when the escaped string terminates prematurely", [] {
+                AssertThrows(ParseException, StringPointer(R"("\)").escaped_string());
+                AssertThat(LastException<ParseException>().what(),
+                           Equals("Unexpected EOS when parsing escaped character."));
+            });
         });
-        describe("number", [] {});
-        describe("number_str", [] {});
+        describe("number", [] {
+            it("parses valid numeric strings of proper type", [] {
+                StringPointer sp("123456.654321.123123X");
+                AssertThat(sp.number<int32_t>(), Equals(123456));
+                AssertThat(sp.next(), Equals('.'));
+                AssertThat(sp.number<double>(), Equals(654321.123123));
+                AssertThat(sp.next(), Equals('X'));
+            });
+            it("parses a valid numeric string at EOS", [] {
+                AssertThat(StringPointer("123456").number<uint64_t>(), Equals(123456));
+                float result = StringPointer("123456.654321").number<float>();
+                AssertThat(result, EqualsWithDelta(123456.654321f, 0.000001f));
+            });
+            it("throws when string is not numeric", [] {
+                StringPointer sp("a123b");
+                AssertThrows(ParseException, sp.number<int16_t>());
+                AssertThat(LastException<ParseException>().what(), Equals("Could not convert string to number."));
+                AssertThrows(ParseException, sp.number<double>());
+                AssertThat(LastException<ParseException>().what(), Equals("Could not convert string to number."));
+            });
+        });
+        describe("number_str", [] {
+            it("parses valid numeric strings of proper type", [] {
+                StringPointer sp("123456.654321.123123X");
+                AssertThat(sp.number_str<int32_t>(), Equals("123456"));
+                AssertThat(sp.next(), Equals('.'));
+                AssertThat(sp.number_str<double>(), Equals("654321.123123"));
+                AssertThat(sp.next(), Equals('X'));
+            });
+            it("parses a valid numeric string at EOS", [] {
+                AssertThat(StringPointer("123456").number_str<uint64_t>(), Equals("123456"));
+                AssertThat(StringPointer("123456.654321").number_str<float>(), Equals("123456.654321"));
+            });
+            it("throws when string is not numeric", [] {
+                StringPointer sp("a123b");
+                AssertThrows(ParseException, sp.number_str<int16_t>());
+                AssertThat(LastException<ParseException>().what(), Equals("Could not convert string to number."));
+                AssertThrows(ParseException, sp.number_str<double>());
+                AssertThat(LastException<ParseException>().what(), Equals("Could not convert string to number."));
+            });
+        });
     });
 });
 

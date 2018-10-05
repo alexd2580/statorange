@@ -15,6 +15,7 @@
 template <typename T, typename std::enable_if_t<std::is_integral<T>::value && std::is_unsigned<T>::value>* = nullptr>
 // NOLINTNEXTLINE: Desired call signature.
 T convert_to_number(const char* c_str, bool& valid, char*& endptr) {
+    errno = 0;
     uint64_t result = strtoull(c_str, &endptr, 10);
     valid = endptr != c_str && errno != ERANGE && result <= std::numeric_limits<T>::max();
     return static_cast<T>(result);
@@ -24,6 +25,7 @@ T convert_to_number(const char* c_str, bool& valid, char*& endptr) {
 template <typename T, typename std::enable_if_t<std::is_integral<T>::value && std::is_signed<T>::value>* = nullptr>
 // NOLINTNEXTLINE: Desired call signature.
 T convert_to_number(const char* c_str, bool& valid, char*& endptr) {
+    errno = 0;
     int64_t result = strtoll(c_str, &endptr, 10);
     valid = endptr != c_str && errno != ERANGE && result <= std::numeric_limits<T>::max() &&
             result >= std::numeric_limits<T>::min();
@@ -34,9 +36,10 @@ T convert_to_number(const char* c_str, bool& valid, char*& endptr) {
 template <typename T, typename std::enable_if_t<std::is_floating_point<T>::value>* = nullptr>
 // NOLINTNEXTLINE: Desired call signature.
 T convert_to_number(const char* c_str, bool& valid, char*& endptr) {
+    errno = 0;
     long double result = strtold(c_str, &endptr);
-    valid = endptr != c_str && errno != ERANGE && result <= std::numeric_limits<T>::max() &&
-            result >= std::numeric_limits<T>::lowest();
+    valid = endptr != c_str && errno != ERANGE && result <= static_cast<long double>(std::numeric_limits<T>::max()) &&
+            result >= static_cast<long double>(std::numeric_limits<T>::lowest());
     return static_cast<T>(result);
 }
 
@@ -88,9 +91,8 @@ class StringPointer final {
         // NOLINTNEXTLINE: Pointer arithmetic intended.
         auto n = convert_to_number<T>(base + offset, valid, endptr);
         // NOLINTNEXTLINE: Pointer arithmetic intended.
-        if(endptr == base + offset) {
-            std::cerr << "Could not convert string to number" << std::endl;
-            exit(1);
+        if(!valid || endptr == base + offset) {
+            throw ParseException("Could not convert string to number.");
         }
         offset = endptr - base;
         return n;
@@ -102,6 +104,10 @@ class StringPointer final {
         char* endptr;
         // NOLINTNEXTLINE: Pointer arithmetic intended.
         convert_to_number<T>(base + offset, valid, endptr);
+        // NOLINTNEXTLINE: Pointer arithmetic intended.
+        if(!valid || endptr == base + offset) {
+            throw ParseException("Could not convert string to number.");
+        }
         ssize_t start = offset;
         offset = endptr - base;
         // NOLINTNEXTLINE: Pointer arithmetic intended.
