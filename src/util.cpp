@@ -16,7 +16,14 @@
 // std::string const shell_file_loc = "/bin/sh";
 // std::string const terminal_cmd = "x-terminal-emulator -e";
 
-StringPointer::StringPointer(char const* new_base) : base(new_base), offset(0) {}
+ParseException::ParseException(std::string new_message) : message(std::move(new_message)) {}
+const char* ParseException::what() const noexcept { return message.c_str(); }
+
+StringPointer::StringPointer(char const* new_base) : base(new_base), offset(0) {
+    if(new_base == nullptr) {
+        throw ParseException("Cannot create `StringPointer` to `nullptr`.");
+    }
+}
 
 StringPointer::operator char const*() const { // NOLINT: Implicit conversion desired.
     return base + offset;                     // NOLINT: Pointer arithmetic intended.
@@ -33,22 +40,21 @@ char StringPointer::next() {
 void StringPointer::whitespace() {
     char c = peek();
     while((c == ' ' || c == '\n' || c == '\t') && c != '\0') {
-        c = base[offset++]; // NOLINT: Pointer arithmetic intended.
+        c = base[++offset]; // NOLINT: Pointer arithmetic intended.
     }
 }
 
 void StringPointer::nonspace() {
     char c = peek();
     while(c != ' ' && c != '\n' && c != '\t' && c != '\0') {
-        c = base[offset++]; // NOLINT: Pointer arithmetic intended.
+        c = base[++offset]; // NOLINT: Pointer arithmetic intended.
     }
 }
 
 std::string StringPointer::escaped_string() {
     char c = peek();
     if(c != '"') {
-        std::cerr << "Expected [\"], got: [" << c << "]." << std::endl;
-        exit(1);
+        throw ParseException("Expected [\"], got: [" + c + "].");
     }
 
     std::ostringstream o;
@@ -66,8 +72,7 @@ std::string StringPointer::escaped_string() {
 
             switch(c) {
             case '\0':
-                std::cerr << "Unexpected EOS when parsing escaped character." << std::endl;
-                exit(1);
+                throw ParseException("Unexpected EOS when parsing escaped character.");
             case 'n':
                 o << '\n';
                 break;
@@ -88,8 +93,7 @@ std::string StringPointer::escaped_string() {
     }
 
     if(c == '\0') {
-        std::cerr << "Unexpected EOS" << std::endl;
-        exit(1);
+        throw ParseException("Unexpected EOS");
     }
 
     ssize_t len = offset - start - 1;

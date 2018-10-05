@@ -2,6 +2,7 @@
 #define UTIL_HPP
 
 #include <cstddef>
+#include <exception>
 #include <functional>
 #include <iostream>
 #include <limits>
@@ -53,6 +54,15 @@ T convert_to_number(const char* c_str, bool& valid) {
     char* endptr = nullptr;
     return convert_to_number<T>(c_str, valid, endptr);
 }
+
+class ParseException : public std::exception {
+  private:
+    std::string message;
+
+  public:
+    explicit ParseException(std::string message);
+    const char* what() const noexcept override;
+};
 
 class StringPointer final {
   private:
