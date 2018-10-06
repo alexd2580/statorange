@@ -38,7 +38,8 @@ std::pair<bool, bool> Battery::update_raw() {
     return {true, true};
 }
 
-void Battery::print_raw(Lemonbar& bar, uint8_t) {
+void Battery::print_raw(Lemonbar& bar, uint8_t display) {
+    (void)display;
     if(status == Status::not_found) {
         return;
     }
@@ -57,7 +58,7 @@ void Battery::print_raw(Lemonbar& bar, uint8_t) {
         /*if(rem_minutes < 20) {  SEP_LEFT(warn_colors); }
         else if(rem_minutes < 60) { SEP_LEFT(info_colors); }
         else { SEP_LEFT(neutral_colors); }*/
-        auto colors = Lemonbar::section_colors((float)-rem_minutes, -60.0f, -10.0f);
+        auto colors = Lemonbar::section_colors(-static_cast<float>(rem_minutes), -60.0f, -10.0f);
         bar.separator(Lemonbar::Separator::left, colors.first, colors.second);
         bar() << " BAT " << (100 * current_level / max_capacity) << "%% ";
         bar.separator(Lemonbar::Separator::left);

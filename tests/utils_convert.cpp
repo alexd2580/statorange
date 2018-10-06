@@ -8,7 +8,7 @@
 
 #include <bandit/bandit.h>
 
-#include <util.hpp>
+#include "utils/convert.hpp"
 
 using namespace bandit;
 using namespace snowhouse;

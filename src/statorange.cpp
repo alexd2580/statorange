@@ -21,10 +21,11 @@
 #include <unistd.h>
 
 #include "json_parser.hpp"
+#include "utils/io.hpp"
 
 #include "StateItems/Battery.hpp"
-#include "StateItems/CPU.hpp"
 #include "StateItems/Date.hpp"
+#include "StateItems/Load.hpp"
 #include "StateItems/Net.hpp"
 #include "StateItems/Space.hpp"
 // #include "StateItems/I3Workspaces.hpp"
@@ -33,7 +34,6 @@
 #include "Lemonbar.hpp"
 #include "Logger.hpp"
 #include "StateItem.hpp"
-#include "util.hpp"
 
 /******************************************************************************/
 
@@ -106,17 +106,15 @@ class Statorange : Logger {
 #define CREATE_ITEM(itemclass)                                                                                         \
     if(item == #itemclass) {                                                                                           \
         log() << "Creating item of type " << item << std::endl;                                                        \
-        \
+                                                                                                                       \
         section.push_back(std::unique_ptr<StateItem>(new itemclass(json_item)));                                       \
-        \
-                                                                                                                 \
     }
 
         try {
             std::string const& item = json_item["item"].string();
             CREATE_ITEM(Date)
             CREATE_ITEM(Space)
-            CREATE_ITEM(CPU)
+            CREATE_ITEM(Load)
             CREATE_ITEM(Battery)
             CREATE_ITEM(Net)
             // else if(item == "Volume")
@@ -296,54 +294,9 @@ int main(int argc, char* argv[]) {
     const std::string font_path_plus("xset fp+ /usr/local/lib/statorange/misc");
     const std::string lemonbar_with_fonts(font_path_minus + ";" + font_path_plus + ";" + lemonbar_cmd);
     auto lemonbar_pipe = run_command(lemonbar_with_fonts, "w");
-    FileStream lemonbar_streambuf(lemonbar_pipe.get());
+    FileStream<UniqueFile> lemonbar_streambuf(std::move(lemonbar_pipe));
     std::ostream lemonbar_stream(&lemonbar_streambuf);
 
     Statorange app(lemonbar_stream);
     return app.run(argc, argv);
 }
-
-// std::string socket_path(argv[1]);
-// cerr << "Socket path: " << socket_path << std::endl;
-
-// auto& ws_group_json = config_json.get("ws window names");
-// auto& ws_group_string = ws_group_json.as_string_with_default("");
-// WorkspaceGroup show_names_on(parse_workspace_group(ws_group_string));
-
-// int main(int argc, char* argv[])
-// {
-//
-//     // signal handlers and event handlers
-//     Sigaction term = mk_handler(term_handler);
-//     register_handler(SIGINT, term);
-//     register_handler(SIGTERM, term);
-//
-//     Sigaction notify = mk_handler(notify_handler);
-//     register_handler(SIGUSR1, notify);
-//
-//     l.log() << "Entering main loop" << std::endl;
-//     while(!Application::dead)
-//     {
-//         if(Application::force_update)
-//         {
-//             StateItem::force_update_all();
-//             Application::force_update = false;
-//         }
-//         else
-//             StateItem::update_all();
-//
-//         for(uint8_t i = 0; i < num_output_displays; i++)
-//         {
-//             auto printer = [i](ostream& out) {
-//                 StateItem::print_state(out, i);
-//             };
-//             BarWriter::display(cout, i, printer);
-//         }
-//         cout << std::endl;
-//
-//         StateItem::wait_for_events();
-//     }
-//     l.log() << "Exiting main loop" << std::endl;
-//
-//     return Application::exit_status;
-// }

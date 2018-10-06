@@ -1,11 +1,9 @@
-#ifndef __LEMONBAR_WRITER_CLASS__
-#define __LEMONBAR_WRITER_CLASS__
+#ifndef LEMONBAR_HPP
+#define LEMONBAR_HPP
 
 #include <iostream>
 #include <map>
 #include <string>
-
-#include "util.hpp"
 
 class Lemonbar final {
   public:
@@ -71,8 +69,7 @@ class Lemonbar final {
     using ColorPair = std::pair<std::string, std::string>;
     static std::map<Coloring, ColorPair const> const color_pairs;
 
-    Lemonbar(std::ostream&);
-    ~Lemonbar() = default;
+    explicit Lemonbar(std::ostream&);
 
     std::ostream& operator()() const;
 
@@ -85,13 +82,24 @@ class Lemonbar final {
     void button_begin(std::string const& command);
     void button_end() const;
 
+    static void make_hex(std::string::iterator dst, uint8_t a);
+    static std::string make_hex_color(uint8_t a, uint8_t r, uint8_t g, uint8_t b);
+
+    template <typename T>
+    static float inv_interpolate(T value, T min, T max) {
+        return static_cast<float>(value - min) / static_cast<float>(max - min);
+    }
+
     template <typename T>
     static ColorPair section_colors(T value, T min, T max) {
-        if(value <= min || value >= max) {
-            return color_pairs.at(value <= min ? Coloring::neutral : Coloring::warn);
+        if(value <= min) {
+            return color_pairs.at(Coloring::neutral);
         }
-        uint8_t byte_v = (uint8_t)(((float)value - (float)min) * 256.0f / (float)(max - min));
-        auto res = make_hex_color(255, byte_v, (uint8_t)(127 - byte_v / 2), 0);
+        if(value >= max) {
+            return color_pairs.at(Coloring::warn);
+        }
+        auto byte_v = static_cast<uint8_t>(inv_interpolate(value, min, max) * 256.f);
+        auto res = make_hex_color(255, byte_v, static_cast<uint8_t>(127 - byte_v / 2), 0);
         return {res, "#FFCCCCCC"};
     }
 

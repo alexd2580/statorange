@@ -47,15 +47,14 @@
             "battery_file": "/sys/class/power_supply/BAT0/uevent"
         },
         {
-            "item": "CPU",
+            "item": "Load",
             "cooldown": 5,
             "button": "terminator -e htop &",
             "icon": "cpu",
             "temperature_files": [
                 "/sys/bus/acpi/devices/LNXTHERM:00/thermal_zone/temp",
                 "/sys/bus/acpi/devices/LNXTHERM:01/thermal_zone/temp"
-            ],
-            "load_file": "/proc/loadavg"
+            ]
         },
         {
             "item": "Space",

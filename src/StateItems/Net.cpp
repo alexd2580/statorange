@@ -3,14 +3,9 @@
 #include <ostream>
 
 #include "StateItems/Net.hpp"
-#include "util.hpp"
+/* #include "util.hpp" */
 
-using std::map;
-using std::min;
-using std::pair;
-using std::string;
-
-Net::Type Net::parse_type(string const& type) {
+Net::Type Net::parse_type(std::string const& type) {
 #define PARSE_TYPE(enum)                                                                                               \
     if(type == #enum) {                                                                                                \
         return Net::Type::enum;                                                                                        \
@@ -20,7 +15,7 @@ Net::Type Net::parse_type(string const& type) {
     throw "Couldn't parse connection type."; // NOLINT
 }
 
-Net::Display Net::parse_display(string const& display) {
+Net::Display Net::parse_display(std::string const& display) {
 #define PARSE_DISPLAY(string, enum)                                                                                    \
     if(display == #string) {                                                                                           \
         return Net::Display::enum;                                                                                     \
@@ -35,7 +30,7 @@ Net::Display Net::parse_display(string const& display) {
 }
 
 time_t Net::min_cooldown = 1000; // TODO magicnumber
-map<string, pair<string, string>> Net::addresses;
+std::map<std::string, std::pair<std::string, std::string>> Net::addresses;
 
 /******************************************************************************/
 /******************************************************************************/
@@ -69,31 +64,29 @@ bool Net::get_IP_addresses(Logger const& logger) {
 
     while(ifa != nullptr) {
         if(ifa->ifa_addr != nullptr) {
-            string iface(ifa->ifa_name); // NOLINT: TODO what function?
-            logger.log() << "Found interface " << iface << std::endl;
+            std::string iface(ifa->ifa_name); // NOLINT: TODO what function?
             auto family = ifa->ifa_addr->sa_family;
             if(family == AF_INET || family == AF_INET6) {
-                if(addresses.find(iface) == addresses.end()) {
-                    addresses[iface] = pair<string, string>("", "");
-                }
-                auto& address_entry = addresses[iface];
+                auto address_emplace_result = addresses.emplace(iface, std::pair<std::string, std::string>{"", ""});
+                auto& address_entry = address_emplace_result.first->second;
 
                 if(family == AF_INET) {
-                    addr_ptr = &((struct sockaddr_in*)ifa->ifa_addr)->sin_addr; // NOLINT: C way of doing this.
+                    // NOLINTNEXTLINE: C way of doing this.
+                    addr_ptr = &((struct sockaddr_in*)ifa->ifa_addr)->sin_addr;
                     char buffer[INET_ADDRSTRLEN];
                     auto buffer_ptr = static_cast<char*>(buffer);
                     inet_ntop(AF_INET, addr_ptr, buffer_ptr, INET_ADDRSTRLEN);
 
-                    address_entry.first = string(buffer_ptr);
-                    logger.log() << "IPv4 address: " << address_entry.first << std::endl;
+                    address_entry.first = std::string(buffer_ptr);
+                    logger.log() << "IPv4 " << iface << ": " << address_entry.first << std::endl;
                 } else if(family == AF_INET6) {
                     // NOLINTNEXTLINE: C style of doing things.
                     addr_ptr = &((struct sockaddr_in6*)ifa->ifa_addr)->sin6_addr;
                     char buffer[INET6_ADDRSTRLEN];
                     auto buffer_ptr = static_cast<char*>(buffer);
                     inet_ntop(AF_INET6, addr_ptr, buffer_ptr, INET6_ADDRSTRLEN);
-                    address_entry.second = string(buffer_ptr);
-                    logger.log() << "IPv6 address: " << address_entry.second << std::endl;
+                    address_entry.second = std::string(buffer_ptr);
+                    logger.log() << "IPv6 " << iface << ": " << address_entry.second << std::endl;
                 }
             }
         }
@@ -183,7 +176,7 @@ Net::Net(JSON::Node const& item)
     bitrate = 0;
 
     auto this_cooldown = item["cooldown"].number<time_t>();
-    min_cooldown = min(min_cooldown, this_cooldown);
+    min_cooldown = std::min(min_cooldown, this_cooldown);
 }
 
 std::pair<bool, bool> Net::update_raw() {
@@ -206,7 +199,7 @@ std::pair<bool, bool> Net::update_raw() {
 
     bool success = true;
     if(type == Net::Type::wireless) {
-        const pair<bool, bool> result = get_wireless_state();
+        const std::pair<bool, bool> result = get_wireless_state();
         success = success && result.first;
         changed = changed || result.second;
     }
@@ -214,7 +207,8 @@ std::pair<bool, bool> Net::update_raw() {
     return {success, changed};
 }
 
-void Net::print_raw(Lemonbar& bar, uint8_t) {
+void Net::print_raw(Lemonbar& bar, uint8_t display_arg) {
+    (void)display_arg;
     if(up) {
         bar.separator(Lemonbar::Separator::left, Lemonbar::Coloring::neutral);
         switch(type) {

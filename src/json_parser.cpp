@@ -5,7 +5,8 @@
 #include <cstring>
 
 #include "json_parser.hpp"
-#include "util.hpp"
+
+#include "utils/parse.hpp"
 
 namespace JSON {
 void Object::parse_kv_pair(StringPointer& str) {

@@ -8,7 +8,6 @@
 #include "Lemonbar.hpp"
 #include "StateItem.hpp"
 #include "json_parser.hpp"
-#include "util.hpp"
 
 class Net final : public StateItem {
   public:

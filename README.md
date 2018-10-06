@@ -18,7 +18,7 @@ The predefined status items use the following programs/files:
 * Volume<br>
   * `alsamixer`, which opens when you click the volume section.
 
-* CPU<br>
+* Load<br>
   * temperature: `/sys/bus/acpi/devices/LNXTHERM:00/thermal_zone/temp`<br>
       or `/sys/devices/platform/coretemp.0/hwmon/hwmon0/temp2_input`
   * load: `/proc/loadavg`
@@ -76,11 +76,11 @@ bar {
 
 The config (`config.json`) is written in JSON. An example configuration can be found in `config.example.json`.
 
-* static settings for the state items (CPU, Battery, Volume, Space, Date, Net, GMail).
+* static settings for the state items (Load, Battery, Volume, Space, Date, Net, GMail).
 * `order` - as the name implies, the order is important.
 The objects in this list specify the sections on the right side of the bar.
 Each object has the following fields:
-  * `item` - the name of the item (CPU, Battery, ...)
+  * `item` - the name of the item (Load, Battery, ...)
   * `icon` - the name of the icon ("cpu", "wlan", ... see `src/output.hpp` for details)
         The icon will not automatically be displayed.
   * `cooldown` - the delay between state updates.

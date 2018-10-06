@@ -5,7 +5,7 @@
 
 #include <bandit/bandit.h>
 
-#include <util.hpp>
+#include "utils/parse.hpp"
 
 using namespace bandit;
 using namespace snowhouse;
