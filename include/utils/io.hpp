@@ -10,12 +10,23 @@
 #include <cstdio>
 
 #include "utils/resource.hpp"
+#include "utils/exception.hpp"
 
-// In a fail case errno is set appropriately.
+// Returns true if input becomes available on a non-closed socket.
+// Returns true if the pipe has been closed remotely.
 bool has_input(int fd, int microsec = 0);
 
-ssize_t read_all(int fd, char* buf, size_t count);
-ssize_t write_all(int fd, char const* buf, size_t count);
+DEFINE_EXCEPTION_CLASS(StreamException)
+
+// Reads `count` bytes from `fd` and stores them into `buf`.
+// Closes `fd` when EOS is reached.
+// Returns the number of read bytes.
+ssize_t read_all(int fd, char* buf, size_t count) noexcept(false);
+
+// Writes `count` bytes from `buf` and to `fd`.
+// Closes `fd` when EPIPE is received.
+// Returns the number of wrote bytes.
+ssize_t write_all(int fd, char const* buf, size_t count) noexcept(false);
 
 class UniqueSocket final : public UniqueResource<int> {
   public:

@@ -7,9 +7,6 @@
 
 #include "utils/parse.hpp"
 
-ParseException::ParseException(std::string new_message) : message(std::move(new_message)) {}
-const char* ParseException::what() const noexcept { return message.c_str(); }
-
 StringPointer::StringPointer(char const* new_base) : base(new_base), offset(0) {
     if(new_base == nullptr) {
         throw ParseException("Cannot create `StringPointer` to `nullptr`.");

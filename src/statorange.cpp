@@ -4,15 +4,15 @@
  */
 
 #include <atomic>
-#include <cassert>
-#include <csignal>
-#include <cstdlib>
-#include <cstring>
-
 #include <chrono>
 #include <fstream>
 #include <iostream>
 #include <memory>
+
+#include <cassert>
+#include <csignal>
+#include <cstdlib>
+#include <cstring>
 
 #include <pwd.h>
 #include <sys/signalfd.h>

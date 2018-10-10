@@ -40,19 +40,19 @@ file(GLOB_RECURSE STATORANGE src/statorange.cpp)
 list(REMOVE_ITEM SOURCES ${STATORANGE})
 file(GLOB_RECURSE UNIT_TEST_SOURCES tests/*.cpp)
 
-set(LIBS asound ssl crypto fmt c++)
+set(LIBS asound ssl crypto fmt pthread c++)
 
 # The main executable
 add_executable(statorange ${SOURCES} ${STATORANGE})
 target_include_directories(statorange SYSTEM PRIVATE fmt/include)
 target_include_directories(statorange PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_compile_options(statorange PRIVATE -stdlib=libc++ ${CLANG_WARNING_FLAGS})
+target_compile_options(statorange PRIVATE ${CLANG_WARNING_FLAGS})
 target_link_libraries(statorange ${LIBS})
 
 add_executable(statorange_unit_tests ${SOURCES} ${UNIT_TEST_SOURCES})
 target_include_directories(statorange_unit_tests SYSTEM PRIVATE bandit PRIVATE fmt/include)
 target_include_directories(statorange_unit_tests PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_compile_options(statorange_unit_tests PRIVATE -stdlib=libc++ ${CLANG_WARNING_FLAGS})
+target_compile_options(statorange_unit_tests PRIVATE ${CLANG_WARNING_FLAGS})
 target_link_libraries(statorange_unit_tests ${LIBS})
 
 # Add the test execution to cmake.

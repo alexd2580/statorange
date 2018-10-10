@@ -7,15 +7,9 @@
 #include <cstddef>
 
 #include "utils/convert.hpp"
+#include "utils/exception.hpp"
 
-class ParseException : public std::exception {
-  private:
-    std::string message;
-
-  public:
-    explicit ParseException(std::string message);
-    const char* what() const noexcept override;
-};
+DEFINE_EXCEPTION_CLASS(ParseException)
 
 class StringPointer final {
   private:

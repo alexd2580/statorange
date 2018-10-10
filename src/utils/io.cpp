@@ -11,6 +11,8 @@
 #include <sys/select.h> // select, FD_ZERO, FD_SET
 #include <unistd.h>     // write, read
 
+#include <fmt/format.h>
+
 #include "utils/io.hpp"
 
 bool has_input(int fd, int microsec) {
@@ -27,41 +29,47 @@ bool has_input(int fd, int microsec) {
 
 ssize_t read_all(int fd, char* buf, size_t count) {
     size_t bytes_read = 0;
-
     while(bytes_read < count) {
         errno = 0;
         // NOLINTNEXTLINE: Pointer arithmetic intended.
         ssize_t n = read(fd, buf + bytes_read, count - bytes_read);
-        if(n <= 0) {
-            std::cerr << "Read returned with 0/error. Errno: " << errno << std::endl;
-            if(errno == EINTR || errno == EAGAIN) {
-                continue;
-            }
-            return n;
+        if(n > 0) {
+            bytes_read += static_cast<size_t>(n);
+        } else if(n == 0) {
+            // EOS has been reached.
+            close(fd);
+            break;
+        } else if(errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
+            // Ignore `EINTR`, `EAGAIN` or `EWOULDBLOCK` and retry.
+            // TODO This might result in a busy wait on nonblocking sockets.
+        } else {
+            // Otherwise there was a critical non-recoverable error.
+            throw StreamException(fmt::format("Read returned {} with errno set to {}", n, errno));
         }
-        bytes_read += static_cast<size_t>(n);
     }
-    assert(bytes_read == count); // NOLINT: Calling `assert` triggers array-decay-lint.
     return static_cast<ssize_t>(bytes_read);
 }
 
 ssize_t write_all(int fd, char const* buf, size_t count) {
     size_t bytes_written = 0;
-
     while(bytes_written < count) {
         errno = 0;
         // NOLINTNEXTLINE: Pointer arithmetic intended.
         ssize_t n = write(fd, buf + bytes_written, count - bytes_written);
-        if(n <= 0) {
-            if(errno == EINTR || errno == EAGAIN) { // try again
-                continue;
-            }
-            if(errno == EPIPE) { // can not write anymore
-                return -1;
-            }
-            return n;
+        // Check if pipe is still open and more data can be written.
+        if(n >= 0) {
+            bytes_written += static_cast<size_t>(n);
+        } else if(errno == EPIPE) {
+            // Remote has closed the connection.
+            close(fd);
+            break;
+        } else if(errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
+            // Ignore `EINTR`, `EAGAIN` or `EWOULDBLOCK` and retry.
+            // TODO This might result in a busy wait on nonblocking sockets.
+        } else { // can not write anymore
+            // Otherwise there was a critical non-recoverable error.
+            throw StreamException(fmt::format("Write returned {} with errno set to {}", n, errno));
         }
-        bytes_written += static_cast<size_t>(n);
     }
     return static_cast<ssize_t>(bytes_written);
 }
@@ -73,7 +81,7 @@ bool load_file(std::string const& name, std::string& content) {
     std::fstream file(name.c_str(), std::fstream::in);
     if(file.is_open()) {
         // We use the standard getline function to read the file into
-        // a std::string, stoping only at "\0"
+        // a std::string, stopping only at "\0"
         getline(file, content, '\0');
         bool ret = !file.bad();
         file.close();
