@@ -1,5 +1,5 @@
 #include <array>    // array
-#include <fstream>  // fstream
+#include <fstream>  // ifstream
 #include <iomanip>  // std::put_time
 #include <iostream> // cerr
 #include <memory>   // unique_ptr
@@ -78,12 +78,12 @@ UniqueSocket::UniqueSocket(int new_sockfd) : UniqueResource(new_sockfd, close) {
 UniqueSocket::operator int() const { return resource; }
 
 bool load_file(std::string const& name, std::string& content) {
-    std::fstream file(name.c_str(), std::fstream::in);
+    std::ifstream file(name.c_str());
     if(file.is_open()) {
         // We use the standard getline function to read the file into
         // a std::string, stopping only at "\0"
         getline(file, content, '\0');
-        bool ret = !file.bad();
+        bool ret = !file.fail();
         file.close();
         return ret;
     }
