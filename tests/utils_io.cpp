@@ -308,12 +308,6 @@ go_bandit([] {
             AssertThat(false, IsTrue());
         });
     });
-    describe("UniqueFile", [] {
-        it("closes the file on destruction", [] {
-            AssertThat(false, IsTrue());
-            AssertThat(false, IsTrue());
-        });
-    });
     describe("run_command", [] {
         it("executes a command and returns a FILE* to its output stream", [] {
             AssertThat(false, IsTrue());
@@ -322,8 +316,30 @@ go_bandit([] {
     });
     describe("open_file", [] {
         it("opens a readable FILE* to the supplied file", [] {
-            AssertThat(false, IsTrue());
-            AssertThat(false, IsTrue());
+            std::string filename = make_filename();
+            write_to_file(filename, "Yay, some text");
+
+            auto file = open_file(filename.c_str());
+            char buffer[15];
+            fgets(buffer, 15, file.get());
+            AssertThat(std::string(buffer, 14), Equals("Yay, some text"));
+        });
+        it("closes the file when its result is destroyed", [] {
+            std::string filename = make_filename();
+            write_to_file(filename, "Yay, some text");
+
+            FILE* file_ptr;
+            {
+                auto file = open_file(filename.c_str());
+                file_ptr = file.get();
+                char buffer[15];
+                fgets(buffer, 15, file.get());
+                AssertThat(std::string(buffer, 14), Equals("Yay, some text"));
+            }
+
+            errno = 0;
+            AssertThat(ftell(file_ptr), Equals(-1));
+            AssertThat(errno, Equals(EBADF));
         });
     });
     describe("FileStream", [] {
