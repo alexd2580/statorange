@@ -309,9 +309,12 @@ go_bandit([] {
         });
     });
     describe("run_command", [] {
-        it("executes a command and returns a FILE* to its output stream", [] {
-            AssertThat(false, IsTrue());
-            AssertThat(false, IsTrue());
+        it("executes a command and returns a FILE*-like object to its output stream", [] {
+            std::string command(R"(echo "Hello World!")");
+            auto result = run_command(command.c_str(), "r");
+            char buffer[14];
+            fgets(buffer, 14, result.get());
+            AssertThat(std::string(buffer, 14), Equals(std::string("Hello World!\n\0", 14)));
         });
     });
     describe("open_file", [] {
@@ -319,7 +322,7 @@ go_bandit([] {
             std::string filename = make_filename();
             write_to_file(filename, "Yay, some text");
 
-            auto file = open_file(filename.c_str());
+            auto file = open_file(filename);
             char buffer[15];
             fgets(buffer, 15, file.get());
             AssertThat(std::string(buffer, 14), Equals("Yay, some text"));
