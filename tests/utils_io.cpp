@@ -14,53 +14,15 @@
 #include <bandit/bandit.h>
 #include <fmt/format.h>
 
+// Local import.
+#include "utils.hpp"
+
 #include "utils/io.hpp"
 
 using namespace bandit;
 using namespace snowhouse;
 
 using namespace std::chrono_literals;
-
-std::pair<UniqueSocket, UniqueSocket> make_pipe(int& in, int& out) {
-    int fd[2];
-    AssertThat(pipe(fd), Equals(0));
-    out = fd[0];
-    in = fd[1];
-    return {UniqueSocket(in), UniqueSocket(out)};
-}
-
-void assert_write(int in, std::string data, size_t num) { AssertThat(write(in, data.c_str(), num), Equals(num)); }
-
-template <int NUM>
-void assert_read(int out, std::string expect) {
-    char buffer[NUM];
-    memset(buffer, '\0', NUM);
-    AssertThat(read(out, buffer, NUM), Equals(NUM));
-    AssertThat(std::string(buffer, NUM), Equals(expect));
-}
-
-std::string make_filename() {
-    char buffer[L_tmpnam + 1];
-    memset(buffer, '\0', L_tmpnam + 1);
-    AssertThat(tmpnam(buffer), Equals(static_cast<char*>(buffer)));
-    return std::string(buffer);
-}
-
-using TempFile = UniqueResource<std::string>;
-
-TempFile make_file() {
-    auto filename = make_filename();
-    int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_NOCTTY | O_NONBLOCK, 0666);
-    close(fd);
-    return TempFile(filename, [](std::string fname) { assert(unlink(fname.c_str()) == 0); });
-}
-
-void write_to_file(std::string const& filename, std::string const& content) {
-    std::ofstream file;
-    file.open(filename);
-    file << content;
-    file.close();
-}
 
 go_bandit([] {
     describe("has_input", [] {

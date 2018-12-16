@@ -8,7 +8,9 @@
 #include <cassert> // assert
 #include <cstdio>  // popen, fopen
 
+#include <arpa/inet.h>  // AF_LOCAL, SOCK_STREAM
 #include <sys/select.h> // select, FD_ZERO, FD_SET
+#include <sys/un.h>     // struct sockaddr_un
 #include <unistd.h>     // write, read
 
 #include <fmt/format.h>
@@ -121,4 +123,25 @@ std::ostream& print_used_memory(std::ostream& out, uint64_t used, uint64_t total
     std::array<std::string, 6> const units{"B", "KiB", "MiB", "GiB", "TiB", "PiB"};
     return out << (used / unit_factor) << '.' << ((used % unit_factor) / (unit_factor / 10)) << '/'
                << (total / unit_factor) << '.' << ((total % unit_factor) / (unit_factor / 10)) << units.at(unit_index);
+}
+
+int connect_to(std::string const& path) {
+    int sockfd = socket(AF_LOCAL, SOCK_STREAM, 0);
+    if(sockfd < 0) {
+        perror("Error when opening socket");
+        return 1;
+    }
+    //(void)fcntl(sockfd, F_SETFD, FD_CLOEXEC); // WTF
+
+    struct sockaddr_un server_address {};
+    memset(&server_address, 0, sizeof(server_address));
+    server_address.sun_family = AF_LOCAL;
+    strncpy(static_cast<char*>(server_address.sun_path), path.c_str(), path.length());
+
+    int err = connect(sockfd, reinterpret_cast<struct sockaddr*>(&server_address), sizeof(server_address));
+    if(err != 0) {
+        perror("Connect failed");
+        return 1;
+    }
+    return sockfd;
 }

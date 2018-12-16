@@ -107,4 +107,8 @@ DECLARE_FILE_STREAM(UniqueFile, uf, std::move(uf), fileno(resource.get()))
 std::ostream& print_time(std::ostream& out, struct tm& ptm, char const* const format);
 std::ostream& print_used_memory(std::ostream& out, uint64_t used, uint64_t total);
 
+// Initialize a unix socket on the given `path`.
+int connect_to(std::string const& path);
+
 #endif
+
