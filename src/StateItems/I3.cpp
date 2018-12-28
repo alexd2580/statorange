@@ -8,11 +8,10 @@
 #include "i3/ipc_constants.hpp"
 #include "utils/io.hpp"
 
-I3::mode_event(std::unique_ptr<char[]> response)
+void I3::mode_event(std::unique_ptr<char[]> response)
 {
-    JSON::Node json(response);
-    i3.mode.assign(json["change"].string());
-    return true;
+    JSON::Node json(response.get());
+    mode.assign(json["change"].string());
 }
 
 // bool I3Workspaces::window_event(char const* response)
@@ -67,7 +66,7 @@ std::pair<bool, bool> I3::handle_message(uint32_t type, std::unique_ptr<char[]> 
     switch(type) {
     case i3_ipc::INVALID_TYPE:
         log() << "Invalid packet received." << std::endl;
-        return false;
+        return {false, false};
     case i3_ipc::event_type::MODE:
         mode_event(std::move(response));
         return {true, true};
@@ -82,7 +81,7 @@ std::pair<bool, bool> I3::handle_message(uint32_t type, std::unique_ptr<char[]> 
         return {true, true};
     default:
         log() << "Unhandled event type: " << i3_ipc::type_to_string(type) << std::endl;
-        return true;
+        return {true, true};
     }
 }
 
