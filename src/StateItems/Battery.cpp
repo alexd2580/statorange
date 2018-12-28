@@ -7,6 +7,7 @@
 
 #include "Lemonbar.hpp"
 
+    // TODO Use utility functions.
 std::pair<bool, bool> Battery::update_raw() {
     std::unique_ptr<FILE, int (*)(FILE*)> file(fopen(bat_file_loc.c_str(), "re"), fclose);
     if(file == nullptr) {

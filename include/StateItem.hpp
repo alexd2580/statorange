@@ -1,5 +1,5 @@
-#ifndef __STATEITEMHEADER_LOL___
-#define __STATEITEMHEADER_LOL___
+#ifndef STATEITEM_HPP
+#define STATEITEM_HPP
 
 #include <chrono>
 #include <map>
@@ -66,7 +66,7 @@ class StateItem : public Logger {
     StateItem& operator=(const StateItem&) = delete;
     StateItem& operator=(StateItem&&) = delete;
 
-    virtual ~StateItem() = default;
+    ~StateItem() override = default;
 
     // Result is true if the state item needs to be redrawn.
     bool update(bool force = false);

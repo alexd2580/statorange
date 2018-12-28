@@ -33,7 +33,7 @@ run: build
 run_debug: build_debug
 	build/statorange
 
-install: test
+install: # test
 	cd build; make install
 
 clean:

@@ -16,11 +16,10 @@ class Net final : public StateItem {
     static Type parse_type(std::string const& type);
 
     enum class Display {
-        none,          // shows that the interface is active
-        IPv4,          // shows the ipv4 address if enabled
-        IPv6,          // shows the ipv6 address if enabled
-        IPv6_fallback, // shows the ipv6 address if enabled, otherwise -> ipv4
-        both           // shows both addresses
+        None,         // `interface`
+        IPv4,         // `ipv4`
+        IPv6,         // `ipv6`
+        Both          // `ipv4 | ipv6`
     };
 
     static Display parse_display(std::string const& display);

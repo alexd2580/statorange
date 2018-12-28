@@ -25,10 +25,10 @@
 
 #include "StateItems/Battery.hpp"
 #include "StateItems/Date.hpp"
+#include "StateItems/I3.hpp"
 #include "StateItems/Load.hpp"
 #include "StateItems/Net.hpp"
 #include "StateItems/Space.hpp"
-// #include "StateItems/I3Workspaces.hpp"
 // #include "StateItems/IMAPMail.hpp"
 // #include "StateItems/Volume.hpp"
 #include "Lemonbar.hpp"
@@ -63,6 +63,7 @@ class Statorange : Logger {
 
     bool force_update = true;
     bool dead = false;
+    bool restart = false;
 
     bool show_failed_modules;
 
@@ -117,12 +118,11 @@ class Statorange : Logger {
             CREATE_ITEM(Load)
             CREATE_ITEM(Battery)
             CREATE_ITEM(Net)
+            CREATE_ITEM(I3)
             // else if(item == "Volume")
             //     return new Volume(json_item);
             // else if(item == "IMAPMail")
             //     return new IMAPMail(json_item);
-            // else if(item == "I3Workspaces")
-            //     return new I3Workspaces(json_item);
         } catch(std::string const& error) {
             // Errors will be ignored.
             log() << error << std::endl;
@@ -241,7 +241,7 @@ class Statorange : Logger {
     }
 
     void print() {
-        const uint8_t num_output_displays = 3;
+        const uint8_t num_output_displays = 1;
         for(uint8_t i = 0; i < num_output_displays; i++) {
             bar.display_begin(i);
             print_section(Lemonbar::Alignment::left, left_items, i);
@@ -258,21 +258,22 @@ class Statorange : Logger {
         show_failed_modules = true;
     }
 
-    int run(int argc, char* argv[]) {
+    // Returns `true` if it should be restarted.
+    bool run(int argc, char* argv[]) {
         (void)argc;
         (void)argv;
         log() << "Launching Statorange" << std::endl;
 
         if(!load_config()) {
-            return 1;
+            return false;
         }
         if(!apply_config()) {
-            return 1;
+            return false;
         }
 
         setup_signal_handler();
 
-        while(!dead) {
+        while(!dead && !restart) {
             if(update()) {
                 print();
             }
@@ -281,22 +282,27 @@ class Statorange : Logger {
             handle_signals();
         }
 
-        return 0;
+        return restart;
     }
 };
 
 int main(int argc, char* argv[]) {
-    // const std::string normal_font("-f -misc-fixed-medium-r-semicondensed--12------iso10646-1");
-    const std::string text_font("-f -xos4-terminus2-medium-r-normal--12------iso8859-1");
-    const std::string icon_font("-f -xos4-terminusicons2mono-medium-r-normal--12------iso8859-1");
-    const std::string lemonbar_cmd("lemonbar " + text_font + " " + icon_font + " -a 30 -u -1");
-    const std::string font_path_minus("xset fp- /usr/local/lib/statorange/misc");
-    const std::string font_path_plus("xset fp+ /usr/local/lib/statorange/misc");
-    const std::string lemonbar_with_fonts(font_path_minus + ";" + font_path_plus + ";" + lemonbar_cmd);
-    auto lemonbar_pipe = run_command(lemonbar_with_fonts, "w");
-    FileStream<UniqueFile> lemonbar_streambuf(std::move(lemonbar_pipe));
-    std::ostream lemonbar_stream(&lemonbar_streambuf);
+    if(argc == 2 && std::string(argv[1]) == "--dry") {
+        Statorange app(std::cout);
+        return app.run(argc, argv);
+    } else {
+        // const std::string normal_font("-f -misc-fixed-medium-r-semicondensed--12------iso10646-1");
+        const std::string text_font("-f -xos4-terminus2-medium-r-normal--12------iso8859-1");
+        const std::string icon_font("-f -xos4-terminusicons2mono-medium-r-normal--12------iso8859-1");
+        const std::string lemonbar_cmd("lemonbar " + text_font + " " + icon_font + " -a 30 -u -1");
+        const std::string font_path_minus("xset fp- /usr/local/lib/statorange/misc");
+        const std::string font_path_plus("xset fp+ /usr/local/lib/statorange/misc");
+        const std::string lemonbar_with_fonts(font_path_minus + ";" + font_path_plus + ";" + lemonbar_cmd);
+        auto lemonbar_pipe = run_command(lemonbar_with_fonts, "w");
+        FileStream<UniqueFile> lemonbar_streambuf(std::move(lemonbar_pipe));
+        std::ostream lemonbar_stream(&lemonbar_streambuf);
 
-    Statorange app(lemonbar_stream);
-    return app.run(argc, argv);
+        Statorange app(lemonbar_stream);
+        return app.run(argc, argv);
+    }
 }

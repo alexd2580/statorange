@@ -48,7 +48,7 @@ class Logger {
         time_t tt = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         struct tm ptm {};
         localtime_r(&tt, &ptm);
-        char const* const time_format = "%Y-%m-%d %H:%M ";
+        char const* const time_format = "%Y-%m-%d %H:%M:%S ";
         return print_time(ostr, ptm, time_format) << "\t[" << name << "]\t";
     }
     static std::ostream& log(std::string const& name) { return log(name, default_ostream); }

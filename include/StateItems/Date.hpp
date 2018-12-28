@@ -1,5 +1,5 @@
-#ifndef __DATEXYZHEADER_LOL___
-#define __DATEXYZHEADER_LOL___
+#ifndef STATEITEMS_DATE_HPP
+#define STATEITEMS_DATE_HPP
 
 #include <ostream>
 #include <string>
@@ -19,7 +19,6 @@ class Date final : public StateItem {
 
   public:
     explicit Date(JSON::Node const& item);
-    virtual ~Date() override = default;
 };
 
 #endif

@@ -3,7 +3,6 @@
 #include <ostream>
 
 #include "StateItems/Net.hpp"
-/* #include "util.hpp" */
 
 Net::Type Net::parse_type(std::string const& type) {
 #define PARSE_TYPE(enum)                                                                                               \
@@ -16,17 +15,16 @@ Net::Type Net::parse_type(std::string const& type) {
 }
 
 Net::Display Net::parse_display(std::string const& display) {
-#define PARSE_DISPLAY(string, enum)                                                                                    \
-    if(display == #string) {                                                                                           \
+#define PARSE_DISPLAY(enum)                                                                                            \
+    if(display == #enum) {                                                                                             \
         return Net::Display::enum;                                                                                     \
     }
 
-    PARSE_DISPLAY(none, none)
-    PARSE_DISPLAY(ipv4, IPv4)
-    PARSE_DISPLAY(ipv6, IPv4)
-    PARSE_DISPLAY(ipv6_fallback, IPv6_fallback)
-    PARSE_DISPLAY(both, both)
-    return Net::Display::none;
+    PARSE_DISPLAY(None)
+    PARSE_DISPLAY(IPv4)
+    PARSE_DISPLAY(IPv6)
+    PARSE_DISPLAY(Both)
+    return Net::Display::None;
 }
 
 time_t Net::min_cooldown = 1000; // TODO magicnumber
@@ -123,9 +121,10 @@ std::pair<bool, bool> Net::get_wireless_state() {
     // Essid.
     int const ESSID_LENGTH = 32;
     char buffer[ESSID_LENGTH];
-    memset(static_cast<char*>(buffer), 0, ESSID_LENGTH);
-    wreq.u.essid.pointer = static_cast<char*>(buffer); // NOLINT: C style of doing things.
-    wreq.u.essid.length = ESSID_LENGTH;                // NOLINT: C style of doing things.
+    char* buffer_ptr = static_cast<char*>(buffer);
+    memset(buffer_ptr, 0, ESSID_LENGTH);
+    wreq.u.essid.pointer = buffer_ptr;  // NOLINT: C style of doing things.
+    wreq.u.essid.length = ESSID_LENGTH; // NOLINT: C style of doing things.
 
     if(ioctl(sockfd, SIOCGIWESSID, &wreq) == -1) { // NOLINT: C style of doing things.
         log() << "SIOCGIWESSID ioctl failed" << std::endl;
@@ -133,7 +132,7 @@ std::pair<bool, bool> Net::get_wireless_state() {
         return {false, false};
     }
 
-    essid.assign(static_cast<char*>(wreq.u.essid.pointer)); // NOLINT: C style of doing things.
+    essid.assign(buffer_ptr);
 
     // Quality.
     iw_statistics stats{};
@@ -222,29 +221,34 @@ void Net::print_raw(Lemonbar& bar, uint8_t display_arg) {
         }
 
         switch(display) {
-        case Net::Display::IPv6_fallback:
-            if(!ipv6.empty()) {
-                bar() << ' ' << ipv6 << ' ';
-            } else if(!ipv4.empty()) {
-                bar() << ' ' << ipv4 << ' ';
-            } else {
-                bar() << " No IPv4/IPv6 address ";
-            }
-            break;
-        case Net::Display::both:
-            if(!ipv4.empty()) {
-                bar() << ' ' << ipv4 << ' ';
-            }
-            bar.separator(Lemonbar::Separator::left, Lemonbar::Coloring::neutral);
-            bar() << ' ' << ipv6 << ' ';
-            break;
         case Net::Display::IPv4:
-            bar() << ' ' << ipv4 << ' ';
+            [[fallthrough]];
+        case Net::Display::IPv6: {
+            bool ipv4_main = display == Net::Display::IPv4;
+            auto const& main_address = ipv4_main ? ipv4 : ipv6;
+            bool main_exists = !main_address.empty();
+            auto const secondary_string = ipv4_main ? "v6" : "v4";
+            bool secondary_exists = !(ipv4_main ? ipv4 : ipv6).empty();
+            if(main_exists) {
+                bar() << ' ' << main_address << ' ';
+                if(secondary_exists) {
+                    bar.separator(Lemonbar::Separator::left, Lemonbar::Coloring::neutral);
+                }
+            }
+            if(secondary_exists) {
+                bar() << " (" << secondary_string << ") ";
+            }
+        } break;
+        case Net::Display::Both:
+            if(!ipv4.empty() && !ipv6.empty()) {
+                bar() << ' ' << ipv4 << ' ';
+                bar.separator(Lemonbar::Separator::left, Lemonbar::Coloring::neutral);
+                bar() << ' ' << ipv6 << ' ';
+            } else if(!ipv4.empty() || !ipv6.empty()) {
+                bar() << ' ' << ipv4 << ipv6 << ' ';
+            }
             break;
-        case Net::Display::IPv6:
-            bar() << ' ' << ipv6 << ' ';
-            break;
-        case Net::Display::none:
+        case Net::Display::None:
             bar() << " Up ";
             break;
         }

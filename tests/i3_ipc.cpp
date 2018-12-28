@@ -110,24 +110,3 @@ go_bandit([] {
         });
     });
 });
-
-/*     it("properly work", [] { */
-/*         // char path[100]; */
-/*         // if(fgets(path, 100, stdin) != path) */
-/*         //     return 1; */
-/*         // char* p = path; */
-/*         // while(*p != '\n') */
-/*         //     p++; */
-/*         // *p = '\0'; */
-/*         // printf("%s\n", path); */
-/*         // int fd = connect_to(path); */
-/*         // */
-/*         // auto msg = std::string("[\"workspace\", \"mode\"]"); */
-/*         // send_message(fd, 2, move(msg)); */
-/*         // */
-/*         // for(int i = 0; i < 100; i++) { */
-/*         //     uint32_t type; */
-/*         //     auto payload = read_message(fd, type); */
-/*         //     cout << "Type " << type << ": " << payload.get() << endl << endl; */
-/*         // } */
-/*     }); */
