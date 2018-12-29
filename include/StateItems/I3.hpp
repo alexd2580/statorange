@@ -5,6 +5,8 @@
 #include <string>
 #include <utility>
 
+#include <fmt/format.h>
+
 #include "Lemonbar.hpp"
 #include "StateItem.hpp"
 #include "json_parser.hpp"
@@ -23,23 +25,39 @@ struct Workspace final {
 
     // Urgent flag set by X.
     bool urgent = false;
+
+    Workspace(uint8_t new_display, std::string const& new_name, bool new_urgent)
+        : display(new_display), name(new_name), urgent(new_urgent) {}
 };
 
 class Workspaces final {
     // Map of unique number to workspace.
     std::map<uint8_t, Workspace> workspaces;
+    uint8_t focused = 255;
 
   public:
     void print_raw(Lemonbar& bar, uint8_t display) {
         for(auto const& workspace_entry : workspaces) {
             auto const& workspace = workspace_entry.second;
-            if (workspace.display == display) {
-                bar.separator(Lemonbar::Separator::right, Lemonbar::Coloring::neutral);
+            if(workspace.display == display) {
+                auto const& sep_right = Lemonbar::Separator::right;
+                bool is_focused = workspace_entry.first == focused;
+                auto const& coloring = workspace.urgent
+                                           ? Lemonbar::Coloring::urgent
+                                           : is_focused ? Lemonbar::Coloring::active : Lemonbar::Coloring::inactive;
+                bar.separator(sep_right, coloring);
                 bar() << " " << workspace.name << " ";
-                bar.separator(Lemonbar::Separator::right, Lemonbar::Coloring::white_on_black);
+                bar.separator(sep_right, Lemonbar::Coloring::white_on_black);
             }
         }
     }
+
+    void init(uint8_t num, std::string const& name) {
+        workspaces.emplace(std::piecewise_construct, std::forward_as_tuple(num),
+                           std::forward_as_tuple(0x0, name, false));
+    }
+    void focus(uint8_t num) { focused = num; }
+    void empty(uint8_t num) { workspaces.erase(num); }
 };
 
 struct Window final {
@@ -67,6 +85,8 @@ class I3 final : public StateItem {
     Workspaces workspaces;
     Windows windows;
 
+    void workspace_event(std::unique_ptr<char[]> response);
+    void window_event(std::unique_ptr<char[]> response);
     void mode_event(std::unique_ptr<char[]> response);
 
     std::pair<bool, bool> handle_message(uint32_t type, std::unique_ptr<char[]> response);

@@ -78,7 +78,7 @@ void StateItem::print(Lemonbar& bar, uint8_t display_number) {
 
 bool StateItem::wait_for_events(int signal_fd) {
     fd_set read_fds;
-    struct timeval tv;
+    struct timeval tv{};
 
     int max_fd = 0;
     FD_ZERO(&read_fds);
@@ -95,7 +95,7 @@ bool StateItem::wait_for_events(int signal_fd) {
 
     tv.tv_sec = StateItem::min_cooldown.count();
     tv.tv_usec = 0;
-    Logger::log("StateItem") << "Setting socket timeout to " << (int)tv.tv_sec << " seconds" << std::endl;
+    // Logger::log("StateItem") << "Setting socket timeout to " << (int)tv.tv_sec << " seconds" << std::endl;
 
     bool changed = false;
     int select_res = select(max_fd + 1, &read_fds, nullptr, nullptr, &tv);
@@ -105,15 +105,15 @@ bool StateItem::wait_for_events(int signal_fd) {
         break;
     case 0:
         // Timeout exceeded
-        Logger::log("StateItem") << "Timeout" << std::endl;
+        // Logger::log("StateItem") << "Timeout" << std::endl;
         break;
     default:
-        Logger::log("StateItem") << (int)select_res << " sockets are ready for reading" << std::endl;
+        // Logger::log("StateItem") << (int)select_res << " sockets are ready for reading" << std::endl;
         for(auto const& event_socket : event_sockets) {
             if(FD_ISSET(event_socket.first, &read_fds)) {
                 auto item = event_socket.second;
-                Logger::log("StateItem") << "Module " << item->module_name << " can process events on socket "
-                                         << event_socket.first << std::endl;
+                // Logger::log("StateItem") << "Module " << item->module_name << " can process events on socket "
+                                         // << event_socket.first << std::endl;
                 changed = changed || item->handle_stream_data(event_socket.first);
             }
         }

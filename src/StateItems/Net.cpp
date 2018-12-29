@@ -76,7 +76,7 @@ bool Net::get_IP_addresses(Logger const& logger) {
                     inet_ntop(AF_INET, addr_ptr, buffer_ptr, INET_ADDRSTRLEN);
 
                     address_entry.first = std::string(buffer_ptr);
-                    logger.log() << "IPv4 " << iface << ": " << address_entry.first << std::endl;
+                    // logger.log() << "IPv4 " << iface << ": " << address_entry.first << std::endl;
                 } else if(family == AF_INET6) {
                     // NOLINTNEXTLINE: C style of doing things.
                     addr_ptr = &((struct sockaddr_in6*)ifa->ifa_addr)->sin6_addr;
@@ -84,7 +84,7 @@ bool Net::get_IP_addresses(Logger const& logger) {
                     auto buffer_ptr = static_cast<char*>(buffer);
                     inet_ntop(AF_INET6, addr_ptr, buffer_ptr, INET6_ADDRSTRLEN);
                     address_entry.second = std::string(buffer_ptr);
-                    logger.log() << "IPv6 " << iface << ": " << address_entry.second << std::endl;
+                    // logger.log() << "IPv6 " << iface << ": " << address_entry.second << std::endl;
                 }
             }
         }

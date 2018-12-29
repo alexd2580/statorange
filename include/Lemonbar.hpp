@@ -58,6 +58,7 @@ class Lemonbar final {
         inactive,
         semiactive,
         active,
+        urgent,
         // Different quality states.
         good,
         neutral,

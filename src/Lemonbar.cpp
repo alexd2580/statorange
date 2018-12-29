@@ -41,6 +41,7 @@ std::map<Lemonbar::Coloring, Lemonbar::ColorPair const> const Lemonbar::color_pa
     {Lemonbar::Coloring::inactive, {"#FF2A2A2A", "#FF707070"}},
     {Lemonbar::Coloring::semiactive, {"#FF454545", "#FFCCCCCC"}},
     {Lemonbar::Coloring::active, {"#FF1010D0", "#FFCCCCCC"}},
+    {Lemonbar::Coloring::urgent, {"#FFD01010", "#FFCCCCCC"}},
     {Lemonbar::Coloring::good, {"#FF10D010", "#FF000000"}},
     {Lemonbar::Coloring::neutral, {"#FF008000", "#FFCCCCCC"}},
     {Lemonbar::Coloring::info, {"#FFCDCD00", "#FF000000"}},
