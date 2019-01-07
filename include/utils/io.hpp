@@ -9,8 +9,11 @@
 #include <cstddef>
 #include <cstdio>
 
-#include "utils/resource.hpp"
+#include <sys/socket.h>
+
+#include "Address.hpp"
 #include "utils/exception.hpp"
+#include "utils/resource.hpp"
 
 // Returns true if input becomes available on a non-closed socket.
 // Returns true if the pipe has been closed remotely.
@@ -30,6 +33,7 @@ ssize_t write_all(int fd, char const* buf, size_t count) noexcept(false);
 
 class UniqueSocket final : public UniqueResource<int> {
   public:
+    explicit UniqueSocket();
     explicit UniqueSocket(int new_sockfd);
     operator int() const; // NOLINT: Implicit `int()` conversions are expected behavior.
 };
@@ -107,8 +111,8 @@ DECLARE_FILE_STREAM(UniqueFile, uf, std::move(uf), fileno(resource.get()))
 std::ostream& print_time(std::ostream& out, struct tm& ptm, char const* const format);
 std::ostream& print_used_memory(std::ostream& out, uint64_t used, uint64_t total);
 
-// Initialize a unix socket on the given `path`.
-int connect_to(std::string const& path);
+UniqueSocket connect_to(std::string const& path, unsigned int port, int domain = AF_LOCAL,
+                        std::string const& interface = "");
+UniqueSocket connect_to(Address const& path, int domain = AF_LOCAL, std::string const& interface = "");
 
 #endif
-

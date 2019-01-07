@@ -78,9 +78,10 @@ std::pair<UniqueSocket, UniqueSocket> make_bidirectional_pipe(int& server, int& 
 
     client = accept(server_socket, nullptr, nullptr);
     AssertThat(client, Is().Not().EqualTo(-1));
-    server = future.get();
+    auto unique_server = future.get();
+    server = unique_server;
     AssertThat(server, Is().Not().EqualTo(-1));
 
     AssertThat(close(server_socket), Is().Not().EqualTo(-1));
-    return {UniqueSocket(server), UniqueSocket(client)};
+    return {std::move(unique_server), UniqueSocket(client)};
 }

@@ -27,7 +27,7 @@ Net::Display Net::parse_display(std::string const& display) {
     return Net::Display::None;
 }
 
-time_t Net::min_cooldown = 1000; // TODO magicnumber
+std::chrono::seconds Net::min_cooldown(1000); // TODO magicnumber
 std::map<std::string, std::pair<std::string, std::string>> Net::addresses;
 
 /******************************************************************************/
@@ -40,9 +40,9 @@ std::map<std::string, std::pair<std::string, std::string>> Net::addresses;
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wcast-align"
-bool Net::get_IP_addresses(Logger const& logger) {
-    static time_t last_updated = 0;
-    time_t now = time(nullptr);
+bool Net::update_ip_addresses() {
+    static std::chrono::system_clock::time_point last_updated = std::chrono::system_clock::time_point::min();
+    std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
     if(now < last_updated + min_cooldown) {
         return true;
     }
@@ -106,7 +106,7 @@ bool Net::get_IP_addresses(Logger const& logger) {
 #include <sys/stat.h>
 #include <unistd.h>
 
-std::pair<bool, bool> Net::get_wireless_state() {
+std::pair<bool, bool> Net::update_wireless_state() {
     UniqueSocket sockfd(socket(AF_INET, SOCK_DGRAM, 0));
     if(sockfd == -1) {
         log() << "Cannot open socket" << std::endl;
@@ -167,19 +167,51 @@ std::pair<bool, bool> Net::get_wireless_state() {
     return {true, true};
 }
 
+std::pair<bool, bool> Net::update_connection_state() {
+    std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
+    if(now < last_connection_check + connection_check_cooldown) {
+        return {true, true};
+    }
+    last_connection_check = now;
+
+    {
+        UniqueSocket socket4;
+        if(!ipv4.empty()) {
+            socket4 = connect_to("www.google.com", 80, AF_INET, ipv4);
+        }
+        ipv4_connected = socket4.is_active();
+        // log() << "IPv4 connected: " << ipv4_connected << std::endl;
+    }
+
+    {
+        UniqueSocket socket6;
+        if(!ipv6.empty()) {
+            // There can be multiple interfaces with the same IPv6 address...
+            // For reference see: "ipv6 scope id".
+            std::string with_scope = ipv6 + "%" + name;
+            socket6 = connect_to("www.google.com", 80, AF_INET6, with_scope);
+        }
+        ipv6_connected = socket6.is_active();
+        // log() << "IPv6 connected: " << ipv6_connected << std::endl;
+    }
+
+    return {true, true};
+}
+
 Net::Net(JSON::Node const& item)
     : StateItem(item), name(item["interface"].string()), type(Net::parse_type(item["type"].string())),
-      display(Net::parse_display(item["display"].string())) {
+      display(Net::parse_display(item["display"].string())),
+      connection_check_cooldown(item["connection check cooldown"].number<uint32_t>()) {
     up = false;
     quality = 0;
     bitrate = 0;
 
     auto this_cooldown = item["cooldown"].number<time_t>();
-    min_cooldown = std::min(min_cooldown, this_cooldown);
+    min_cooldown = std::chrono::seconds(std::min(min_cooldown.count(), this_cooldown));
 }
 
 std::pair<bool, bool> Net::update_raw() {
-    if(!get_IP_addresses(*this)) {
+    if(!update_ip_addresses()) {
         return {true, false};
     }
 
@@ -198,10 +230,14 @@ std::pair<bool, bool> Net::update_raw() {
 
     bool success = true;
     if(type == Net::Type::wireless) {
-        const std::pair<bool, bool> result = get_wireless_state();
+        const std::pair<bool, bool> result = update_wireless_state();
         success = success && result.first;
         changed = changed || result.second;
     }
+
+    const std::pair<bool, bool> result = update_connection_state();
+    success = success && result.first;
+    changed = changed || result.second;
 
     return {success, changed};
 }
@@ -216,39 +252,48 @@ void Net::print_raw(Lemonbar& bar, uint8_t display_arg) {
             break;
         case Net::Type::wireless:
             bar() << icon << ' ' << essid << '(' << quality << "%%) ";
-            bar.separator(Lemonbar::Separator::left, Lemonbar::Coloring::neutral);
             break;
         }
 
+        auto const& up_color = Lemonbar::Coloring::neutral;
+        auto const& down_color = Lemonbar::Coloring::info;
+        auto const& ipv4_color = ipv4_connected ? up_color : down_color;
+        auto const& ipv6_color = ipv6_connected ? up_color : down_color;
+
         switch(display) {
         case Net::Display::IPv4:
-            [[fallthrough]];
-        case Net::Display::IPv6: {
-            bool ipv4_main = display == Net::Display::IPv4;
-            auto const& main_address = ipv4_main ? ipv4 : ipv6;
-            bool main_exists = !main_address.empty();
-            auto const secondary_string = ipv4_main ? "v6" : "v4";
-            bool secondary_exists = !(ipv4_main ? ipv4 : ipv6).empty();
-            if(main_exists) {
-                bar() << ' ' << main_address << ' ';
-                if(secondary_exists) {
-                    bar.separator(Lemonbar::Separator::left, Lemonbar::Coloring::neutral);
-                }
+            if(!ipv4.empty()) {
+                bar.separator(Lemonbar::Separator::left, ipv4_color);
+                bar() << ' ' << ipv4 << ' ';
             }
-            if(secondary_exists) {
-                bar() << " (" << secondary_string << ") ";
+            if(!ipv6.empty()) {
+                bar.separator(Lemonbar::Separator::left, ipv6_color);
+                bar() << " (v6) ";
             }
-        } break;
+            break;
+        case Net::Display::IPv6:
+            if(!ipv6.empty()) {
+                bar.separator(Lemonbar::Separator::left, ipv6_color);
+                bar() << ' ' << ipv6 << ' ';
+            }
+            if(!ipv4.empty()) {
+                bar.separator(Lemonbar::Separator::left, ipv4_color);
+                bar() << " (v4) ";
+            }
+            break;
         case Net::Display::Both:
             if(!ipv4.empty() && !ipv6.empty()) {
+                bar.separator(Lemonbar::Separator::left, ipv4_color);
                 bar() << ' ' << ipv4 << ' ';
-                bar.separator(Lemonbar::Separator::left, Lemonbar::Coloring::neutral);
+                bar.separator(Lemonbar::Separator::left, ipv6_color);
                 bar() << ' ' << ipv6 << ' ';
             } else if(!ipv4.empty() || !ipv6.empty()) {
+                bar.separator(Lemonbar::Separator::left, ipv4.empty() ? ipv6_color : ipv4_color);
                 bar() << ' ' << ipv4 << ipv6 << ' ';
             }
             break;
         case Net::Display::None:
+            bar.separator(Lemonbar::Separator::left, ipv4_connected || ipv6_connected ? up_color : down_color);
             bar() << " Up ";
             break;
         }

@@ -1,43 +1,51 @@
 #ifndef ADDRESS_HPP
 #define ADDRESS_HPP
 
-#include <netdb.h>
 #include <string>
+
+// #include <netdb.h>
+// #include <arpa/inet.h>
+#include <netdb.h>      // struct addrinfo
+#include <netinet/in.h> // struct sockaddr_in
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/un.h> // struct sockaddr_un
 
-#include "Logger.hpp"
-
-class Address : public Logger {
+class Address final {
   private:
-    std::string hostname;
+    std::string host;
     unsigned int port;
 
-    struct addrinfo addrinfo; /* {
+    /* struct addrinfo {
        int              ai_flags;     // AI_PASSIVE, AI_CANONNAME, etc.
        int              ai_family;    // AF_INET, AF_INET6, AF_UNSPEC
        int              ai_socktype;  // SOCK_STREAM, SOCK_DGRAM
        int              ai_protocol;  // use 0 for "any"
        size_t           ai_addrlen;   // size of ai_addr in bytes
        struct sockaddr *ai_addr;      // struct sockaddr_in or _in6
-       char            *ai_canonname; // full canonical hostname
+       char            *ai_canonname; // full canonical host
 
        struct addrinfo *ai_next;      // linked list, next node
    };*/
 
   public:
     Address();
-    Address(std::string hostname, unsigned int port);
-    Address& operator=(Address const& rvalue);
-    ~Address() override = default;
+    // Unix addresses don't use port numbers.
+    Address(std::string host, unsigned int port = 0);
 
-    bool run_DNS_lookup();
-    int open_TCP_socket();
+    struct sockaddr_un as_sockaddr_un() const;
 
-    void print_sockaddr(struct sockaddr& addr);
-    void print_sockaddr_in(struct sockaddr_in& addr);
-    void print_addr(int af, void* addr);
-    void print_sockaddr_in6(struct sockaddr_in6& addr);
+    struct addrinfo* get_addrinfo(int family = AF_UNSPEC, int socktype = SOCK_STREAM) const;
+    struct sockaddr_in as_sockaddr_in() const;
+    struct sockaddr_in6 as_sockaddr_in6() const;
+
+    // bool run_DNS_lookup();
+    // int open_TCP_socket();
+    //
+    // void print_sockaddr(struct sockaddr& addr);
+    // void print_sockaddr_in(struct sockaddr_in& addr);
+    // void print_addr(int af, void* addr);
+    // void print_sockaddr_in6(struct sockaddr_in6& addr);
 };
 
 #endif

@@ -8,6 +8,16 @@
 #include "i3/ipc_constants.hpp"
 #include "utils/io.hpp"
 
+void I3::query_tree() {
+    std::unique_ptr<char[]> response = i3_ipc::query(command_socket, i3_ipc::message_type::GET_TREE);
+    JSON::Node json(response.get());
+
+    auto const& output_nodes = json["nodes"];
+    for (auto const& output_node : output_nodes.array()) {
+        log() << output_node["name"].string() << std::endl;
+    }
+}
+
 void I3::workspace_event(std::unique_ptr<char[]> response) {
     JSON::Node json(response.get());
     std::string change(json["change"].string());
@@ -90,6 +100,8 @@ std::pair<bool, bool> I3::update_raw() {
     // Pull and parse entire tree.
     // Update outputs, workspaces and windows accordingly.
     // Forced rerender every `cooldown` seconds.
+    log() << "Performing full tree update" << std::endl;
+    query_tree();
     return {true, true};
 }
 
@@ -101,14 +113,20 @@ std::pair<bool, bool> I3::handle_stream_data_raw(int fd) {
 
 void I3::print_raw(Lemonbar& bar, uint8_t display) { workspaces.print_raw(bar, display); }
 
-I3::I3(JSON::Node const& item) : StateItem(item), command_socket(0), event_socket(0) {
+I3::I3(JSON::Node const& item) : StateItem(item) {
     const auto get_socket_path_command = "i3 --get-socketpath";
     auto get_socket_path_pipe = run_command(get_socket_path_command, "r");
     char buffer[100];
     char* buffer_ptr = static_cast<char*>(buffer);
     fgets(buffer_ptr, 100, get_socket_path_pipe.get());
     auto const socket_path = std::string(buffer_ptr, strnlen(buffer_ptr, 100 - 1) - 1);
+
+    command_socket = connect_to(socket_path);
     event_socket = connect_to(socket_path);
+
+    assert(command_socket.is_active());
+    assert(event_socket.is_active());
+
     std::string abonnements = R"(["workspace","mode","output","window"])";
     i3_ipc::write_message(event_socket, i3_ipc::message_type::SUBSCRIBE, abonnements);
     register_event_socket(event_socket);

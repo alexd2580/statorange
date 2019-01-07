@@ -10,6 +10,7 @@
 #include "Lemonbar.hpp"
 #include "StateItem.hpp"
 #include "json_parser.hpp"
+#include "utils/io.hpp"
 
 class Outputs final {
     // Map of position of a monitor to its Xorg name: LVDS, eDP1, VGA1, HDMI2, DVI3.
@@ -75,8 +76,8 @@ class Windows final {
 
 class I3 final : public StateItem {
   private:
-    int command_socket;
-    int event_socket;
+    UniqueSocket command_socket;
+    UniqueSocket event_socket;
 
     // i3-mode, defined in the i3-config.
     std::string mode;
@@ -84,6 +85,8 @@ class I3 final : public StateItem {
     Outputs outputs;
     Workspaces workspaces;
     Windows windows;
+
+    void query_tree();
 
     void workspace_event(std::unique_ptr<char[]> response);
     void window_event(std::unique_ptr<char[]> response);

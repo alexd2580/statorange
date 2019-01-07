@@ -12,6 +12,8 @@
 #include <cstring>
 #include <ctime>
 
+#include <fmt/format.h>
+
 #include "utils/io.hpp"
 
 #ifdef _MSC_VER
@@ -55,12 +57,14 @@ class Logger {
     std::ostream& log() const { return log(name, ostream); }
     std::ostream& operator()() const { return log(); } // NOLINT
 
-    void log_errno() {
-        operator()() << "errno = " << errno << std::endl;
-        operator()() << "Error description is : " << strerror(errno) << std::endl;
+    static void log_errno(std::string const& name, std::ostream& ostr) {
+        log(name, ostr) << fmt::format("Errno ({}): ", errno) << strerror(errno) << std::endl;
     }
+    static void log_errno(std::string const& name) { log_errno(name, default_ostream); }
+    void log_errno() const { log_errno(name, ostream); }
 };
 
-#define ANON_LOG (Logger::log(__METHOD__))
+#define LOG (Logger::log(__METHOD__))
+#define LOG_ERRNO (Logger::log_errno(__METHOD__))
 
 #endif

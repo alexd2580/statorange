@@ -4,6 +4,7 @@
 #include <ostream>
 #include <string>
 #include <utility>
+#include <chrono>
 
 #include "Lemonbar.hpp"
 #include "StateItem.hpp"
@@ -28,23 +29,29 @@ class Net final : public StateItem {
     std::string name;
     Type type;
     Display display;
+    std::chrono::seconds connection_check_cooldown;
+    std::chrono::system_clock::time_point last_connection_check;
 
     bool up;
     std::string ipv4;
+    bool ipv4_connected;
     std::string ipv6;
+    bool ipv6_connected;
 
     // Optional (wireless properties).
     std::string essid;
     int32_t quality;
     int32_t bitrate;
 
-    static time_t min_cooldown;
+    static std::chrono::seconds min_cooldown;
 
     // addresses :: Map Interface (IPv4_Addr, IPv6_Addr)
     static std::map<std::string, std::pair<std::string, std::string>> addresses;
-    static bool get_IP_addresses(Logger const& logger);
+    static bool update_ip_addresses();
 
-    std::pair<bool, bool> get_wireless_state();
+    std::pair<bool, bool> update_wireless_state();
+
+    std::pair<bool, bool> update_connection_state();
 
     std::pair<bool, bool> update_raw() override;
     void print_raw(Lemonbar& bar, uint8_t) override; // NOLINT

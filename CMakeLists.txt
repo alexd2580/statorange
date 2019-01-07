@@ -2,10 +2,9 @@ cmake_minimum_required(VERSION 3.12)
 project(statorange VERSION 2.0.0 LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_FLAGS -stdlib=libc++)
 
 function(make_clang_warnings ENABLED_WARNINGS_LIST DISABLED_WARNINGS_LIST CLANG_WARNING_FLAGS_LIST)
     foreach(WARNING ${${ENABLED_WARNINGS_LIST}})
@@ -40,7 +39,7 @@ file(GLOB_RECURSE STATORANGE src/statorange.cpp)
 list(REMOVE_ITEM SOURCES ${STATORANGE})
 file(GLOB_RECURSE UNIT_TEST_SOURCES tests/*.cpp)
 
-set(LIBS asound ssl crypto fmt pthread c++)
+set(LIBS asound ssl crypto fmt pthread)
 
 # The main executable
 add_executable(statorange ${SOURCES} ${STATORANGE})
