@@ -1,5 +1,6 @@
-#include <ostream> // ostream
-#include <utility> // pair
+#include <algorithm> // find_if, for_each
+#include <ostream>   // ostream
+#include <utility>   // pair
 
 #include "StateItems/I3.hpp"
 
@@ -12,9 +13,42 @@ void I3::query_tree() {
     std::unique_ptr<char[]> response = i3_ipc::query(command_socket, i3_ipc::message_type::GET_TREE);
     JSON::Node json(response.get());
 
-    auto const& output_nodes = json["nodes"];
-    for (auto const& output_node : output_nodes.array()) {
+    auto const& output_nodes = json["nodes"].array();
+    for(auto const& output_node : output_nodes) {
+        // Make all of these into displays.
         log() << output_node["name"].string() << std::endl;
+
+        auto const& area_nodes = output_node["nodes"].array();
+        // Here we only care about the `content`-node hence the find.
+        auto const predicate = [](auto const& node) { return node["name"].string() == "content"; };
+        auto const content_node_iter = std::find_if(area_nodes.begin(), area_nodes.end(), predicate);
+        if(content_node_iter == area_nodes.end()) {
+            log() << "Has the structure of the tree changed? Can't find `content` node." << std::endl;
+            continue;
+        }
+        auto const& content_node = *content_node_iter;
+        auto const& workspace_nodes = content_node["nodes"].array();
+        for(auto const& workspace_node : workspace_nodes) {
+            auto const workspace_num = workspace_node["num"].number<uint8_t>();
+            auto const display_name = workspace_node["output"].string();
+            auto const workspace_name = workspace_node["name"].string();
+            workspaces.init(workspace_num, outputs.get_num(display_name), workspace_name);
+
+            std::function<void(JSON::Node const&)> parse_tree_container =
+                [this, &workspace_num, &parse_tree_container](JSON::Node const& container) {
+                    auto const window_id = container["window"];
+                    if(!window_id.exists()) {
+                        auto const& con_nodes = container["nodes"].array();
+                        std::for_each(con_nodes.begin(), con_nodes.end(), parse_tree_container);
+                        return;
+                    }
+
+                    auto const& window_name = container["name"].string();
+                    windows.open(window_id.number<uint64_t>(), workspace_num, window_name);
+                };
+
+            parse_tree_container(workspace_node);
+        }
     }
 }
 
@@ -22,17 +56,16 @@ void I3::workspace_event(std::unique_ptr<char[]> response) {
     JSON::Node json(response.get());
     std::string change(json["change"].string());
 
-    auto& current = json["current"];
-    uint8_t current_num = current["num"].number<uint8_t>();
-
-    log() << change << " " << (int)current_num << std::endl;
+    auto const& current = json["current"];
+    auto current_num = current["num"].number<uint8_t>();
 
     if(change == "init") {
-        workspaces.init(current_num, current["name"].string());
+        auto const display_name = current["output"].string();
+        workspaces.init(current_num, outputs.get_num(display_name), current["name"].string());
     } else if(change == "focus") {
         workspaces.focus(current_num);
     } else if(change == "urgent") {
-        // urgent_workspace(num, current["urgent"].boolean());
+        workspaces.urgent(current_num, current["urgent"].boolean());
     } else if(change == "empty") {
         workspaces.empty(current_num);
     } else {
@@ -120,6 +153,10 @@ I3::I3(JSON::Node const& item) : StateItem(item) {
     char* buffer_ptr = static_cast<char*>(buffer);
     fgets(buffer_ptr, 100, get_socket_path_pipe.get());
     auto const socket_path = std::string(buffer_ptr, strnlen(buffer_ptr, 100 - 1) - 1);
+
+    outputs.add(0, "eDP1");
+    outputs.add(1, "VGA1");
+    outputs.add(2, "DP2-2");
 
     command_socket = connect_to(socket_path);
     event_socket = connect_to(socket_path);

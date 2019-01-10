@@ -19,6 +19,7 @@
 #include "Address.hpp"
 #include "Logger.hpp"
 #include "utils/io.hpp"
+#include "utils/resource.hpp"
 
 bool has_input(int fd, int microsec) {
     fd_set rfds;
@@ -154,7 +155,6 @@ UniqueSocket connect_to(Address const& target, int domain, std::string const& in
         return UniqueSocket();
     }
 
-
     // int prev_flags = fcntl(sockfd, F_GETFL);
     // fcntl(sockfd, F_SETFL, prev_flags | O_NONBLOCK);
 
@@ -164,20 +164,32 @@ UniqueSocket connect_to(Address const& target, int domain, std::string const& in
         switch(domain) {
         case AF_LOCAL: {
             auto address = iface_address.as_sockaddr_un();
-            auto address_ptr = reinterpret_cast<struct sockaddr*>(&address);
+            if(!address.is_active()) {
+                LOG << "Cannot bind to socket. No such address." << std::endl;
+                return UniqueSocket{};
+            }
+            auto address_ptr = reinterpret_cast<struct sockaddr const*>(&address.get());
             result = bind(unique_socket, address_ptr, sizeof(address));
             break;
         }
         case AF_INET: {
             auto address = iface_address.as_sockaddr_in();
+            if(!address.is_active()) {
+                LOG << "Cannot bind to socket. No such address." << std::endl;
+                return UniqueSocket{};
+            }
             // std::cout << address.sin_addr.s_addr << std::endl;
             // std::cout << address.sin_port << std::endl;
-            auto address_ptr = reinterpret_cast<struct sockaddr*>(&address);
+            auto address_ptr = reinterpret_cast<struct sockaddr const*>(&address.get());
             result = bind(unique_socket, address_ptr, sizeof(address));
             break;
         }
         case AF_INET6: {
             auto address = iface_address.as_sockaddr_in6();
+            if(!address.is_active()) {
+                LOG << "Cannot bind to socket. No such address." << std::endl;
+                return UniqueSocket{};
+            }
 
             // Print an IPv6 address.
             // char buf[100];
@@ -186,7 +198,7 @@ UniqueSocket connect_to(Address const& target, int domain, std::string const& in
             // std::cout << ntohs(address.sin6_port) << std::endl;
             // std::cout << address.sin6_scope_id << std::endl;
 
-            auto address_ptr = reinterpret_cast<struct sockaddr*>(&address);
+            auto address_ptr = reinterpret_cast<struct sockaddr const*>(&address.get());
             result = bind(unique_socket, address_ptr, sizeof(address));
             break;
         }
@@ -204,19 +216,19 @@ UniqueSocket connect_to(Address const& target, int domain, std::string const& in
     switch(domain) {
     case AF_LOCAL: {
         auto address = target.as_sockaddr_un();
-        auto address_ptr = reinterpret_cast<struct sockaddr*>(&address);
+        auto address_ptr = reinterpret_cast<struct sockaddr const*>(&address.get());
         result = connect(unique_socket, address_ptr, sizeof(struct sockaddr_un));
         break;
     }
     case AF_INET: {
         auto address = target.as_sockaddr_in();
-        auto address_ptr = reinterpret_cast<struct sockaddr*>(&address);
+        auto address_ptr = reinterpret_cast<struct sockaddr const*>(&address.get());
         result = connect(unique_socket, address_ptr, sizeof(struct sockaddr_in));
         break;
     }
     case AF_INET6: {
         auto address = target.as_sockaddr_in6();
-        auto address_ptr = reinterpret_cast<struct sockaddr*>(&address);
+        auto address_ptr = reinterpret_cast<struct sockaddr const*>(&address.get());
         result = connect(unique_socket, address_ptr, sizeof(struct sockaddr_in6));
         break;
     }

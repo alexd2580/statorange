@@ -16,7 +16,7 @@ class UniqueResource {
   public:
     // Annotate with `enable_if` for primitives?
     explicit UniqueResource() : resource(), release() {}
-    explicit UniqueResource(Resource new_resource, Release new_release)
+    explicit UniqueResource(Resource new_resource, Release new_release = [](Resource) {})
         : resource(new_resource), release(new_release), active(true) {}
 
     UniqueResource(UniqueResource const& other) = delete;

@@ -15,6 +15,23 @@
 class Outputs final {
     // Map of position of a monitor to its Xorg name: LVDS, eDP1, VGA1, HDMI2, DVI3.
     std::map<uint8_t, std::string> outputs;
+
+  public:
+    // Get the display number for a display name. If no such display is present,
+    // then return 255.
+    uint8_t get_num(std::string const& name) const {
+        auto is_display = [&](auto const& pair) { return pair.second == name; };
+        auto display_num_iter = std::find_if(outputs.cbegin(), outputs.cend(), is_display);
+        return display_num_iter == outputs.cend() ? 255 : display_num_iter->first;
+    }
+
+    void add(uint8_t num, std::string const& name) {
+        outputs.emplace(num, name);
+    }
+
+    void clear() {
+        outputs.clear();
+    }
 };
 
 struct Workspace final {
@@ -26,9 +43,9 @@ struct Workspace final {
 
     // Urgent flag set by X.
     bool urgent = false;
-
-    Workspace(uint8_t new_display, std::string const& new_name, bool new_urgent)
-        : display(new_display), name(new_name), urgent(new_urgent) {}
+    //
+    // Workspace(uint8_t new_display, std::string const& new_name, bool new_urgent)
+    //     : display(new_display), name(new_name), urgent(new_urgent) {}
 };
 
 class Workspaces final {
@@ -53,25 +70,32 @@ class Workspaces final {
         }
     }
 
-    void init(uint8_t num, std::string const& name) {
-        workspaces.emplace(std::piecewise_construct, std::forward_as_tuple(num),
-                           std::forward_as_tuple(0x0, name, false));
+    void init(uint8_t num, uint8_t display, std::string const& name) {
+        workspaces.emplace(num, Workspace{display, name, false});
     }
     void focus(uint8_t num) { focused = num; }
+    void urgent(uint8_t num, bool urgent) { workspaces[num].urgent = urgent; }
     void empty(uint8_t num) { workspaces.erase(num); }
 };
 
 struct Window final {
     // Workspace on which this window is located.
-    uint64_t workspace;
+    uint8_t workspace;
 
-    // Name f the window.
+    // Name of the window.
     std::string name;
+
+    // Maybe store the urgent flag of a window?
 };
 
 class Windows final {
     // Map of uuid to window.
     std::map<uint64_t, Window> windows;
+
+  public:
+    void open(uint64_t num, uint8_t workspace, std::string const& name) {
+        windows.emplace(num, Window{workspace, name});
+    }
 };
 
 class I3 final : public StateItem {

@@ -3,13 +3,13 @@
 
 #include <string>
 
-// #include <netdb.h>
-// #include <arpa/inet.h>
 #include <netdb.h>      // struct addrinfo
 #include <netinet/in.h> // struct sockaddr_in
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h> // struct sockaddr_un
+
+#include "utils/resource.hpp"
 
 class Address final {
   private:
@@ -31,13 +31,16 @@ class Address final {
   public:
     Address();
     // Unix addresses don't use port numbers.
-    Address(std::string host, unsigned int port = 0);
+    explicit Address(std::string host, unsigned int port = 0);
 
-    struct sockaddr_un as_sockaddr_un() const;
+    using _UniqueAddrUn = UniqueResource<struct sockaddr_un>;
+    _UniqueAddrUn as_sockaddr_un() const;
 
     struct addrinfo* get_addrinfo(int family = AF_UNSPEC, int socktype = SOCK_STREAM) const;
-    struct sockaddr_in as_sockaddr_in() const;
-    struct sockaddr_in6 as_sockaddr_in6() const;
+    using _UniqueAddrIn = UniqueResource<struct sockaddr_in>;
+    _UniqueAddrIn as_sockaddr_in() const;
+    using _UniqueAddrIn6 = UniqueResource<struct sockaddr_in6>;
+    _UniqueAddrIn6 as_sockaddr_in6() const;
 
     // bool run_DNS_lookup();
     // int open_TCP_socket();

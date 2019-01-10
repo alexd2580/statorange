@@ -1,6 +1,7 @@
 #ifndef JSON_PARSER_HPP
 #define JSON_PARSER_HPP
 
+#include <iterator>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -124,24 +125,14 @@ class Node final {
     }
 
     // Object functions.
-    class ObjectConstIterator {
-      private:
-        using container_type = std::map<std::string, std::shared_ptr<Value>>;
-        using iterator_type = container_type::const_iterator;
-        iterator_type iterator;
-
+    using _ObjectConstIterBase = std::map<std::string, std::shared_ptr<Value>>::const_iterator;
+    class ObjectConstIter : public _ObjectConstIterBase {
       public:
-        explicit ObjectConstIterator(iterator_type new_iterator) { iterator = new_iterator; }
-        // NOLINTNEXTLINE: `operator++` overload desired.
-        ObjectConstIterator& operator++() {
-            iterator++;
-            return *this;
-        }
-        // NOLINTNEXTLINE: `operator!=` overload desired.
-        bool operator!=(ObjectConstIterator const& other) const { return iterator != other.iterator; }
+        explicit ObjectConstIter(_ObjectConstIterBase iterator) : _ObjectConstIterBase(iterator) {}
         // NOLINTNEXTLINE: `operator*` overload desired.
-        std::pair<std::string const&, Node const> operator*() {
-            return std::make_pair(iterator->first, Node(iterator->second));
+        std::pair<std::string const&, Node const> operator*() const {
+            auto const& base_deref = _ObjectConstIterBase::operator*();
+            return std::make_pair(base_deref.first, Node(base_deref.second));
         }
     };
     class ObjectWrapper {
@@ -154,8 +145,8 @@ class Node final {
       public:
         ObjectWrapper(std::shared_ptr<Value> json, container_type const& map_)
             : source_json(std::move(json)), map(map_) {}
-        ObjectConstIterator begin() const { return ObjectConstIterator{map.cbegin()}; }
-        ObjectConstIterator end() const { return ObjectConstIterator{map.cend()}; }
+        ObjectConstIter begin() const { return ObjectConstIter{map.cbegin()}; }
+        ObjectConstIter end() const { return ObjectConstIter{map.cend()}; }
     };
     const ObjectWrapper object() const {
         auto const* object_ptr = as<Object>();
@@ -180,23 +171,12 @@ class Node final {
     const Node operator[](char const* key) const { return object_at(std::string(key)); }
 
     // Array functions.
-    class ArrayConstIterator {
-      private:
-        using container_type = std::vector<std::shared_ptr<Value>>;
-        using iterator_type = container_type::const_iterator;
-        iterator_type iterator;
-
+    using _ArrayConstIterBase = std::vector<std::shared_ptr<Value>>::const_iterator;
+    class ArrayConstIter : public _ArrayConstIterBase {
       public:
-        explicit ArrayConstIterator(iterator_type iterator_) { iterator = iterator_; }
-        // NOLINTNEXTLINE: `operator++` overload desired.
-        ArrayConstIterator& operator++() {
-            iterator++;
-            return *this;
-        }
-        // NOLINTNEXTLINE: `operator!=` overload desired.
-        bool operator!=(ArrayConstIterator const& other) const { return iterator != other.iterator; }
+        explicit ArrayConstIter(_ArrayConstIterBase&& iterator) : _ArrayConstIterBase(iterator) {}
         // NOLINTNEXTLINE: `operator*` overload desired.
-        Node const operator*() { return Node(*iterator); }
+        Node const operator*() const { return Node(_ArrayConstIterBase::operator*()); }
     };
     class ArrayWrapper {
       private:
@@ -209,8 +189,8 @@ class Node final {
         ArrayWrapper(std::shared_ptr<Value> json, container_type const& array_)
             : source_json(std::move(json)), array(array_) {}
         size_t size() const { return array.size(); }
-        ArrayConstIterator begin() const { return ArrayConstIterator{array.cbegin()}; }
-        ArrayConstIterator end() const { return ArrayConstIterator{array.cend()}; }
+        ArrayConstIter begin() const { return ArrayConstIter{array.cbegin()}; }
+        ArrayConstIter end() const { return ArrayConstIter{array.cend()}; }
     };
     const ArrayWrapper array() const {
         auto const* array_ptr = as<Array>();
@@ -253,7 +233,7 @@ class Node final {
         auto const* bool_ptr = as<Bool>();
         return bool_ptr != nullptr ? bool_ptr->b : default_value;
     }
-};
+}; // namespace JSON
 } // namespace JSON
 
 #endif

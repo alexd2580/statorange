@@ -241,7 +241,7 @@ class Statorange : Logger {
     }
 
     void print() {
-        const uint8_t num_output_displays = 1;
+        const uint8_t num_output_displays = 3;
         for(uint8_t i = 0; i < num_output_displays; i++) {
             bar.display_begin(i);
             print_section(Lemonbar::Alignment::left, left_items, i);
