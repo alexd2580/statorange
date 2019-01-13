@@ -60,9 +60,3 @@ add_test(statorange_unit_tests statorange_unit_tests)
 
 # Install the binary.
 install(TARGETS statorange DESTINATION /usr/local/bin)
-
-# Install the fonts.
-install(
-    DIRECTORY ${PROJECT_SOURCE_DIR}/res/misc
-    DESTINATION /usr/local/lib/statorange/misc
-)
