@@ -7,38 +7,6 @@
 
 class Lemonbar final {
   public:
-    // Icon glyphs from Terminusicons2.
-    enum class Icon {
-        no_icon,
-
-        clock,   // Clock
-        cpu,     // CPU
-        mem,     // MEM
-        dl,      // Download
-        ul,      // Upload
-        vol,     // Volume
-        hd,      // HD /
-        home,    // HD /home
-        mail,    // Mail
-        chat,    // IRC/Chat
-        music,   // Music
-        prog,    // Window
-        contact, // Contact
-        wsp,     // Workspace
-        wlan,    // WIFI
-
-        // Filling separators.
-        right_fill,
-        sep_left,
-        sep_right,
-        // Line separators.
-        sep_l_vertical,
-        sep_l_left,
-        sep_l_right,
-    };
-    static Icon parse_icon(std::string const& s);
-    static std::string const& icon(Icon);
-
     // Aligmnent on the top bar.
     enum class Alignment { left, center, right };
 
@@ -108,6 +76,21 @@ class Lemonbar final {
     void separator(Separator, Coloring);
     void separator(Separator, std::string const& next_bg, std::string const& next_fg);
 
+
+    // Fill Powerline separators.
+    std::string const icon_sep_left = "\ue0b2";
+    std::string const icon_sep_right = "\ue0b0";
+
+    // Line Powerline separators.
+    std::string const icon_sep_l_left = "\ue0b3";
+    std::string const icon_sep_l_right = "\ue0b1";
+
+    // Powerline separator right
+    // Right block half.
+    // std::string const icon_right_fill = "▐";
+    // std::string const icon_sep_l_vertical = "│";
+
+
   private:
     std::ostream& out;
 
@@ -116,10 +99,6 @@ class Lemonbar final {
 
     std::string current_bg = "#FF000000";
     std::string current_fg = "#FFFFFFFF";
-
-    static std::map<Icon, std::string> icons;
 };
-
-std::ostream& operator<<(std::ostream& out, Lemonbar::Icon i);
 
 #endif

@@ -11,11 +11,11 @@
 
 struct SpaceItem {
     std::string const mount_point;
-    Lemonbar::Icon const icon;
+    std::string const icon;
     uint64_t size;
     uint64_t used;
 
-    SpaceItem(std::string const& mpt, Lemonbar::Icon const icon_) : mount_point(mpt), icon(icon_) {
+    SpaceItem(std::string const& mpt, std::string const& icon_) : mount_point(mpt), icon(icon_) {
         size = 0;
         used = 0;
     }

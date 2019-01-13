@@ -43,9 +43,7 @@ class StateItem : public Logger {
 
   protected:
     // The icon is a core component of the config. However, it is not printed automatically.
-    Lemonbar::Icon const icon;
-
-    static Lemonbar::Icon parse_icon_from_json(JSON::Node const&);
+    std::string const icon;
 
     explicit StateItem(JSON::Node const&);
 

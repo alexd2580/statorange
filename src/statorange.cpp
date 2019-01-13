@@ -291,14 +291,10 @@ int main(int argc, char* argv[]) {
         Statorange app(std::cout);
         return app.run(argc, argv);
     } else {
-        // const std::string normal_font("-f -misc-fixed-medium-r-semicondensed--12------iso10646-1");
-        const std::string text_font("-f -xos4-terminus2-medium-r-normal--12------iso8859-1");
-        const std::string icon_font("-f -xos4-terminusicons2mono-medium-r-normal--12------iso8859-1");
-        const std::string lemonbar_cmd("lemonbar " + text_font + " " + icon_font + " -a 30 -u -1");
-        const std::string font_path_minus("xset fp- /usr/local/lib/statorange/misc");
-        const std::string font_path_plus("xset fp+ /usr/local/lib/statorange/misc");
-        const std::string lemonbar_with_fonts(font_path_minus + ";" + font_path_plus + ";" + lemonbar_cmd);
-        auto lemonbar_pipe = run_command(lemonbar_with_fonts, "w");
+        // The following comes from the `nerd-fonts-complete` AUR package, then taken from fc-list.
+        const std::string text_font(R"(-f "UbuntuMono Nerd Font:size=10")");
+        const std::string lemonbar_cmd("lemonbar " + text_font + " -a 30 -u -3");
+        auto lemonbar_pipe = run_command(lemonbar_cmd, "w");
         FileStream<UniqueFile> lemonbar_streambuf(std::move(lemonbar_pipe));
         std::ostream lemonbar_stream(&lemonbar_streambuf);
 

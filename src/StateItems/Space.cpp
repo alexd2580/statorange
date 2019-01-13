@@ -14,7 +14,7 @@ std::ostream& operator<<(std::ostream& out, SpaceItem const& item) {
 
 Space::Space(JSON::Node const& item) : StateItem(item) {
     for(auto const& mpt : item["mount_points"].array()) {
-        items.emplace_back(mpt["file"].string(), Lemonbar::parse_icon(mpt["icon"].string()));
+        items.emplace_back(mpt["file"].string(), mpt["icon"].string(""));
     }
 }
 

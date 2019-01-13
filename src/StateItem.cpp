@@ -11,15 +11,11 @@ std::chrono::seconds StateItem::min_cooldown(std::numeric_limits<int>::max());
 
 std::map<int, StateItem*> StateItem::event_sockets;
 
-Lemonbar::Icon StateItem::parse_icon_from_json(JSON::Node const& item) {
-    return Lemonbar::parse_icon(item["icon"].string());
-}
-
 StateItem::StateItem(JSON::Node const& item)
     : Logger(item["item"].string()), module_name(item["item"].string()),
       cooldown(std::chrono::seconds(item["cooldown"].number<uint32_t>())),
       button(item["button"].exists() && item["button"].string().length() > 0), button_command(item["button"].string()),
-      show_failed(item["show_failed"].boolean(true)), icon(parse_icon_from_json(item)) {
+      show_failed(item["show_failed"].boolean(true)), icon(item["icon"].string("")) {
     min_cooldown = min(min_cooldown, cooldown);
     last_updated = std::chrono::system_clock::time_point::min();
 

@@ -67,7 +67,7 @@ void Load::print_raw(Lemonbar& bar, uint8_t display) {
     for(uint32_t temp : cpu_temps) {
         auto temp_colors = Lemonbar::section_colors<uint32_t>(temp, 50, 90);
         bar.separator(Lemonbar::Separator::left, temp_colors.first, temp_colors.second);
-        bar() << ' ' << temp << "°C ";
+        bar() << ' ' << temp << "\ufa03 ";
     }
     bar.separator(Lemonbar::Separator::left, Lemonbar::Coloring::white_on_black);
 }

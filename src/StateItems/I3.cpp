@@ -1,13 +1,52 @@
 #include <algorithm> // find_if, for_each
-#include <ostream>   // ostream
-#include <utility>   // pair
+#include <map>
+#include <ostream> // ostream
+#include <regex>
+#include <string>
+#include <utility> // pair
+
+#include <fmt/format.h>
 
 #include "StateItems/I3.hpp"
 
 #include "Lemonbar.hpp"
 #include "i3/ipc.hpp"
 #include "i3/ipc_constants.hpp"
+#include "utils/i3_tree.hpp"
 #include "utils/io.hpp"
+
+std::string I3::get_window_name(JSON::Node const& container) {
+    auto const name(container["name"].string("ERROR"));
+
+    std::map<std::string, std::string> regex_to_icon{
+        {".*chrom.*", "\uf268"},
+        {".*zsh.*", "\uf120"},
+        {".*vlc.*", "\ufa7b"},
+        {".*mumble.*", "\uf130"},
+        {".*(\.hpp|\.cpp).*vim.*", "\ue62b\ufb71"},
+        {".*(\.ts|\.tsx).*vim.*", "\ue62b\ufbe4"},
+        {".*(\.py).*vim.*", "\ue62b\ue235"},
+        {".*(\.js|\.jsx).*vim.*", "\ue62b\ue781"},
+
+        {".*vim.*", "\ue62b"},
+    };
+    for(auto const& pair : regex_to_icon) {
+        std::regex regex(pair.first, std::regex_constants::icase);
+        if(std::regex_match(name, regex)) {
+            return pair.second;
+        }
+    }
+
+    // std::cout << name.length() << " " << name << std::endl;
+    if(name.length() <= 20) {
+        return name;
+    }
+    // auto const class_name(container["window_properties"]["class"].string("ERROR"));
+    // if(class_name.length() <= 20) {
+    //     return class_name;
+    // }
+    return fmt::format("{}[…]", name.substr(0, 10));
+}
 
 void I3::query_tree() {
     std::unique_ptr<char[]> response = i3_ipc::query(command_socket, i3_ipc::message_type::GET_TREE);
@@ -15,8 +54,10 @@ void I3::query_tree() {
 
     auto const& output_nodes = json["nodes"].array();
     for(auto const& output_node : output_nodes) {
-        // Make all of these into displays.
-        log() << output_node["name"].string() << std::endl;
+        // Make all of these into displays except for `__i3`.
+        if(output_node["name"].string() == "__i3") {
+            continue;
+        }
 
         auto const& area_nodes = output_node["nodes"].array();
         // Here we only care about the `content`-node hence the find.
@@ -29,10 +70,12 @@ void I3::query_tree() {
         auto const& content_node = *content_node_iter;
         auto const& workspace_nodes = content_node["nodes"].array();
         for(auto const& workspace_node : workspace_nodes) {
+            auto const workspace_name = workspace_node["name"].string();
             auto const workspace_num = workspace_node["num"].number<uint8_t>();
             auto const display_name = workspace_node["output"].string();
-            auto const workspace_name = workspace_node["name"].string();
-            workspaces.init(workspace_num, outputs.get_num(display_name), workspace_name);
+            auto const display_num = outputs.get_num(display_name);
+            workspaces.init(workspace_num, display_num, workspace_name);
+            outputs.focus_workspace(display_num, workspace_num);
 
             std::function<void(JSON::Node const&)> parse_tree_container =
                 [this, &workspace_num, &parse_tree_container](JSON::Node const& container) {
@@ -43,7 +86,7 @@ void I3::query_tree() {
                         return;
                     }
 
-                    auto const& window_name = container["name"].string();
+                    auto const window_name = get_window_name(container);
                     windows.open(window_id.number<uint64_t>(), workspace_num, window_name);
                 };
 
@@ -63,7 +106,9 @@ void I3::workspace_event(std::unique_ptr<char[]> response) {
         auto const display_name = current["output"].string();
         workspaces.init(current_num, outputs.get_num(display_name), current["name"].string());
     } else if(change == "focus") {
-        workspaces.focus(current_num);
+        workspaces.focused = current_num;
+        auto const display_name = current["output"].string();
+        outputs.focus_workspace(outputs.get_num(display_name), current_num);
     } else if(change == "urgent") {
         workspaces.urgent(current_num, current["urgent"].boolean());
     } else if(change == "empty") {
@@ -78,25 +123,35 @@ void I3::window_event(std::unique_ptr<char[]> response) {
     std::string change = json["change"].string();
 
     auto& container = json["container"];
-    uint64_t window_id = container["id"].number<uint64_t>();
+    uint64_t window_id = container["window"].number<uint64_t>();
 
-    log() << "window"
-          << " " << change << " " << window_id << std::endl;
+    if(!windows.contains(window_id)) {
+        auto const output_name = container["output"].string();
+        auto const workspace_num = outputs.get_workspace_num_of_focused_on(output_name);
+        windows.open(window_id, workspace_num, get_window_name(container));
+    }
 
-    // if(change == "new")
-    //     ; // i3.new_window(window_id, get_window_name(container));
-    // else if(change == "title")
-    //     ; // i3.rename_window(window_id, get_window_name(container));
-    // else if(change == "focus")
-    //     ; // i3.focus_window(window_id);
-    // else if(change == "close")
-    //     ; // i3.close_window(window_id);
+    if(change == "new") {
+        // Pass.
+    } else if(change == "title") {
+        windows.title(window_id, get_window_name(container));
+    } else if(change == "focus") {
+        auto const workspace_num = windows.get_workspace_num(window_id);
+        workspaces.focus_window(workspace_num, window_id);
+    } else if(change == "move") {
+        auto const output_name = container["output"].string();
+        auto const workspace_num = outputs.get_workspace_num_of_focused_on(output_name);
+        windows.move(window_id, workspace_num);
+    } else if(change == "close") {
+        auto const workspace_num = windows.get_workspace_num(window_id);
+        windows.close(window_id);
+        workspaces.focus_window(workspace_num, 0);
+    }
     // else if(change == "fullscreen_mode")
     //     log() << "Ignoring fullscreen mode event" << endl;
-    // else if(change == "move")
-    //     log() << "Ignoring move event" << endl;
-    // else
-    //     log() << "Unhandled window event type: " << change << endl;
+    else {
+        log() << "Unhandled window event type: " << change << std::endl;
+    }
 }
 
 void I3::mode_event(std::unique_ptr<char[]> response) {
@@ -144,7 +199,35 @@ std::pair<bool, bool> I3::handle_stream_data_raw(int fd) {
     return handle_message(event_type, std::move(event_message));
 }
 
-void I3::print_raw(Lemonbar& bar, uint8_t display) { workspaces.print_raw(bar, display); }
+void I3::print_raw(Lemonbar& bar, uint8_t display) {
+    for(auto const& workspace_entry : workspaces) {
+        auto const& workspace = workspace_entry.second;
+        if(workspace.display == display) {
+            auto const& sep_right = Lemonbar::Separator::right;
+            bool is_focused = workspace_entry.first == workspaces.focused;
+            auto const& coloring = workspace.urgent
+                                       ? Lemonbar::Coloring::urgent
+                                       : is_focused ? Lemonbar::Coloring::active : Lemonbar::Coloring::inactive;
+            bar.separator(sep_right, coloring);
+            bar() << " " << workspace.name << " ";
+            auto const focused_window = workspace.focused_window;
+            if(focused_window != 0) {
+                if(!windows.contains(focused_window)) {
+                    bar() << " unknown focus ";
+                } else {
+                    auto const& name = windows[focused_window].name;
+                    if(!is_unicode(name)) {
+                        bar.separator(sep_right);
+                        bar() << " " << name << " ";
+                    } else {
+                        bar() << name;
+                    }
+                }
+            }
+            bar.separator(sep_right, Lemonbar::Coloring::white_on_black);
+        }
+    }
+}
 
 I3::I3(JSON::Node const& item) : StateItem(item) {
     const auto get_socket_path_command = "i3 --get-socketpath";

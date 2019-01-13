@@ -7,7 +7,7 @@
 
 #include "Lemonbar.hpp"
 
-    // TODO Use utility functions.
+// TODO Use utility functions.
 std::pair<bool, bool> Battery::update_raw() {
     std::unique_ptr<FILE, int (*)(FILE*)> file(fopen(bat_file_loc.c_str(), "re"), fclose);
     if(file == nullptr) {
@@ -46,13 +46,22 @@ void Battery::print_raw(Lemonbar& bar, uint8_t display) {
     }
 
     switch(status) {
-    case Status::charging:
+    case Status::charging: {
         bar.separator(Lemonbar::Separator::left, Lemonbar::Coloring::neutral);
-        bar() << " BAT charging " << (100 * current_level / max_capacity) << "%% ";
+        auto const relative = 100 * current_level / max_capacity;
+        std::map<uint8_t, std::string> const charging_icons = {
+            {10, "\uf585"}, {20, "\uf586"}, {30, "\uf587"},  {50, "\uf588"},
+            {70, "\uf589"}, {80, "\uf58a"}, {255, "\uf584"},
+        };
+        auto is_searched_value = [&](auto const& pair) { return pair.first > relative; };
+        auto const icon = std::find_if(charging_icons.cbegin(), charging_icons.cend(), is_searched_value)->second;
+
+        bar() << icon << " " << relative << "% ";
         break;
+    }
     case Status::full:
         bar.separator(Lemonbar::Separator::left, Lemonbar::Coloring::info);
-        bar() << " BAT full ";
+        bar() << " \uf584 ";
         break;
     case Status::discharging: {
         int64_t rem_minutes = 60 * current_level / discharge_rate;
@@ -61,7 +70,19 @@ void Battery::print_raw(Lemonbar& bar, uint8_t display) {
         else { SEP_LEFT(neutral_colors); }*/
         auto colors = Lemonbar::section_colors(-static_cast<float>(rem_minutes), -60.0f, -10.0f);
         bar.separator(Lemonbar::Separator::left, colors.first, colors.second);
-        bar() << " BAT " << (100 * current_level / max_capacity) << "%% ";
+
+        auto const relative = 100 * current_level / max_capacity;
+        std::map<uint8_t, std::string> const discharging_icons = {
+            {15, "\uf244"},
+            {40, "\uf243"},
+            {65, "\uf242"},
+            {80, "\uf241"},
+            {255, "\uf240"},
+        };
+        auto is_searched_value = [&](auto const& pair) { return pair.first > relative; };
+        auto const icon = std::find_if(discharging_icons.cbegin(), discharging_icons.cend(), is_searched_value)->second;
+
+        bar() << icon << " " << relative << "% ";
         bar.separator(Lemonbar::Separator::left);
 
         int64_t rem_hr_only = rem_minutes / 60;

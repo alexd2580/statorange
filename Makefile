@@ -31,7 +31,7 @@ run: build
 	build/statorange
 
 run_debug: build_debug
-	build/statorange
+	cgdb build/statorange
 
 install: # test
 	cd build; make install

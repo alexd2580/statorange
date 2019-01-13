@@ -1,11 +1,30 @@
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include <cstddef>
 
 #include <fmt/format.h>
 
 #include "utils/parse.hpp"
+
+bool is_unicode(std::string const& string) { return (string.at(0) & 0b10000000) != 0; }
+
+std::string to_unicode(uint64_t codepoint) {
+    std::vector<char> data;
+    if(codepoint < 0x7F) {
+        data.push_back(static_cast<char>(codepoint & 0xFFu));
+    } else if(codepoint < 0x07FF) {
+        data.push_back(static_cast<char>(0b11000000u | ((codepoint >> 6u) & 0b00011111u)));
+        data.push_back(static_cast<char>(0b10000000u | (codepoint & 0b00111111u)));
+    } else if(codepoint < 0xFFFF) {
+        data.push_back(static_cast<char>(0b11100000u | ((codepoint >> 12u) & 0b00001111u)));
+        data.push_back(static_cast<char>(0b10000000u | ((codepoint >> 6u) & 0b00111111u)));
+        data.push_back(static_cast<char>(0b10000000u | (codepoint & 0b00111111u)));
+    }
+    data.push_back('\0');
+    return std::string(data.data());
+}
 
 StringPointer::StringPointer(char const* new_base) : base(new_base), offset(0) {
     if(new_base == nullptr) {
@@ -77,6 +96,17 @@ std::string StringPointer::escaped_string() {
             case '"':
                 o << '"';
                 break;
+            case 'u': {
+                // TODO fix error reporting when stream ends. This part can cause a segmentation fault.
+                char const c1 = next();
+                char const c2 = next();
+                char const c3 = next();
+                char const c4 = next();
+                std::string const as_hex = fmt::format("0x{}{}{}{}", c1, c2, c3, c4);
+                uint64_t as_int = std::strtoul(as_hex.c_str(), nullptr, 16);
+                o << to_unicode(as_int);
+                break;
+            }
             default:
                 throw ParseException(fmt::format("Invalid escape sequence [\\{}].", c));
             }

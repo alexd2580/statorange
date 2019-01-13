@@ -11,6 +11,8 @@
 
 DEFINE_EXCEPTION_CLASS(ParseException)
 
+bool is_unicode(std::string const& string);
+
 class StringPointer final {
   private:
     char const* const base;
