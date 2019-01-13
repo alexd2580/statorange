@@ -45,6 +45,7 @@ std::string I3::get_window_name(JSON::Node const& container) {
         {".*psql.*", "\ue76e"},
         {".*htop.*", "\uf0e4"},
         {".*man.*", "\uf15c"},
+        {".*docker.*", "\uf308"},
         {".*zsh.*", "\uf120"},
     };
     for(auto const& pair : regex_to_icon) {
