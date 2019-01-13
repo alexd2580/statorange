@@ -2,6 +2,7 @@
 #include <map>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "Lemonbar.hpp"
 
@@ -28,6 +29,16 @@ std::map<Lemonbar::Coloring, Lemonbar::ColorPair const> const Lemonbar::color_pa
     {Lemonbar::Coloring::critical, {"#FFFF0000", "#FFFFFFFF"}},
 };
 
+std::map<Lemonbar::PowerlineStyle, std::vector<std::string> const> const Lemonbar::powerline_styles{
+    {Lemonbar::PowerlineStyle::common, {"\ue0b2", "\ue0b3", "\ue0b1", "\ue0b0"}},
+    {Lemonbar::PowerlineStyle::round, {"\ue0b6", "\ue0b7", "\ue0b5", "\ue0b4"}},
+    {Lemonbar::PowerlineStyle::fire, {"\ue0c2", "\ue0c3", "\ue0c1", "\ue0c0"}},
+    {Lemonbar::PowerlineStyle::data, {"\ue0c7", "\ue0c7", "\ue0c6", "\ue0c6"}},
+    {Lemonbar::PowerlineStyle::backslash, {"\ue0b8", "\ue0b9", "\ue0b9", "\ue0be"}},
+    {Lemonbar::PowerlineStyle::slash, {"\ue0bc", "\ue0bd", "\ue0bd", "\ue0ba"}},
+    {Lemonbar::PowerlineStyle::lego, {"\ue0ce\ue0d4", "\ue0cf", "\ue0cf", "\ue0d2\ue0ce"}},
+};
+
 Lemonbar::Lemonbar(std::ostream& ostr) : out(ostr) {}
 
 std::ostream& Lemonbar::operator()() const { return out; }
@@ -51,9 +62,7 @@ void Lemonbar::button_begin(std::string const& command) {
     }
     out << ":}";
 }
-void Lemonbar::button_end() const {
-    out << "%{A}";
-}
+void Lemonbar::button_end() const { out << "%{A}"; }
 
 void Lemonbar::make_hex(std::string::iterator dst, uint8_t a) {
     static std::string const hex_chars = "0123456789ABCDEF";
@@ -72,31 +81,31 @@ std::string Lemonbar::make_hex_color(uint8_t a, uint8_t r, uint8_t g, uint8_t b)
     return res;
 }
 
-void Lemonbar::separator(Separator sep) { separator(sep, current_bg, current_fg); }
-void Lemonbar::separator(Separator sep, Coloring next) {
+void Lemonbar::separator(Separator sep, PowerlineStyle style) { separator(sep, current_bg, current_fg, style); }
+void Lemonbar::separator(Separator sep, Coloring next, PowerlineStyle style) {
     auto const& color_pair = color_pairs.at(next);
-    separator(sep, color_pair.first, color_pair.second);
+    separator(sep, color_pair.first, color_pair.second, style);
 }
-void Lemonbar::separator(Separator sep, std::string const& next_bg, std::string const& next_fg) {
-    auto const& separator =
-        sep == Separator::left
-            ? icon_sep_l_left
-            : sep == Separator::vertical ? "vertical sep" : sep == Separator::right ? icon_sep_l_right : "";
+void Lemonbar::separator(Separator sep, std::string const& next_bg, std::string const& next_fg, PowerlineStyle style) {
+    auto const& style_icons = powerline_styles.at(style);
     if(next_bg == current_bg) {
-        out << "%{F#FF000000}" << separator;
+        auto const separator_index = sep == Separator::left ? 1u : sep == Separator::vertical ? 1u : 2u;
+        out << "%{F#FF000000}" << style_icons[separator_index];
     } else {
         switch(sep) {
         case Separator::none:
             out << "%{B" << next_bg << "}";
             break;
         case Separator::left:
-            out << "%{F" << next_bg << "}" << icon_sep_left << "%{R}";
+            out << "%{F" << next_bg << "}" << style_icons[0] << "%{R}";
             break;
         case Separator::vertical:
-            out << "%{F" << next_bg << "}" << "icon_right_fill" << "%{R}";
+            out << "%{F" << next_bg << "}"
+                << "icon_right_fill"
+                << "%{R}";
             break;
         case Separator::right:
-            out << "%{R}%{B" << next_bg << "}" << icon_sep_right;
+            out << "%{R}%{B" << next_bg << "}" << style_icons[3];
             break;
         }
     }

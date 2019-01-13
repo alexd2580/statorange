@@ -4,6 +4,7 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <vector>
 
 class Lemonbar final {
   public:
@@ -37,6 +38,18 @@ class Lemonbar final {
 
     using ColorPair = std::pair<std::string, std::string>;
     static std::map<Coloring, ColorPair const> const color_pairs;
+
+    enum class PowerlineStyle {
+        common,
+        round,
+        fire,
+        data,
+        backslash,
+        slash,
+        lego,
+    };
+
+    static std::map<PowerlineStyle, std::vector<std::string> const> const powerline_styles;
 
     explicit Lemonbar(std::ostream&);
 
@@ -72,24 +85,10 @@ class Lemonbar final {
         return {res, "#FFCCCCCC"};
     }
 
-    void separator(Separator);
-    void separator(Separator, Coloring);
-    void separator(Separator, std::string const& next_bg, std::string const& next_fg);
-
-
-    // Fill Powerline separators.
-    std::string const icon_sep_left = "\ue0b2";
-    std::string const icon_sep_right = "\ue0b0";
-
-    // Line Powerline separators.
-    std::string const icon_sep_l_left = "\ue0b3";
-    std::string const icon_sep_l_right = "\ue0b1";
-
-    // Powerline separator right
-    // Right block half.
-    // std::string const icon_right_fill = "▐";
-    // std::string const icon_sep_l_vertical = "│";
-
+    void separator(Separator, PowerlineStyle style = PowerlineStyle::common);
+    void separator(Separator, Coloring, PowerlineStyle style = PowerlineStyle::common);
+    void separator(Separator, std::string const& next_bg, std::string const& next_fg,
+                   PowerlineStyle style = PowerlineStyle::common);
 
   private:
     std::ostream& out;

@@ -19,16 +19,31 @@ std::string I3::get_window_name(JSON::Node const& container) {
     auto const name(container["name"].string("ERROR"));
 
     std::map<std::string, std::string> regex_to_icon{
+        // Chrome.
+        {".*(telegram).*chrom.*", "\uf268\ue217"},
+        {".*(slack).*chrom.*", "\uf268\uf198"},
+        {".*(stack.*overflow).*chrom.*", "\uf268\uf16c"},
         {".*chrom.*", "\uf268"},
-        {".*zsh.*", "\uf120"},
+
+        // Desktop programs.
         {".*vlc.*", "\ufa7b"},
         {".*mumble.*", "\uf130"},
-        {".*(\.hpp|\.cpp).*vim.*", "\ue62b\ufb71"},
-        {".*(\.ts|\.tsx).*vim.*", "\ue62b\ufbe4"},
-        {".*(\.py).*vim.*", "\ue62b\ue235"},
-        {".*(\.js|\.jsx).*vim.*", "\ue62b\ue781"},
 
+        // Vim (with filetype).
+        {".*(\\.hpp|\\.cpp).*vim.*", "\ue62b\ufb71"},
+        {".*(\\.ts|\\.tsx).*vim.*", "\ue62b\ufbe4"},
+        {".*(\\.py).*vim.*", "\ue62b\ue235"},
+        {".*(\\.js|\\.jsx).*vim.*", "\ue62b\ue781"},
+        {".*(\\.rs).*vim.*", "\ue62b\ue7a8"},
+        {".*(docker).*vim.*", "\ue62b\uf308"},
         {".*vim.*", "\ue62b"},
+
+        // Shell commands.
+        {".*make.*", "\uf423"},
+        {".*psql.*", "\ue76e"},
+        {".*htop.*", "\uf0e4"},
+        {".*man.*", "\uf15c"},
+        {".*zsh.*", "\uf120"},
     };
     for(auto const& pair : regex_to_icon) {
         std::regex regex(pair.first, std::regex_constants::icase);
@@ -75,19 +90,27 @@ void I3::query_tree() {
             auto const display_name = workspace_node["output"].string();
             auto const display_num = outputs.get_num(display_name);
             workspaces.init(workspace_num, display_num, workspace_name);
-            outputs.focus_workspace(display_num, workspace_num);
 
             std::function<void(JSON::Node const&)> parse_tree_container =
-                [this, &workspace_num, &parse_tree_container](JSON::Node const& container) {
-                    auto const window_id = container["window"];
-                    if(!window_id.exists()) {
+                [&, this](JSON::Node const& container) {
+                    auto const window_id_json = container["window"];
+                    // If the container does not have a window id, then it is recursive.
+                    if(!window_id_json.exists()) {
                         auto const& con_nodes = container["nodes"].array();
                         std::for_each(con_nodes.begin(), con_nodes.end(), parse_tree_container);
                         return;
                     }
 
+                    // Create the actual window.
+                    auto const window_id = window_id_json.number<uint64_t>();
                     auto const window_name = get_window_name(container);
-                    windows.open(window_id.number<uint64_t>(), workspace_num, window_name);
+                    windows.open(window_id, workspace_num, window_name);
+                    workspaces.focus_window(workspace_num, window_id);
+                    // If the window is focused, then the corresponding workspace is focused on the display.
+                    if(container["focused"].boolean()) {
+                        workspaces.focused = workspace_num;
+                        outputs.focus_workspace(display_num, workspace_num);
+                    }
                 };
 
             parse_tree_container(workspace_node);
@@ -200,6 +223,7 @@ std::pair<bool, bool> I3::handle_stream_data_raw(int fd) {
 }
 
 void I3::print_raw(Lemonbar& bar, uint8_t display) {
+    auto const& style = Lemonbar::PowerlineStyle::round;
     for(auto const& workspace_entry : workspaces) {
         auto const& workspace = workspace_entry.second;
         if(workspace.display == display) {
@@ -208,7 +232,7 @@ void I3::print_raw(Lemonbar& bar, uint8_t display) {
             auto const& coloring = workspace.urgent
                                        ? Lemonbar::Coloring::urgent
                                        : is_focused ? Lemonbar::Coloring::active : Lemonbar::Coloring::inactive;
-            bar.separator(sep_right, coloring);
+            bar.separator(sep_right, coloring, style);
             bar() << " " << workspace.name << " ";
             auto const focused_window = workspace.focused_window;
             if(focused_window != 0) {
@@ -217,14 +241,14 @@ void I3::print_raw(Lemonbar& bar, uint8_t display) {
                 } else {
                     auto const& name = windows[focused_window].name;
                     if(!is_unicode(name)) {
-                        bar.separator(sep_right);
+                        bar.separator(sep_right, style);
                         bar() << " " << name << " ";
                     } else {
                         bar() << name;
                     }
                 }
             }
-            bar.separator(sep_right, Lemonbar::Coloring::white_on_black);
+            bar.separator(sep_right, Lemonbar::Coloring::white_on_black, style);
         }
     }
 }

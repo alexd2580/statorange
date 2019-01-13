@@ -54,22 +54,23 @@ std::pair<bool, bool> Load::update_raw() {
 
 void Load::print_raw(Lemonbar& bar, uint8_t display) {
     (void)display;
+    auto const& style = Lemonbar::PowerlineStyle::fire;
     auto load_colors = Lemonbar::section_colors(cpu_load, 0.8f, 2.2f);
-    bar.separator(Lemonbar::Separator::left, load_colors.first, load_colors.second);
+    bar.separator(Lemonbar::Separator::left, load_colors.first, load_colors.second, style);
     bar().precision(2);
     bar() << std::fixed << icon << ' ' << cpu_load << ' ';
 
     auto memory_colors =
         Lemonbar::section_colors(-static_cast<int64_t>(free_ram), -static_cast<int64_t>(total_ram) / 2, 0L);
-    bar.separator(Lemonbar::Separator::left, memory_colors.first, memory_colors.second);
+    bar.separator(Lemonbar::Separator::left, memory_colors.first, memory_colors.second, style);
     print_used_memory(bar() << ' ', total_ram - free_ram, total_ram) << ' ';
 
     for(uint32_t temp : cpu_temps) {
         auto temp_colors = Lemonbar::section_colors<uint32_t>(temp, 50, 90);
-        bar.separator(Lemonbar::Separator::left, temp_colors.first, temp_colors.second);
+        bar.separator(Lemonbar::Separator::left, temp_colors.first, temp_colors.second, style);
         bar() << ' ' << temp << "\ufa03 ";
     }
-    bar.separator(Lemonbar::Separator::left, Lemonbar::Coloring::white_on_black);
+    bar.separator(Lemonbar::Separator::left, Lemonbar::Coloring::white_on_black, style);
 }
 
 Load::Load(JSON::Node const& item) : StateItem(item) {

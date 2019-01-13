@@ -249,7 +249,7 @@ void Net::print_raw(Lemonbar& bar, uint8_t display_arg) {
         if(type == Net::Type::ethernet) {
             bar() << icon << ' ' << name << ' ';
         } else if(type == Net::Type::wireless) {
-            bar() << icon << ' ' << essid << '(' << quality << "%%) ";
+            bar() << icon << ' ' << essid << '(' << quality << "%) ";
         }
 
         auto const& up_color = Lemonbar::Coloring::neutral;
