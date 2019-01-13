@@ -22,6 +22,8 @@ std::string I3::get_window_name(JSON::Node const& container) {
         // Chrome.
         {".*(telegram).*chrom.*", "\uf268\ue217"},
         {".*(slack).*chrom.*", "\uf268\uf198"},
+        {".*(github).*chrom.*", "\uf268\uf408"},
+        {".*(gitlab).*chrom.*", "\uf268\uf296"},
         {".*(stack.*overflow).*chrom.*", "\uf268\uf16c"},
         {".*chrom.*", "\uf268"},
 
