@@ -46,6 +46,7 @@ std::string I3::get_window_name(JSON::Node const& container) {
         {".*htop.*", "\uf0e4"},
         {".*man.*", "\uf15c"},
         {".*docker.*", "\uf308"},
+        {".*npm.*", "\ue71e"},
         {".*zsh.*", "\uf120"},
     };
     for(auto const& pair : regex_to_icon) {
@@ -190,8 +191,10 @@ std::pair<bool, bool> I3::handle_message(uint32_t type, std::unique_ptr<char[]> 
     case i3_ipc::reply_type::SUBSCRIBE:
         log() << "Subscribed to events - " << response.get() << std::endl;
         return {true, true};
-    // case i3_ipc::event_type::OUTPUT:
-    //     return output_event(response);
+    case i3_ipc::event_type::OUTPUT:
+        std::cout << response.get() << std::endl;
+        return {true, true};
+        // return output_event(response);
     case i3_ipc::event_type::WORKSPACE:
         workspace_event(std::move(response));
         return {true, true};
