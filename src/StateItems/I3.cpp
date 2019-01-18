@@ -129,6 +129,9 @@ void I3::workspace_event(std::unique_ptr<char[]> response) {
     auto const& current = json["current"];
     auto current_num = current["num"].number<uint8_t>();
 
+    // std::cout << "Workspace " << change << std::endl;
+    // std::cout << response.get() << std::endl << std::endl;
+
     if(change == "init") {
         auto const display_name = current["output"].string();
         workspaces.init(current_num, outputs.get_num(display_name), current["name"].string());
@@ -149,6 +152,9 @@ void I3::window_event(std::unique_ptr<char[]> response) {
     JSON::Node json(response.get());
     std::string change = json["change"].string();
 
+    // std::cout << "Window " << change << std::endl;
+    // std::cout << response.get() << std::endl << std::endl;
+
     auto& container = json["container"];
     uint64_t window_id = container["window"].number<uint64_t>();
 
@@ -163,12 +169,20 @@ void I3::window_event(std::unique_ptr<char[]> response) {
     } else if(change == "title") {
         windows.title(window_id, get_window_name(container));
     } else if(change == "focus") {
-        auto const workspace_num = windows.get_workspace_num(window_id);
-        workspaces.focus_window(workspace_num, window_id);
+        // When the focus changes to a partifular window, then the
+        // corresponsing focused workspace is the one the window is located on.
+        windows.move(window_id, workspaces.focused);
+        workspaces.focus_window(workspaces.focused, window_id);
     } else if(change == "move") {
+        // Unfocus the moved window from it's workspace.
+        auto const current_workspace = windows.get_workspace_num(window_id);
+        workspaces.focus_window(current_workspace, 0);
+
+        // Move the window to the new workspace.
         auto const output_name = container["output"].string();
-        auto const workspace_num = outputs.get_workspace_num_of_focused_on(output_name);
-        windows.move(window_id, workspace_num);
+        // auto const workspace_num = outputs.get_workspace_num_of_focused_on(output_name);
+        // windows.move(window_id, workspace_num);
+        windows.move(window_id, 255);
     } else if(change == "close") {
         auto const workspace_num = windows.get_workspace_num(window_id);
         windows.close(window_id);
