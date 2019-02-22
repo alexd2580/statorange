@@ -18,9 +18,7 @@ class I3 final : public StateItem {
     // i3-mode, defined in the i3-config.
     std::string mode;
 
-    Outputs outputs;
-    Workspaces workspaces;
-    Windows windows;
+    I3Tree tree;
 
     static std::string get_window_name(JSON::Node const& container);
 
