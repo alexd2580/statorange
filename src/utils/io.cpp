@@ -145,14 +145,14 @@ UniqueSocket connect_to(std::string const& path, unsigned int port, int domain, 
 UniqueSocket connect_to(Address const& target, int domain, std::string const& interface) {
     if(domain != AF_LOCAL && domain != AF_INET && domain != AF_INET6) {
         LOG << "Invalid domain: " << domain << std::endl;
-        return UniqueSocket();
+        return UniqueSocket{};
     }
 
     auto unique_socket = UniqueSocket(socket(domain, SOCK_STREAM, 0));
     if(unique_socket < 0) {
         LOG << "Error when opening socket." << std::endl;
         LOG_ERRNO;
-        return UniqueSocket();
+        return UniqueSocket{};
     }
 
     // int prev_flags = fcntl(sockfd, F_GETFL);
@@ -218,27 +218,30 @@ UniqueSocket connect_to(Address const& target, int domain, std::string const& in
         auto address = target.as_sockaddr_un();
         auto address_ptr = reinterpret_cast<struct sockaddr const*>(&address.get());
         result = connect(unique_socket, address_ptr, sizeof(struct sockaddr_un));
+        LOG << "AF_LOCAL " << result << std::endl;
         break;
     }
     case AF_INET: {
         auto address = target.as_sockaddr_in();
         auto address_ptr = reinterpret_cast<struct sockaddr const*>(&address.get());
         result = connect(unique_socket, address_ptr, sizeof(struct sockaddr_in));
+        LOG << "AF_INET " << result << std::endl;
         break;
     }
     case AF_INET6: {
         auto address = target.as_sockaddr_in6();
         auto address_ptr = reinterpret_cast<struct sockaddr const*>(&address.get());
         result = connect(unique_socket, address_ptr, sizeof(struct sockaddr_in6));
+        LOG << "AF_INET6 " << result << std::endl;
         break;
     }
     default:
         assert(false);
     }
     if(result < 0) {
-        LOG << "`connect` failed" << std::endl;
+        LOG << "`connect` failed " << result << std::endl;
         LOG_ERRNO;
-        return UniqueSocket();
+        return UniqueSocket{};
     }
 
     return unique_socket;

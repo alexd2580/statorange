@@ -134,7 +134,6 @@ go_bandit([] {
                 AssertThat(LastException<ParseException>().what(), Equals("Unexpected EOS."));
             });
             it("throws when the escaped string contains invalid escape sequences", [] {
-                ;
                 AssertThrows(ParseException, StringPointer(R"("\q")").escaped_string());
                 AssertThat(LastException<ParseException>().what(), Equals(R"(Invalid escape sequence [\q].)"));
                 AssertThrows(ParseException, StringPointer(R"("\%")").escaped_string());

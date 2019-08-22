@@ -1,14 +1,17 @@
 {
-    "log file path": "/dev/null",
-    "cooldown": 5,
-    "ws window names" : "active",
-    "can also be" : "none, all, visible (btw the impl is missing)",
-    "order": [
+    "show failed modules": true,
+    "left": [{
+        "item": "I3",
+        "cooldown": 600,
+        "ws window names": "active",
+        "can also be": "none, all, visible (btw the impl is missing)"
+    }],
+    "right": [
         {
             "item": "IMAPMail",
+            "icon": "mail",
             "cooldown": 900,
             "button": "chromium www.gmail.com &",
-            "icon": "mail",
             "hostname": "imap.gmail.com",
             "port": 993,
             "ca_file": "/etc/ca-certificates/extracted/cadir/GeoTrust_Global_CA.pem",
@@ -19,27 +22,29 @@
         },
         {
             "item": "Volume",
+            "icon": "vol",
             "cooldown": 30,
             "button": "terminator -e alsamixer &",
             "show_failed": false,
-            "icon": "vol",
             "card": "default",
             "mixer": "Master"
         },
         {
             "item": "Net",
+            "icon": "\ufaa8",
             "cooldown": 10,
-            "icon": "wlan",
             "interface": "wlp2s0",
             "type": "wireless",
-            "show": "ipv4"
+            "show": "ipv4",
+            "connection check cooldown": 30
         },
         {
             "item": "Net",
             "cooldown": 10,
             "interface": "enp0s25",
             "type": "ethernet",
-            "show": "ipv4"
+            "show": "ipv4",
+            "connection check cooldown": 30
         },
         {
             "item": "Battery",
@@ -48,9 +53,9 @@
         },
         {
             "item": "Load",
+            "icon": "\ue266",
             "cooldown": 5,
             "button": "terminator -e htop &",
-            "icon": "cpu",
             "temperature_files": [
                 "/sys/bus/acpi/devices/LNXTHERM:00/thermal_zone/temp",
                 "/sys/bus/acpi/devices/LNXTHERM:01/thermal_zone/temp"
@@ -62,7 +67,7 @@
             "mount_points": [
                 {
                     "file": "/",
-                    "icon": "hd"
+                    "icon": "\uf0a0"
                 },
                 {
                     "file": "/home",
@@ -72,8 +77,8 @@
         },
         {
             "item": "Date",
+            "icon": "\uf017",
             "cooldown": 30,
-            "icon": "clock",
             "format": "%Y-%m-%d %H:%M"
         }
     ]
