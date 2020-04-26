@@ -33,12 +33,16 @@ std::string I3::get_window_name(JSON::Node const& container) {
         // Desktop programs.
         {".*vlc.*", "\ufa7b"},
         {".*mumble.*", "\uf130"},
+        {".*Volume Control.*", "\uf028"},
 
         // Vim (with filetype).
         {".*(\\.hpp|\\.cpp).*vim.*", "\ue62b\ufb71"},
+        {".*(\\.h|\\.c).*vim.*", "\ue62b\ufb70"},
         {".*(\\.ts|\\.tsx).*vim.*", "\ue62b\ufbe4"},
         {".*(\\.py).*vim.*", "\ue62b\ue235"},
-        {".*(\\.js|\\.jsx).*vim.*", "\ue62b\ue781"},
+        // {".*(\\.js^o|\\.jsx).*vim.*", "\ue62b\ue781"},
+        {".*(\\.js^o|\\.jsx).*vim.*", "\ue62b\ue74e"},
+        {".*(\\.json).*vim.*", "\ue62b\ufb25"},
         {".*(\\.rs).*vim.*", "\ue62b\ue7a8"},
         {".*(docker).*vim.*", "\ue62b\uf308"},
         {".*vim.*", "\ue62b"},
