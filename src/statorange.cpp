@@ -29,8 +29,8 @@
 #include "StateItems/Load.hpp"
 #include "StateItems/Net.hpp"
 #include "StateItems/Space.hpp"
-// #include "StateItems/IMAPMail.hpp"
-// #include "StateItems/Volume.hpp"
+#include "StateItems/PulseAudio.hpp"
+
 #include "Lemonbar.hpp"
 #include "Logger.hpp"
 #include "StateItem.hpp"
@@ -74,35 +74,6 @@ class Statorange : Logger {
 
     Lemonbar bar;
 
-    bool load_config() {
-        log() << "Searching config" << std::endl;
-
-        struct passwd* pw = getpwuid(getuid());
-        std::string home_dir(pw->pw_dir);
-        std::string config_name("config.json");
-        std::vector<std::string> config_paths{"./" + config_name, home_dir + "/.config/statorange/" + config_name,
-                                              home_dir + ".statorange/" + config_name};
-
-        for(auto const& path : config_paths) {
-            log() << "Testing path: " << path << std::endl;
-            std::string config_string;
-            if(load_file(path, config_string)) {
-                try {
-                    config_json = JSON::Node(config_string.c_str());
-                } catch(char const* err_msg) {
-                    log() << "Failed to load config from '" << path << "':" << std::endl << err_msg << std::endl;
-                }
-            }
-        }
-
-        if(!config_json.exists()) {
-            log() << "Failed to load config" << std::endl;
-            return false;
-        }
-
-        return true;
-    }
-
     void init_item(JSON::Node const& json_item, StateItems& section) {
 #define CREATE_ITEM(itemclass)                                                                                         \
     if(item == #itemclass) {                                                                                           \
@@ -116,13 +87,10 @@ class Statorange : Logger {
             CREATE_ITEM(Date)
             CREATE_ITEM(Space)
             CREATE_ITEM(Load)
-            CREATE_ITEM(Battery)
-            CREATE_ITEM(Net)
+            // CREATE_ITEM(Battery)
+            // CREATE_ITEM(Net)
             CREATE_ITEM(I3)
-            // else if(item == "Volume")
-            //     return new Volume(json_item);
-            // else if(item == "IMAPMail")
-            //     return new IMAPMail(json_item);
+            // CREATE_ITEM(PulseAudio)
         } catch(std::string const& error) {
             // Errors will be ignored.
             log() << error << std::endl;
@@ -241,7 +209,7 @@ class Statorange : Logger {
     }
 
     void print() {
-        const uint8_t num_output_displays = 3;
+        const uint8_t num_output_displays = 2;
         for(uint8_t i = 0; i < num_output_displays; i++) {
             bar.display_begin(i);
             print_section(Lemonbar::Alignment::left, left_items, i);
@@ -253,7 +221,7 @@ class Statorange : Logger {
     }
 
   public:
-    explicit Statorange(std::ostream& ostr) : Logger("Main"), config_json(""), bar(ostr) {
+    explicit Statorange(std::ostream& ostr, JSON::Node const& config) : Logger("Main"), config_json(config), bar(ostr) {
         signal_fd = 0;
         show_failed_modules = true;
     }
@@ -264,22 +232,24 @@ class Statorange : Logger {
         (void)argv;
         log() << "Launching Statorange" << std::endl;
 
-        if(!load_config()) {
-            return false;
-        }
         if(!apply_config()) {
             return false;
         }
 
         setup_signal_handler();
 
+        int index = 0;
         while(!dead && !restart) {
+            log() << "loop " << index  << std::endl;
             if(update()) {
+                log() << "print" << index << std::endl;
                 print();
             }
 
             StateItem::wait_for_events(signal_fd);
             handle_signals();
+
+            index++;
         }
 
         return restart;
@@ -287,18 +257,67 @@ class Statorange : Logger {
 };
 
 int main(int argc, char* argv[]) {
-    if(argc == 2 && std::string(argv[1]) == "--dry") {
-        Statorange app(std::cout);
-        return app.run(argc, argv);
-    } else {
-        // The following comes from the `nerd-fonts-complete` AUR package, then taken from fc-list.
-        const std::string text_font(R"(-f "UbuntuMono Nerd Font:size=10")");
-        const std::string lemonbar_cmd("lemonbar " + text_font + " -a 30 -u -3");
-        auto lemonbar_pipe = run_command(lemonbar_cmd, "w");
-        FileStream<UniqueFile> lemonbar_streambuf(std::move(lemonbar_pipe));
-        std::ostream lemonbar_stream(&lemonbar_streambuf);
+    Logger main("main");
 
-        Statorange app(lemonbar_stream);
-        return app.run(argc, argv);
+    main.log() << "Searching config" << std::endl;
+
+    JSON::Node config_json;
+    struct passwd* pw = getpwuid(getuid());
+    std::string home_dir(pw->pw_dir);
+    std::string config_name("config.json");
+    std::vector<std::string> config_paths{"./" + config_name, home_dir + "/.config/statorange/" + config_name,
+                                          home_dir + "/.statorange/" + config_name};
+
+    for(auto const& path : config_paths) {
+        main.log() << "Testing path: " << path << std::endl;
+        std::string config_string;
+        if(load_file(path, config_string)) {
+            try {
+                config_json = JSON::Node(config_string.c_str());
+            } catch(char const* err_msg) {
+                main.log() << "Failed to load config from '" << path << "':" << std::endl << err_msg << std::endl;
+            }
+        }
     }
+
+    if(!config_json.exists()) {
+        main.log() << "Failed to load config" << std::endl;
+        return 1;
+    }
+
+
+    if(argc == 2 && std::string(argv[1]) == "--dry") {
+        Statorange app(std::cout, config_json);
+        return app.run(argc, argv) ? 1 : 0;
+    }
+
+    // The following comes from the `nerd-fonts-complete` AUR package, then taken from fc-list.
+
+    // I don't exactly understand why, and there's probably a good explanation for this, but here's the gist:
+    // lemonbar (xft/pango <- my lemonbar port) does not work with the new patched versions of nerd-fonts (2.1.0)
+    // the rendering breaks down and double-width characters get cut off.
+    // Therefore i need to install the old version of nerd fonts (2.0.0-1 through 2.0.0-5).
+    // These fonts get correctly displayed in `font-manager` and look fine in the bar, but beware.
+    // For some reason the old version of FiraCode is also broken. Therefore in case i actually wanted to use FiraCode
+    // with the bar i would have to use `FuraCode` (Yes, FUUUUUUU-RA code), which seems to be the old version
+    // (2.0.0-5) of what is now called FiraCode, although in the old version it was also caled `FiraCode`...
+    // I fucking hate font config.
+
+    const std::string text_font = config_json["font"].string();
+        // (R"(-f "UbuntuMono Nerd Font:size=12")");
+    // const std::string text_font(R"(-f "FuraMono Nerd Font:size=15")"); // More or less ok
+    // const std::string text_font(R"(-f "FuraMono Nerd Font Mono:size=15")"); //Because mono - condensed icons
+    // const std::string text_font(R"(-f "FuraCode Nerd Font:size=10")"); // looks ok
+    // const std::string text_font(R"(-f "FuraCode Nerd Font Mono:size=15")"); // Because mono - condensed icons
+    // const std::string text_font(R"(-f "FiraMono Nerd Font:size=15")"); // Completely broken.
+    // const std::string text_font(R"(-f "FiraMono Nerd Font Mono:size=15")"); // Because mono - icons condensed.
+    // const std::string text_font(R"(-f "FiraCode Nerd Font:size=15")"); // Correct character size, but icons cut off.
+    // const std::string text_font(R"(-f "FiraCode Nerd Font Mono:size=15")"); // Because mono - icons condensed
+    const std::string lemonbar_cmd("lemonbar -f \"" + text_font + "\" -a 30 -u -2");
+    auto lemonbar_pipe = run_command(lemonbar_cmd, "w");
+    FileStream<UniqueFile> lemonbar_streambuf(std::move(lemonbar_pipe));
+    std::ostream lemonbar_stream(&lemonbar_streambuf);
+
+    Statorange app(lemonbar_stream, config_json);
+    return app.run(argc, argv) ? 1 : 0;
 }

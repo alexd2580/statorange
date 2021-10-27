@@ -40,6 +40,7 @@ class Lemonbar final {
     static std::map<Coloring, ColorPair const> const color_pairs;
 
     enum class PowerlineStyle {
+        none,
         common,
         round,
         fire,

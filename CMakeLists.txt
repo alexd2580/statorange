@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.12)
 project(statorange VERSION 2.0.0 LANGUAGES CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -39,7 +39,7 @@ file(GLOB_RECURSE STATORANGE src/statorange.cpp)
 list(REMOVE_ITEM SOURCES ${STATORANGE})
 file(GLOB_RECURSE UNIT_TEST_SOURCES tests/*.cpp)
 
-set(LIBS asound ssl crypto fmt pthread)
+set(LIBS asound ssl crypto fmt pulse pthread)
 
 # The main executable
 add_executable(statorange ${SOURCES} ${STATORANGE})

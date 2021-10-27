@@ -2,100 +2,122 @@
 #define UTILS_I3_TREE_HPP
 
 #include <algorithm>
+#include <cstdint>
+#include <functional>
 #include <map>
+#include <optional>
 #include <string>
 
 #include "Lemonbar.hpp"
+#include "Logger.hpp"
+#include "utils/multimap.hpp"
+
+struct Output;
+struct Workspace;
+struct Window;
 
 struct Output final {
+    uint8_t rel_index;
+    std::string const name;
+
     int x;
     int y;
 
-    std::string const name;
+    Workspace* visible_workspace;
 
-    uint8_t workspace_focused = 255;
+    Output(uint8_t rel_index_, std::string const name_, int x_, int y_, Workspace* visible_workspace_)
+        : rel_index(rel_index_), name(name_), x(x_), y(y_), visible_workspace(visible_workspace_) {}
 };
 
-struct Workspace final {
-    // Display on which this workspace is located.
-    uint8_t display;
+class Outputs final : public Multimap<uint8_t, std::string, Output> {};
 
+struct Workspace final {
+    uint8_t const num;
     // Name of workspace as defined in `~/.config/i3/config`.
     std::string const name;
-
     // Urgent flag set by X.
-    bool urgent = false;
+    bool urgent;
 
-    uint64_t window_focused;
+    Output* output;
+    Window* focused_window;
+
+    Workspace(uint8_t num_, std::string name_, bool urgent_, Output* output_, Window* focused_window_)
+        : num(num_), name(name_), urgent(urgent_), output(output_), focused_window(focused_window_) {}
+};
+
+class Workspaces final : public std::map<uint8_t, Workspace> {
+  public:
+    Workspace* focused;
+
+    // Const accessors.
+    bool is_focused(Workspace const& workspace) const { return &workspace == focused; }
 };
 
 struct Window final {
-    // Workspace on which this window is located.
-    uint8_t workspace;
-
-    // Name of the window.
+    uint64_t const id;
     std::string name;
 
-    // Maybe store the urgent flag of a window?
+    Workspace* workspace;
+
+    Window(uint64_t id_, std::string name_, Workspace* workspace_) : id(id_), name(name_), workspace(workspace_) {}
+};
+
+class Windows : public std::map<uint64_t, Window> {
+  public:
+    bool contains(uint64_t id) const { return find(id) != cend(); }
+
+    std::string const& name_of(uint64_t id) const { return at(id).name; }
 };
 
 class I3Tree final {
   private:
-    std::map<uint8_t, Output> outputs;
-
-    // Map of unique number to workspace.
-    std::map<uint8_t, Workspace> workspaces;
-
-    // Map of uuid to window.
-    std::map<uint64_t, Window> windows;
-
-    decltype(outputs)::iterator get_output_by_name(std::string const& name) {
-        auto is_searched_display = [&](auto const& pair) { return pair.second.name == name; };
-        return std::find_if(outputs.begin(), outputs.end(), is_searched_display);
-    }
-
-    decltype(outputs)::const_iterator get_output_by_name(std::string const& name) const {
-        auto is_searched_display = [&](auto const& pair) { return pair.second.name == name; };
-        return std::find_if(outputs.cbegin(), outputs.cend(), is_searched_display);
-    }
-
-    // Get the display number for a display name. If no such display is present,
-    // then return 255.
-    uint8_t get_output_num_by_name(std::string const& name) const {
-        auto display_iter = get_output_by_name(name);
-        return display_iter == outputs.cend() ? 255 : display_iter->first;
-    }
+    Outputs m_outputs;
+    Workspaces m_workspaces;
+    Windows m_windows;
 
   public:
-    // Focused workspace.
-    uint8_t workspace_focused = 255;
+    Outputs const& outputs = m_outputs;
+    Workspaces const& workspaces = m_workspaces;
+    Windows const& windows = m_windows;
+
+    // Output utils.
+    Output& display_add(int x, int y, std::string const& name) {
+        uint8_t lower = 0;
+        uint8_t upper = 255;
+        auto first_before_second = [&](int x1, int y1, int x2, int y2) { return x1 < x2 || (x1 == x2 && y1 < y2); };
+
+        for(auto const& output : m_outputs.iterableFromIndex1()) {
+            if(first_before_second(x, y, output.x, output.y)) {
+                upper = std::min(upper, output.rel_index);
+            } else {
+                lower = std::max(lower, output.rel_index);
+            }
+        }
+        uint8_t index = (upper + lower) / 2;
+        return *m_outputs.emplace(index, name, index, name, x, y, m_workspaces.focused).first;
+    }
 
     // Workspace events.
-    void workspace_init(uint8_t num, std::string const& display_name, std::string const& name) {
-        auto display_num = get_output_num_by_name(display_name);
-        workspaces.emplace(num, Workspace{display_num, name, false, 0});
+    Workspace& workspace_init(uint8_t num, std::string const& display_name, std::string const& name) {
+        return m_workspaces.try_emplace(num, num, name, false, &m_outputs.at(display_name), nullptr).first->second;
     }
 
     void workspace_focus(uint8_t num, std::string const& display_name) {
-        workspace_focused = num;
-        auto display_iter = get_output_by_name(display_name);
-        if(display_iter == outputs.end()) {
-            std::cerr << "Focussing workspace " << (int)num << " on display " << display_name
-                      << " which does not exist." << std::endl;
-            return;
-        }
-
-        auto& display = display_iter->second;
-        display.workspace_focused = num;
+        auto& workspace = m_workspaces.at(num);
+        m_workspaces.focused = &workspace;
+        m_outputs.at(display_name).visible_workspace = &workspace;
     }
 
-    void workspace_urgent(uint8_t num, bool urgent) { workspaces[num].urgent = urgent; }
+    void workspace_urgent(uint8_t num, bool urgent) { m_workspaces.at(num).urgent = urgent; }
 
-    void workspace_move() { std::cout << "Not implemented!" << std::endl; }
+    void workspace_move() { LOG << "`workspace_move` not implemented!" << std::endl; }
 
     void workspace_empty(uint8_t num) {
-        outputs[workspaces[num].display].workspace_focused = 255;
-        workspaces.erase(num);
+        auto& output = *m_workspaces.at(num).output;
+        if(output.visible_workspace->num == num) {
+            LOG << "Unfocusing a workspace on a workspace which still has focus on it." << std::endl;
+        }
+        m_workspaces.erase(num);
     }
 
     // Window events.
@@ -103,89 +125,46 @@ class I3Tree final {
         // Already handled by `window_open`.
     }
 
-    void window_title(uint64_t id, std::string const& name) { windows[id].name = name; }
+    // TODO What's the difference to `window_new`?
+    void window_open(uint64_t window_id, std::string const& display_name, std::string const& name) {
+        auto& output = m_outputs.at(display_name);
+        auto& workspace = output.visible_workspace;
+        m_windows.emplace(window_id, Window{window_id, name, workspace});
+    }
+
+    void window_title(uint64_t id, std::string const& name) { m_windows.at(id).name = name; }
 
     void window_focus(uint64_t window_id) {
-        // When the focus changes to a partifular window, then the currently
+        // Do i need this?
+        // When the focus changes to a particular window, then the currently
         // focused workspace is the one the window is located on.
-        windows[window_id].workspace = workspace_focused;
-        workspaces[workspace_focused].window_focused = window_id;
+        // windows[window_id].workspace = workspaces.focused;
+        auto& window = m_windows.at(window_id);
+        window.workspace->focused_window = &window;
     }
 
     void window_move(uint64_t window_id, std::string const& display_name) {
         // Unfocus the moved window from its workspace.
-        auto const current_workspace = windows[window_id].workspace;
-        workspaces[current_workspace].window_focused = 0;
+        auto& window = m_windows.at(window_id);
+        auto& old_workspace = *window.workspace;
+        old_workspace.focused_window = nullptr;
 
-        // Move the window to the new workspace.
-        auto display_iter = get_output_by_name(display_name);
-        if(display_iter == outputs.cend()) {
-            std::cerr << "Moving window " << window_id << " to display " << display_name << " which does not exist."
-                      << std::endl;
-            return;
-        }
-        auto workspace_num = display_iter->second.workspace_focused;
-        windows[window_id].workspace = workspace_num;
+        auto& new_output = m_outputs.at(display_name);
+        auto& new_workspace = new_output.visible_workspace;
+        window.workspace = new_workspace;
     }
 
     void window_close(uint64_t window_id) {
-        auto const workspace_num = windows[window_id].workspace;
-        windows.erase(window_id);
-        workspaces[workspace_num].window_focused = 0;
+        auto& workspace = *m_windows.at(window_id).workspace;
+        workspace.focused_window = nullptr;
+        m_windows.erase(window_id);
     }
-
-    // Const accessors.
-    decltype(workspace_focused) get_workspace_focused() const { return workspace_focused; }
-
-    decltype(workspaces) const& get_workspaces() const { return workspaces; }
-
-    std::string const& get_window_name(uint64_t window_id) const { return windows.at(window_id).name; }
-
-    // Utils.
-    void display_add(int x, int y, std::string const& name) {
-        uint8_t lower = 0;
-        uint8_t upper = 255;
-        auto compare_position = [&](int x1, int y1, int x2, int y2) { return x1 < x2 ? true : y1 < y2; };
-
-        for(auto const& output_iter : outputs) {
-            auto const& display = output_iter.second;
-            if(compare_position(x, y, display.x, display.y)) {
-                upper = std::min(upper, output_iter.first);
-            } else {
-                lower = std::max(lower, output_iter.first);
-            }
-        }
-
-        outputs.emplace(upper / 2 + lower / 2, Output{x, y, name, 255});
-    }
-
-    uint8_t get_display_num_by_order(uint8_t order) {
-        auto iter = outputs.cbegin();
-        for(uint8_t i = 0; i < order; i++, iter++) {
-        }
-        return iter->first;
-    }
-
-    void window_open(uint64_t window_id, std::string const& display_name, std::string const& name) {
-        auto display_iter = get_output_by_name(display_name);
-        if(display_iter == outputs.cend()) {
-            std::cerr << "Opening window " << window_id << ": " << name << " on display " << display_name
-                      << " which does not exist." << std::endl;
-            return;
-        }
-        auto workspace_num = display_iter->second.workspace_focused;
-        windows.emplace(window_id, Window{workspace_num, name});
-    }
-
-    bool contains_window(uint64_t id) const { return windows.find(id) != windows.cend(); }
-
-    bool contains_output(std::string const& name) const { return get_output_by_name(name) != outputs.cend(); }
 
     void reset() {
-        outputs.clear();
-        workspaces.clear();
-        windows.clear();
-        workspace_focused = 255;
+        m_outputs.clear();
+        m_workspaces.clear();
+        m_windows.clear();
+        m_workspaces.focused = nullptr;
     }
 
     // // NOLINTNEXTLINE: Desired overload.

@@ -291,7 +291,7 @@ void Net::print_raw(Lemonbar& bar, uint8_t display_arg) {
             break;
         case Net::Display::None:
             bar.separator(Lemonbar::Separator::left, ipv4_connected || ipv6_connected ? up_color : down_color);
-            bar() << " Up ";
+            bar() << " \uf817 ";
             break;
         }
         bar.separator(Lemonbar::Separator::left, Lemonbar::Coloring::white_on_black);

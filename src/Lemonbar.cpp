@@ -30,6 +30,7 @@ std::map<Lemonbar::Coloring, Lemonbar::ColorPair const> const Lemonbar::color_pa
 };
 
 std::map<Lemonbar::PowerlineStyle, std::vector<std::string> const> const Lemonbar::powerline_styles{
+    {Lemonbar::PowerlineStyle::none, {"", "", "", ""}},
     {Lemonbar::PowerlineStyle::common, {"\ue0b2", "\ue0b3", "\ue0b1", "\ue0b0"}},
     {Lemonbar::PowerlineStyle::round, {"\ue0b6", "\ue0b7", "\ue0b5", "\ue0b4"}},
     {Lemonbar::PowerlineStyle::fire, {"\ue0c2", "\ue0c3", "\ue0c1", "\ue0c0"}},
@@ -89,8 +90,12 @@ void Lemonbar::separator(Separator sep, Coloring next, PowerlineStyle style) {
 void Lemonbar::separator(Separator sep, std::string const& next_bg, std::string const& next_fg, PowerlineStyle style) {
     auto const& style_icons = powerline_styles.at(style);
     if(next_bg == current_bg) {
-        auto const separator_index = sep == Separator::left ? 1u : sep == Separator::vertical ? 1u : 2u;
-        out << "%{F#FF000000}" << style_icons[separator_index];
+        if (sep == Separator::none) {
+            out << "%{F#FF000000}";
+        } else {
+            auto const separator_index = sep == Separator::left ? 1u : sep == Separator::vertical ? 1u : 2u;
+            out << "%{F#FF000000}" << style_icons[separator_index];
+        }
     } else {
         switch(sep) {
         case Separator::none:

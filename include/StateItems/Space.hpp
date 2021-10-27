@@ -1,5 +1,5 @@
-#ifndef __PARTITIONSIZEXYZHEADER_LOL___
-#define __PARTITIONSIZEXYZHEADER_LOL___
+#ifndef STATEITEMS_SPACE_HPP
+#define STATEITEMS_SPACE_HPP
 
 #include <ostream>
 #include <string>

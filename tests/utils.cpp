@@ -47,7 +47,7 @@ TempFile make_file() {
     auto filename = make_filename();
     int fd = open(filename.c_str(), O_WRONLY | O_CREAT | O_NOCTTY | O_NONBLOCK, 0666);
     close(fd);
-    return TempFile(filename, [](std::string fname) { assert(unlink(fname.c_str()) == 0); });
+    return TempFile(filename, [](std::string fname) { AssertThat(unlink(fname.c_str()), Is().EqualTo(0)); });
 }
 
 void write_to_file(std::string const& filename, std::string const& content) {

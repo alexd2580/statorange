@@ -32,7 +32,7 @@ class I3 final : public StateItem {
 
     std::pair<bool, bool> update_raw() override;
     std::pair<bool, bool> handle_stream_data_raw(int fd) override;
-    void print_raw(Lemonbar&, uint8_t) override;
+    void print_raw(Lemonbar& bar, uint8_t display) override;
 
   public:
     explicit I3(JSON::Node const& item);

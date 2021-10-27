@@ -11,8 +11,6 @@
 #include "utils/parse.hpp"
 
 namespace JSON {
-class Node;
-
 class Value {
   protected:
     Value() = default;
@@ -113,6 +111,8 @@ class Node final {
         throw out.str();
     }
 
+    explicit Node() { value = std::shared_ptr<Null>(new Null()); }
+
     explicit Node(char const* str) {
         StringPointer sp(str);
         value = parse(sp);
@@ -191,6 +191,7 @@ class Node final {
         size_t size() const { return array.size(); }
         ArrayConstIter begin() const { return ArrayConstIter{array.cbegin()}; }
         ArrayConstIter end() const { return ArrayConstIter{array.cend()}; }
+        Node const operator[](container_type::size_type index) const { return Node(array.at(index)); }
     };
     const ArrayWrapper array() const {
         auto const* array_ptr = as<Array>();

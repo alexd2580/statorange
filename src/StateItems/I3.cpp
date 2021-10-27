@@ -1,5 +1,7 @@
 #include <algorithm> // find_if, for_each
+#include <cassert>   // assert
 #include <map>
+#include <optional>
 #include <ostream> // ostream
 #include <regex>
 #include <string>
@@ -16,7 +18,7 @@
 #include "utils/io.hpp"
 
 std::string I3::get_window_name(JSON::Node const& container) {
-    auto const name(container["name"].string("ERROR"));
+    auto const name(container["name"].string("\uf7d5"));
 
     std::map<std::string, std::string> regex_to_icon{
         // Chrome.
@@ -28,12 +30,16 @@ std::string I3::get_window_name(JSON::Node const& container) {
         {".*(youtube).*chrom.*", "\uf268\uf16a"},
         {".*(jira).*chrom.*", "\uf268\uf802"},
         {".*(paypal).*chrom.*", "\uf268\uf1ed"},
+        {".*(gmail).*chrom.*", "\uf268\uf7aa"},
+        {".*(amazon).*chrom.*", "\uf268\uf270"},
+        {".*(google).*chrom.*", "\uf268\uf1a0"},
         {".*chrom.*", "\uf268"},
 
         // Desktop programs.
         {".*vlc.*", "\ufa7b"},
         {".*mumble.*", "\uf130"},
-        {".*Volume Control.*", "\uf028"},
+        {".*volume control.*", "\uf028"},
+        {".*telegram.*", "\ue217"},
 
         // Vim (with filetype).
         {".*(\\.hpp|\\.cpp).*vim.*", "\ue62b\ufb71"},
@@ -54,7 +60,10 @@ std::string I3::get_window_name(JSON::Node const& container) {
         {".*man.*", "\uf15c"},
         {".*docker.*", "\uf308"},
         {".*npm.*", "\ue71e"},
+        {".*irssi.*", "\uf292"},
+        {".*gdb.*", "\uf423"},
         {".*zsh.*", "\uf120"},
+        {".*@.*: ~.*", "\uf120"},
     };
     for(auto const& pair : regex_to_icon) {
         std::regex regex(pair.first, std::regex_constants::icase);
@@ -87,29 +96,48 @@ void I3::query_tree() {
             continue;
         }
 
-        if(!tree.contains_output(display_name)) {
-            auto const& rect = output_node["rect"];
-            tree.display_add(rect["x"].number<int>(), rect["y"].number<int>(), display_name);
+        log() << "Found output '" << display_name << "'" << std::endl;
+
+        if(tree.outputs.contains(display_name)) {
+            log() << "  Output already exists. Skipping." << std::endl;
+            continue;
         }
+        auto const& rect = output_node["rect"];
+        auto& output = tree.display_add(rect["x"].number<int>(), rect["y"].number<int>(), display_name);
 
         auto const& area_nodes = output_node["nodes"].array();
         // Here we only care about the `content`-node hence the find.
-        auto const predicate = [](auto const& node) { return node["name"].string() == "content"; };
-        auto const content_node_iter = std::find_if(area_nodes.begin(), area_nodes.end(), predicate);
+        auto const is_content = [](auto const& node) { return node["name"].string() == "content"; };
+        auto const content_node_iter = std::find_if(area_nodes.begin(), area_nodes.end(), is_content);
         if(content_node_iter == area_nodes.end()) {
-            log() << "Has the structure of the tree changed? Can't find `content` node." << std::endl;
+            log() << "  Can't find `content` node. Skipping." << std::endl;
             continue;
         }
-        auto const& content_node = *content_node_iter;
-        auto const& workspace_nodes = content_node["nodes"].array();
+        auto const& workspace_nodes = (*content_node_iter)["nodes"].array();
         for(auto const& workspace_node : workspace_nodes) {
             auto const workspace_name = workspace_node["name"].string();
             auto const workspace_num = workspace_node["num"].number<uint8_t>();
-            // auto const display_name = workspace_node["output"].string();
-            tree.workspace_init(workspace_num, display_name, workspace_name);
+
+            log() << fmt::format("  Found workspace '{}' ({})", workspace_name, workspace_num) << std::endl;
+            auto& workspace = tree.workspace_init(workspace_num, display_name, workspace_name);
+
+            // Temporarily setting focus to the new workspace.
+            output.visible_workspace = &workspace;
+
+            auto focused_container = std::optional(workspace_node["id"].number<uint64_t>());
 
             std::function<void(JSON::Node const&)> parse_tree_container = [&, this](JSON::Node const& container) {
+                auto const id = container["id"].number<uint64_t>();
+                auto const is_focused = id == focused_container;
+                if (is_focused) {
+                    auto const& focus = container["focus"].array();
+                    if (focus.size() != 0) {
+                        focused_container = focus[0].number<uint64_t>();
+                    }
+                }
+
                 auto const window_id_json = container["window"];
+
                 // If the container does not have a window id, then it is recursive.
                 if(!window_id_json.exists()) {
                     auto const& con_nodes = container["nodes"].array();
@@ -120,8 +148,14 @@ void I3::query_tree() {
                 // Create the actual window.
                 auto const window_id = window_id_json.number<uint64_t>();
                 auto const window_name = get_window_name(container);
+
+                log() << fmt::format("    Found window '{}' ({}) => '{}'", container["name"].string("\uf7d5"),
+                                     window_id, window_name)
+                      << std::endl;
+
                 tree.window_open(window_id, display_name, window_name);
-                if(container["focused"].boolean()) {
+                if(is_focused) {
+                    log() << "      Window is focused" << std::endl;
                     tree.workspace_focus(workspace_num, display_name);
                     tree.window_focus(window_id);
                 }
@@ -130,6 +164,8 @@ void I3::query_tree() {
             parse_tree_container(workspace_node);
         }
     }
+
+    // TODO set visibility properly.
 }
 
 void I3::workspace_event(std::unique_ptr<char[]> response) {
@@ -144,17 +180,23 @@ void I3::workspace_event(std::unique_ptr<char[]> response) {
 
     if(change == "init") {
         auto const display_name = current["output"].string();
-        tree.workspace_init(current_num, display_name, current["name"].string());
+        auto const workspace_name = current["name"].string();
+        log() << fmt::format("Initializing workspace {} ({}) on display {}", workspace_name, current_num, display_name)
+              << std::endl;
+        tree.workspace_init(current_num, display_name, workspace_name);
     } else if(change == "focus") {
         auto const display_name = current["output"].string();
+        log() << fmt::format("Focusing workspace {} on display {}", current_num, display_name) << std::endl;
         tree.workspace_focus(current_num, display_name);
     } else if(change == "urgent") {
+        log() << fmt::format("Urgent-ing workspace {}", current_num) << std::endl;
         tree.workspace_urgent(current_num, current["urgent"].boolean());
     } else if(change == "move") {
         // Requery tree until https://github.com/i3/i3/pull/3597#partial-pull-merging
         // is merged.
         query_tree();
     } else if(change == "empty") {
+        log() << fmt::format("Emptying workspace {}", current_num) << std::endl;
         tree.workspace_empty(current_num);
     } else {
         log() << "Unhandled workspace event type: [" << change << "]" << std::endl;
@@ -171,7 +213,7 @@ void I3::window_event(std::unique_ptr<char[]> response) {
     auto& container = json["container"];
     uint64_t window_id = container["window"].number<uint64_t>();
 
-    if(!tree.contains_window(window_id)) {
+    if(!tree.windows.contains(window_id)) {
         auto const display_name = container["output"].string();
         tree.window_open(window_id, display_name, get_window_name(container));
     }
@@ -239,38 +281,49 @@ std::pair<bool, bool> I3::update_raw() {
 std::pair<bool, bool> I3::handle_stream_data_raw(int fd) {
     uint32_t event_type;
     auto event_message = i3_ipc::read_message(fd, event_type);
-    return handle_message(event_type, std::move(event_message));
+    auto const& res = handle_message(event_type, std::move(event_message));
+
+    // Handle subsequent messages.
+    if (!has_input(fd)) {
+        return res;
+    }
+
+    auto const& res2 = handle_stream_data_raw(fd);
+    return {res.first && res2.first, res.second || res2.second};
+}
+
+Lemonbar::Coloring get_workspace_coloring(bool urgent, bool focused) {
+    using C = Lemonbar::Coloring;
+    return urgent ? C::urgent : focused ? C::active : C::inactive;
 }
 
 void I3::print_raw(Lemonbar& bar, uint8_t display) {
-    auto const display_num = tree.get_display_num_by_order(display);
+    auto const& output = *(tree.outputs.iterableFromIndex1().cbegin() + (int)display);
     auto const& style = Lemonbar::PowerlineStyle::round;
-    for(auto const& workspace_entry : tree.get_workspaces()) {
+    for(auto const& workspace_entry : tree.workspaces) {
         auto const& workspace = workspace_entry.second;
-        if(workspace.display == display_num) {
-            auto const& sep_right = Lemonbar::Separator::right;
-            bool is_focused = workspace_entry.first == tree.get_workspace_focused();
-            auto const& coloring = workspace.urgent
-                                       ? Lemonbar::Coloring::urgent
-                                       : is_focused ? Lemonbar::Coloring::active : Lemonbar::Coloring::inactive;
-            bar.separator(sep_right, coloring, style);
-            bar() << " " << workspace.name << " ";
-            auto const focused_window = workspace.window_focused;
-            if(focused_window != 0) {
-                if(!tree.contains_window(focused_window)) {
-                    bar() << " unknown focus ";
-                } else {
-                    auto const& name = tree.get_window_name(focused_window);
-                    if(!is_unicode(name)) {
-                        bar.separator(sep_right, style);
-                        bar() << " " << name << " ";
-                    } else {
-                        bar() << name;
-                    }
-                }
-            }
-            bar.separator(sep_right, Lemonbar::Coloring::white_on_black, style);
+        if(workspace.output != &output) {
+            continue;
         }
+
+        auto const& sep_right = Lemonbar::Separator::right;
+
+        bool focused = tree.workspaces.is_focused(workspace);
+        auto const& coloring = get_workspace_coloring(workspace.urgent, focused);
+
+        bar.separator(sep_right, coloring, style);
+        bar() << " " << workspace.name << " ";
+        auto focused_window = workspace.focused_window;
+        if(focused_window != nullptr) {
+            auto const& name = focused_window->name;
+            if(!is_unicode(name)) {
+                bar.separator(sep_right, style);
+                bar() << " " << name << " ";
+            } else {
+                bar() << name;
+            }
+        }
+        bar.separator(sep_right, Lemonbar::Coloring::white_on_black, style);
     }
 }
 

@@ -79,7 +79,6 @@ bool StateItem::wait_for_events(int signal_fd) {
     int max_fd = 0;
     FD_ZERO(&read_fds);
     if(signal_fd != 0) {
-
         FD_SET(signal_fd, &read_fds);
         max_fd = signal_fd;
     }
