@@ -1,3 +1,4 @@
+#include <fstream>
 #include <future>
 #include <string>
 #include <vector>
@@ -11,6 +12,7 @@
 #include <bandit/bandit.h>
 
 // Local import.
+#include "Logger.hpp"
 #include "utils.hpp"
 
 #include "i3/ipc.hpp"
@@ -19,8 +21,18 @@
 using namespace bandit;
 using namespace snowhouse;
 
+static std::ofstream null;
+
 go_bandit([] {
     describe("i3 ipc", [] {
+        before_each([]() {
+            null.open("/dev/null", std::ofstream::out);
+            Logger::set_default_ostream(null);
+        });
+        after_each([]() {
+            null.close();
+            Logger::set_default_ostream(std::cout);
+        });
         describe("type_to_string", [] {
             std::vector<std::pair<uint32_t, std::string>> conversions = {
                 {i3_ipc::reply_type::COMMAND, "reply_type::COMMAND"},

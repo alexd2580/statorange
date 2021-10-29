@@ -27,10 +27,10 @@ bool has_input(int fd, int microsec) {
     FD_SET(fd, &rfds); // NOLINT: Macro use with inline assembler intended.
 
     struct timeval tv {};
-    tv.tv_sec = 0;
-    tv.tv_usec = microsec;
+    tv.tv_usec = microsec % 1000;
+    tv.tv_sec = (microsec - tv.tv_usec) / 1000;
 
-    return select(fd + 1, &rfds, nullptr, nullptr, &tv) == 1;
+    return select(fd + 1, &rfds, nullptr, nullptr, &tv) > 0;
 }
 
 ssize_t read_all(int fd, char* buf, size_t count) {
