@@ -3,6 +3,8 @@
 #include <memory>
 #include <sstream>
 
+#include <fmt/format.h>
+
 #include "Lemonbar.hpp"
 #include "StateItem.hpp"
 #include "json_parser.hpp"
@@ -48,9 +50,12 @@ bool StateItem::update(bool force) {
     auto now = std::chrono::system_clock::now();
     if(now > last_updated + cooldown || force) {
         const std::pair<bool, bool> state = update_raw();
-        last_updated = now;
         changed = changed || state.first != valid || state.second;
         valid = state.first;
+        // Make invalid items retry in the next iteration.
+        if(valid) {
+            last_updated = now;
+        }
     }
     return changed;
 }
@@ -66,7 +71,7 @@ void StateItem::print(Lemonbar& bar, uint8_t display_number) {
         }
     } else if(show_failed) {
         bar.separator(Lemonbar::Separator::vertical, Lemonbar::Coloring::warn);
-        bar() << " Module " << module_name << " failed ";
+        bar() << fmt::format(" RIP {} ", module_name);
         bar.separator(Lemonbar::Separator::vertical, Lemonbar::Coloring::white_on_black);
     }
     changed = false;
@@ -74,7 +79,7 @@ void StateItem::print(Lemonbar& bar, uint8_t display_number) {
 
 bool StateItem::wait_for_events(int signal_fd) {
     fd_set read_fds;
-    struct timeval tv{};
+    struct timeval tv {};
 
     int max_fd = 0;
     FD_ZERO(&read_fds);
@@ -108,7 +113,7 @@ bool StateItem::wait_for_events(int signal_fd) {
             if(FD_ISSET(event_socket.first, &read_fds)) {
                 auto item = event_socket.second;
                 // Logger::log("StateItem") << "Module " << item->module_name << " can process events on socket "
-                                         // << event_socket.first << std::endl;
+                // << event_socket.first << std::endl;
                 changed = changed || item->handle_stream_data(event_socket.first);
             }
         }

@@ -39,7 +39,7 @@ file(GLOB_RECURSE STATORANGE src/statorange.cpp)
 list(REMOVE_ITEM SOURCES ${STATORANGE})
 file(GLOB_RECURSE UNIT_TEST_SOURCES tests/*.cpp)
 
-set(LIBS asound ssl crypto fmt pulse pthread)
+set(LIBS asound ssl crypto fmt pulse pthread curlpp curl)
 
 # The main executable
 add_executable(statorange ${SOURCES} ${STATORANGE})

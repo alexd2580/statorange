@@ -30,6 +30,7 @@
 #include "StateItems/Net.hpp"
 #include "StateItems/Space.hpp"
 #include "StateItems/PulseAudio.hpp"
+#include "StateItems/Weather.hpp"
 
 #include "Lemonbar.hpp"
 #include "Logger.hpp"
@@ -91,6 +92,7 @@ class Statorange : Logger {
             // CREATE_ITEM(Net)
             CREATE_ITEM(I3)
             // CREATE_ITEM(PulseAudio)
+            CREATE_ITEM(Weather)
         } catch(std::string const& error) {
             // Errors will be ignored.
             log() << error << std::endl;
@@ -238,18 +240,13 @@ class Statorange : Logger {
 
         setup_signal_handler();
 
-        int index = 0;
         while(!dead && !restart) {
-            log() << "loop " << index  << std::endl;
             if(update()) {
-                log() << "print" << index << std::endl;
                 print();
             }
 
             StateItem::wait_for_events(signal_fd);
             handle_signals();
-
-            index++;
         }
 
         return restart;

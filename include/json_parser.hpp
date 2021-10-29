@@ -208,7 +208,7 @@ class Node final {
         const auto& vector = array_ptr->vector;
         return Node(index >= vector.size() ? Null::static_null : vector[index]);
     }
-    template <typename IndexType, typename std::enable_if_t<std::is_integral<IndexType>::value>::type* = nullptr>
+    template <typename IndexType, typename = std::enable_if_t<std::is_integral<IndexType>::value>>
     Node operator[](IndexType index) const { // NOLINT: `operator[]` overload desired.
         return array_at(static_cast<size_t>(index));
     }

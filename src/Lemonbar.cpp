@@ -105,9 +105,7 @@ void Lemonbar::separator(Separator sep, std::string const& next_bg, std::string 
             out << "%{F" << next_bg << "}" << style_icons[0] << "%{R}";
             break;
         case Separator::vertical:
-            out << "%{F" << next_bg << "}"
-                << "icon_right_fill"
-                << "%{R}";
+            out << "%{F" << next_bg << "}%{R}";
             break;
         case Separator::right:
             out << "%{R}%{B" << next_bg << "}" << style_icons[3];
