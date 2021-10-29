@@ -159,7 +159,7 @@ std::pair<bool, bool> Weather::update_raw() {
 
         curlpp::Cleanup cleanup;
         curlpp::Easy request;
-        request.setOpt<curlpp::options::Url>("https://wttr.in/buxtehude?format=j1");
+        request.setOpt<curlpp::options::Url>("https://wttr.in?format=j1");
         request.setOpt(curlpp::options::WriteStream(&ss));
         request.perform();
 
@@ -212,7 +212,7 @@ void Weather::print_raw(Lemonbar& bar, uint8_t display_arg) {
     struct tm* now = localtime(&tt);
     std::chrono::minutes since_midnight(60 * now->tm_hour + now->tm_min);
 
-    bool is_day = midnight_to_sunrise < since_midnight && since_midnight < midnight_to_sunset;
+    bool is_day = midnight_to_sunrise <= since_midnight && since_midnight < midnight_to_sunset;
     auto const& code = condition_code != "113" ? condition_code : condition_code + (is_day ? "-day" : "-night");
 
     bar() << fmt::format("{} {} {}°C ", icons.at(code), condition, temperature);
