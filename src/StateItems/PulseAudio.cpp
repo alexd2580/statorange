@@ -123,7 +123,7 @@ void PulseAudio::print_raw(Lemonbar& bar, uint8_t display_num) {
     (void)display_num;
     auto temp_colors = Lemonbar::section_colors<uint32_t>(volume, 101, 150);
     bar.separator(Lemonbar::Separator::left, temp_colors.first, temp_colors.second);
-    std::string icon(is_mute ? "\ufc5d" : volume < 33 ? "\fa7e" : volume < 66 ? "\ufa7f" : "\ufa7d");
+    std::string icon(is_mute ? "\ufc5d" : volume < 33 ? "\ufa7e" : volume < 66 ? "\ufa7f" : "\ufa7d");
     bar() << icon << " " << port_name << " " << volume << "% ";
     bar.separator(Lemonbar::Separator::left, Lemonbar::Coloring::white_on_black);
 }

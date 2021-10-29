@@ -38,7 +38,7 @@ struct addrinfo* Address::get_addrinfo(int family, int socktype) const {
 
     int res = getaddrinfo(host.c_str(), service.c_str(), &hints, &addresses);
     if(res != 0) {
-        LOG << gai_strerror(res) << std::endl;
+        LOG << host << ":" << service << " => " << gai_strerror(res) << std::endl;
         return nullptr;
     }
 
@@ -48,7 +48,6 @@ struct addrinfo* Address::get_addrinfo(int family, int socktype) const {
 Address::_UniqueAddrIn Address::as_sockaddr_in() const {
     struct addrinfo* addresses = get_addrinfo(AF_INET);
     if(addresses == nullptr) {
-        LOG << "No IPv4 addresses" << std::endl;
         return _UniqueAddrIn{};
     }
     struct sockaddr_in address {};
@@ -61,7 +60,6 @@ Address::_UniqueAddrIn Address::as_sockaddr_in() const {
 Address::_UniqueAddrIn6 Address::as_sockaddr_in6() const {
     struct addrinfo* addresses = get_addrinfo(AF_INET6);
     if(addresses == nullptr) {
-        LOG << "No IPv6 addresses" << std::endl;
         return _UniqueAddrIn6{};
     }
     struct sockaddr_in6 address {};

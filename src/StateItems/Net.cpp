@@ -177,7 +177,7 @@ std::pair<bool, bool> Net::update_connection_state() {
     {
         UniqueSocket socket4;
         if(!ipv4.empty()) {
-            socket4 = connect_to("www.google.com", 80, AF_INET, ipv4);
+            socket4 = connect_to(remote_address, 80, AF_INET, ipv4, false);
         }
         ipv4_connected = socket4.is_active();
         // log() << "IPv4 connected: " << ipv4_connected << std::endl;
@@ -189,7 +189,7 @@ std::pair<bool, bool> Net::update_connection_state() {
             // There can be multiple interfaces with the same IPv6 address...
             // For reference see: "ipv6 scope id".
             std::string with_scope = ipv6 + "%" + name;
-            socket6 = connect_to("www.google.com", 80, AF_INET6, with_scope);
+            socket6 = connect_to(remote_address, 80, AF_INET6, with_scope, false);
         }
         ipv6_connected = socket6.is_active();
         // log() << "IPv6 connected: " << ipv6_connected << std::endl;
@@ -265,7 +265,7 @@ void Net::print_raw(Lemonbar& bar, uint8_t display_arg) {
             }
             if(!ipv6.empty()) {
                 bar.separator(Lemonbar::Separator::left, ipv6_color);
-                bar() << " (v6) ";
+                bar() << " v6 ";
             }
             break;
         case Net::Display::IPv6:
@@ -275,7 +275,7 @@ void Net::print_raw(Lemonbar& bar, uint8_t display_arg) {
             }
             if(!ipv4.empty()) {
                 bar.separator(Lemonbar::Separator::left, ipv4_color);
-                bar() << " (v4) ";
+                bar() << " v4 ";
             }
             break;
         case Net::Display::Both:

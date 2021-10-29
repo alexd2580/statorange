@@ -88,10 +88,10 @@ class Statorange : Logger {
             CREATE_ITEM(Date)
             CREATE_ITEM(Space)
             CREATE_ITEM(Load)
-            // CREATE_ITEM(Battery)
-            // CREATE_ITEM(Net)
+            CREATE_ITEM(Battery)
+            CREATE_ITEM(Net)
             CREATE_ITEM(I3)
-            // CREATE_ITEM(PulseAudio)
+            CREATE_ITEM(PulseAudio)
             CREATE_ITEM(Weather)
         } catch(std::string const& error) {
             // Errors will be ignored.

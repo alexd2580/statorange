@@ -32,6 +32,8 @@ class Net final : public StateItem {
     std::chrono::seconds connection_check_cooldown;
     std::chrono::system_clock::time_point last_connection_check;
 
+    std::string remote_address = "amionline.net";
+
     bool up;
     std::string ipv4;
     bool ipv4_connected;

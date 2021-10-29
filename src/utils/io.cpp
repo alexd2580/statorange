@@ -138,20 +138,25 @@ std::ostream& print_used_memory(std::ostream& out, uint64_t used, uint64_t total
 // remoteaddr.sin_port = 12345; // whatever the server is listening on
 // connect(s, (sockaddr*)&remoteaddr, sizeof(remoteaddr));
 
-UniqueSocket connect_to(std::string const& path, unsigned int port, int domain, std::string const& interface) {
-    return connect_to(Address(path, port), domain, interface);
+UniqueSocket connect_to(std::string const& path, unsigned int port, int domain, std::string const& interface,
+                        bool verbose) {
+    return connect_to(Address(path, port), domain, interface, verbose);
 }
 
-UniqueSocket connect_to(Address const& target, int domain, std::string const& interface) {
+UniqueSocket connect_to(Address const& target, int domain, std::string const& interface, bool verbose) {
     if(domain != AF_LOCAL && domain != AF_INET && domain != AF_INET6) {
-        LOG << "Invalid domain: " << domain << std::endl;
+        if(verbose) {
+            LOG << "Invalid domain: " << domain << std::endl;
+        }
         return UniqueSocket{};
     }
 
     auto unique_socket = UniqueSocket(socket(domain, SOCK_STREAM, 0));
     if(unique_socket < 0) {
-        LOG << "Error when opening socket." << std::endl;
-        LOG_ERRNO;
+        if(verbose) {
+            LOG << "Error when opening socket." << std::endl;
+            LOG_ERRNO;
+        }
         return UniqueSocket{};
     }
 
@@ -165,7 +170,9 @@ UniqueSocket connect_to(Address const& target, int domain, std::string const& in
         case AF_LOCAL: {
             auto address = iface_address.as_sockaddr_un();
             if(!address.is_active()) {
-                LOG << "Cannot bind to socket. No such address." << std::endl;
+                if(verbose) {
+                    LOG << "Cannot bind to socket. No such address." << std::endl;
+                }
                 return UniqueSocket{};
             }
             auto address_ptr = reinterpret_cast<struct sockaddr const*>(&address.get());
@@ -175,7 +182,9 @@ UniqueSocket connect_to(Address const& target, int domain, std::string const& in
         case AF_INET: {
             auto address = iface_address.as_sockaddr_in();
             if(!address.is_active()) {
-                LOG << "Cannot bind to socket. No such address." << std::endl;
+                if(verbose) {
+                    LOG << "Cannot bind to socket. No such address." << std::endl;
+                }
                 return UniqueSocket{};
             }
             // std::cout << address.sin_addr.s_addr << std::endl;
@@ -187,7 +196,9 @@ UniqueSocket connect_to(Address const& target, int domain, std::string const& in
         case AF_INET6: {
             auto address = iface_address.as_sockaddr_in6();
             if(!address.is_active()) {
-                LOG << "Cannot bind to socket. No such address." << std::endl;
+                if(verbose) {
+                    LOG << "Cannot bind to socket. No such address." << std::endl;
+                }
                 return UniqueSocket{};
             }
 
@@ -206,41 +217,63 @@ UniqueSocket connect_to(Address const& target, int domain, std::string const& in
             assert(false);
         }
         if(result < 0) {
-            LOG << "`bind` failed" << std::endl;
-            LOG_ERRNO;
-            return UniqueSocket();
+            if(verbose) {
+                LOG << "`bind` failed" << std::endl;
+                LOG_ERRNO;
+            }
+            return UniqueSocket{};
         }
     }
 
-    int result;
+    int result = -1;
     switch(domain) {
     case AF_LOCAL: {
         auto address = target.as_sockaddr_un();
+        if(!address.is_active()) {
+            return UniqueSocket{};
+        }
+
         auto address_ptr = reinterpret_cast<struct sockaddr const*>(&address.get());
         result = connect(unique_socket, address_ptr, sizeof(struct sockaddr_un));
-        LOG << "AF_LOCAL " << result << std::endl;
+        if(verbose) {
+            LOG << "AF_LOCAL " << result << std::endl;
+        }
         break;
     }
     case AF_INET: {
         auto address = target.as_sockaddr_in();
+        if(!address.is_active()) {
+            return UniqueSocket{};
+        }
+
         auto address_ptr = reinterpret_cast<struct sockaddr const*>(&address.get());
         result = connect(unique_socket, address_ptr, sizeof(struct sockaddr_in));
-        LOG << "AF_INET " << result << std::endl;
+        if(verbose) {
+            LOG << "AF_INET " << result << std::endl;
+        }
         break;
     }
     case AF_INET6: {
         auto address = target.as_sockaddr_in6();
+        if(!address.is_active()) {
+            return UniqueSocket{};
+        }
+
         auto address_ptr = reinterpret_cast<struct sockaddr const*>(&address.get());
         result = connect(unique_socket, address_ptr, sizeof(struct sockaddr_in6));
-        LOG << "AF_INET6 " << result << std::endl;
+        if(verbose) {
+            LOG << "AF_INET6 " << result << std::endl;
+        }
         break;
     }
     default:
         assert(false);
     }
     if(result < 0) {
-        LOG << "`connect` failed " << result << std::endl;
-        LOG_ERRNO;
+        if(verbose) {
+            LOG << "`connect` failed " << result << std::endl;
+            LOG_ERRNO;
+        }
         return UniqueSocket{};
     }
 
