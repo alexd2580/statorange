@@ -1,5 +1,6 @@
 #include <iostream> // endl
-#include <utility>  // pair
+#include <string>
+#include <utility> // pair
 
 #include <cstdlib> // strtol
 /* #include <cstring> */
@@ -10,6 +11,7 @@
 
 #include "Lemonbar.hpp"
 #include "utils/convert.hpp"
+#include "utils/io.hpp"
 
 bool Load::read_line(std::string const& path, char* data, uint32_t num) {
     auto file = open_file(path);
@@ -17,6 +19,43 @@ bool Load::read_line(std::string const& path, char* data, uint32_t num) {
         return false;
     }
     return fgets(data, static_cast<int32_t>(num), file.get()) == data;
+}
+
+/**
+ * I mean, even htop uses `/proc/meminfo` ...
+ * https://github.com/hishamhm/htop/blob/59166da773d8a9a97c8f1b087346865bc8cda9fa/linux/LinuxProcessList.c#L918
+ */
+void Load::read_memory_stats() {
+    // TODO error handling.
+    auto file = FileStream<UniqueFile>(open_file("/proc/meminfo"));
+    std::istream stream(&file);
+
+    std::string type, value;
+
+    uint64_t buffers = 0;
+    uint64_t cached = 0;
+    uint64_t sreclaimable = 0;
+
+#define HANDLE_TYPE(TYPE, TARGET_VARIABLE)                                                                             \
+    if(type == #TYPE ":") {                                                                                            \
+        TARGET_VARIABLE = std::stoull(value) * 1024;                                                                 \
+    }
+
+    for(std::string line; std::getline(stream, line);) {
+        std::istringstream line_stream(line);
+        // The value is always in kB (KiB in disguise).
+        line_stream >> type >> value;
+
+        HANDLE_TYPE(MemTotal, total_ram)
+        HANDLE_TYPE(MemFree, free_ram)
+        HANDLE_TYPE(Buffers, buffers)
+        HANDLE_TYPE(Cached, cached)
+        HANDLE_TYPE(SReclaimable, sreclaimable)
+    }
+
+#undef HANDLE_TYPE
+
+    free_ram += buffers + cached + sreclaimable;
 }
 
 std::pair<bool, bool> Load::update_raw() {
@@ -44,9 +83,8 @@ std::pair<bool, bool> Load::update_raw() {
     uptime = sysinfo_data.uptime;
     constexpr float SYSINFO_LOADS_SCALE = 65536.f;
     cpu_load = static_cast<float>(sysinfo_data.loads[0]) / SYSINFO_LOADS_SCALE;
-    uint32_t mem_unit = sysinfo_data.mem_unit;
-    total_ram = sysinfo_data.totalram * mem_unit;
-    free_ram = sysinfo_data.freeram * mem_unit;
+
+    read_memory_stats();
 
     // This fluctuates so hard that checking whether something has changed makes no sense.
     return {success, true};
@@ -56,8 +94,8 @@ void Load::print_raw(Lemonbar& bar, uint8_t display) {
     (void)display;
     auto const& fire_style = Lemonbar::PowerlineStyle::fire;
 
-    // Load.
-    auto load_colors = Lemonbar::section_colors(cpu_load, 0.8f, 2.2f);
+    // Load (depends on the amount of cores! I have 12 hw cores).
+    auto load_colors = Lemonbar::section_colors(cpu_load, 4.0f, 12.0f);
     bar.separator(Lemonbar::Separator::left, load_colors.first, load_colors.second, fire_style);
     bar().precision(2);
     bar() << std::fixed << icon << ' ' << cpu_load << ' ';

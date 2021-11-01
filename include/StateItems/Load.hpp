@@ -23,6 +23,8 @@ class Load final : public StateItem {
     // Returns the success of the operation.
     static bool read_line(std::string const& path, char* data, uint32_t num);
 
+    void read_memory_stats();
+
     std::pair<bool, bool> update_raw() override;
     void print_raw(Lemonbar& bar, uint8_t display) override;
 

@@ -91,19 +91,19 @@ void I3::query_tree() {
     auto const& output_nodes = json["nodes"].array();
     for(auto const& output_node : output_nodes) {
         // Make all of these into displays except for `__i3`.
-        auto const& display_name = output_node["name"].string();
-        if(display_name == "__i3") {
+        auto const& output_name = output_node["name"].string();
+        if(output_name == "__i3") {
             continue;
         }
 
-        log() << "Found output '" << display_name << "'" << std::endl;
+        log() << "Found output '" << output_name << "'" << std::endl;
 
-        if(tree.outputs.contains(display_name)) {
+        if(tree.outputs.contains(output_name)) {
             log() << "  Output already exists. Skipping." << std::endl;
             continue;
         }
         auto const& rect = output_node["rect"];
-        auto& output = tree.display_add(rect["x"].number<int>(), rect["y"].number<int>(), display_name);
+        auto& output = tree.display_add(rect["x"].number<int>(), rect["y"].number<int>(), output_name);
 
         auto const& area_nodes = output_node["nodes"].array();
         // Here we only care about the `content`-node hence the find.
@@ -119,7 +119,7 @@ void I3::query_tree() {
             auto const workspace_num = workspace_node["num"].number<uint8_t>();
 
             log() << fmt::format("  Found workspace '{}' ({})", workspace_name, workspace_num) << std::endl;
-            auto& workspace = tree.workspace_init(workspace_num, display_name, workspace_name);
+            auto& workspace = tree.workspace_init(workspace_num, output_name, workspace_name);
 
             // Temporarily setting focus to the new workspace.
             output.visible_workspace = &workspace;
@@ -129,9 +129,9 @@ void I3::query_tree() {
             std::function<void(JSON::Node const&)> parse_tree_container = [&, this](JSON::Node const& container) {
                 auto const id = container["id"].number<uint64_t>();
                 auto const is_focused = id == focused_container;
-                if (is_focused) {
+                if(is_focused) {
                     auto const& focus = container["focus"].array();
-                    if (focus.size() != 0) {
+                    if(focus.size() != 0) {
                         focused_container = focus[0].number<uint64_t>();
                     }
                 }
@@ -153,10 +153,10 @@ void I3::query_tree() {
                                      window_id, window_name)
                       << std::endl;
 
-                tree.window_open(window_id, display_name, window_name);
+                tree.window_open(window_id, output_name, window_name);
                 if(is_focused) {
                     log() << "      Window is focused" << std::endl;
-                    tree.workspace_focus(workspace_num, display_name);
+                    tree.workspace_focus(workspace_num, output_name);
                     tree.window_focus(window_id);
                 }
             };
@@ -179,15 +179,15 @@ void I3::workspace_event(std::unique_ptr<char[]> response) {
     // std::cout << response.get() << std::endl << std::endl;
 
     if(change == "init") {
-        auto const display_name = current["output"].string();
+        auto const output_name = current["output"].string();
         auto const workspace_name = current["name"].string();
-        log() << fmt::format("Initializing workspace {} ({}) on display {}", workspace_name, current_num, display_name)
+        log() << fmt::format("Initializing workspace {} ({}) on display {}", workspace_name, current_num, output_name)
               << std::endl;
-        tree.workspace_init(current_num, display_name, workspace_name);
+        tree.workspace_init(current_num, output_name, workspace_name);
     } else if(change == "focus") {
-        auto const display_name = current["output"].string();
-        log() << fmt::format("Focusing workspace {} on display {}", current_num, display_name) << std::endl;
-        tree.workspace_focus(current_num, display_name);
+        auto const output_name = current["output"].string();
+        log() << fmt::format("Focusing workspace {} on display {}", current_num, output_name) << std::endl;
+        tree.workspace_focus(current_num, output_name);
     } else if(change == "urgent") {
         log() << fmt::format("Urgent-ing workspace {}", current_num) << std::endl;
         tree.workspace_urgent(current_num, current["urgent"].boolean());
@@ -214,20 +214,31 @@ void I3::window_event(std::unique_ptr<char[]> response) {
     uint64_t window_id = container["window"].number<uint64_t>();
 
     if(!tree.windows.contains(window_id)) {
-        auto const display_name = container["output"].string();
-        tree.window_open(window_id, display_name, get_window_name(container));
+        auto const& output_name = container["output"].string();
+        auto const& window_name = get_window_name(container);
+        log() << fmt::format("Opening window {} ({}) on display {}", window_name, window_id, output_name) << std::endl;
+        tree.window_open(window_id, output_name, window_name);
     }
 
     if(change == "new") {
+        // Noop. Added for structural consistency.
         tree.window_new();
     } else if(change == "title") {
-        tree.window_title(window_id, get_window_name(container));
+        auto const& window_name = get_window_name(container);
+        log() << fmt::format("Changing title of window {} to {}", window_id, window_name) << std::endl;
+        tree.window_title(window_id, window_name);
     } else if(change == "focus") {
+        log() << fmt::format("Focusing window {}", window_id) << std::endl;
         tree.window_focus(window_id);
+    } else if(change == "urgent") {
+        log() << fmt::format("Urgent-int window {}", window_id) << std::endl;
+        tree.window_urgent(window_id, container["urgent"].boolean());
     } else if(change == "move") {
         auto const output_name = container["output"].string();
+        log() << fmt::format("Moving window {} to {}", window_id, output_name) << std::endl;
         tree.window_move(window_id, output_name);
     } else if(change == "close") {
+        log() << fmt::format("Closing window {}", window_id) << std::endl;
         tree.window_close(window_id);
     }
     // else if(change == "fullscreen_mode")
@@ -284,17 +295,12 @@ std::pair<bool, bool> I3::handle_stream_data_raw(int fd) {
     auto const& res = handle_message(event_type, std::move(event_message));
 
     // Handle subsequent messages.
-    if (!has_input(fd)) {
+    if(!has_input(fd)) {
         return res;
     }
 
     auto const& res2 = handle_stream_data_raw(fd);
     return {res.first && res2.first, res.second || res2.second};
-}
-
-Lemonbar::Coloring get_workspace_coloring(bool urgent, bool focused) {
-    using C = Lemonbar::Coloring;
-    return urgent ? C::urgent : focused ? C::active : C::inactive;
 }
 
 void I3::print_raw(Lemonbar& bar, uint8_t display) {
@@ -306,24 +312,38 @@ void I3::print_raw(Lemonbar& bar, uint8_t display) {
             continue;
         }
 
-        auto const& sep_right = Lemonbar::Separator::right;
+        using C = Lemonbar::Coloring;
+        using S = Lemonbar::Separator;
 
         bool focused = tree.workspaces.is_focused(workspace);
-        auto const& coloring = get_workspace_coloring(workspace.urgent, focused);
+        bool urgent_is_focused = workspace.focused_window == workspace.last_urgent_window;
+        bool active_is_urgent = workspace.urgent && urgent_is_focused;
+        auto const& coloring = active_is_urgent ? C::urgent : focused ? C::active : C::inactive;
 
-        bar.separator(sep_right, coloring, style);
+        bar.separator(S::right, coloring, style);
         bar() << " " << workspace.name << " ";
         auto focused_window = workspace.focused_window;
         if(focused_window != nullptr) {
             auto const& name = focused_window->name;
             if(!is_unicode(name)) {
-                bar.separator(sep_right, style);
+                bar.separator(S::right, style);
                 bar() << " " << name << " ";
             } else {
                 bar() << name;
             }
         }
-        bar.separator(sep_right, Lemonbar::Coloring::white_on_black, style);
+
+        if(workspace.urgent && !urgent_is_focused) {
+            bar.separator(S::right, C::urgent, style);
+            auto const& name = workspace.last_urgent_window->name;
+            if(!is_unicode(name)) {
+                bar.separator(S::right, style);
+                bar() << " " << name << " ";
+            } else {
+                bar() << name;
+            }
+        }
+        bar.separator(S::right, C::white_on_black, style);
     }
 }
 

@@ -4,6 +4,8 @@
 
 #include <cstring>
 
+#include<fmt/format.h>
+
 #include "json_parser.hpp"
 
 #include "utils/parse.hpp"
@@ -50,6 +52,21 @@ Object::Object(StringPointer& str) {
     }
 }
 
+std::ostream& Object::to_stream(std::ostream& stream) {
+    stream << "{" << std::endl;
+
+    bool first = true;
+    for (auto const& item : map) {
+        if (first) {
+            first = false;
+        } else {
+            stream << ",\n";
+        }
+        item.second->to_stream(stream << fmt::format("\"{}\": ", item.first));
+    }
+    return stream << std::endl << "}";
+}
+
 Array::Array(StringPointer& str) {
     char c = str.peek();
     if(c != '[') {
@@ -80,9 +97,32 @@ Array::Array(StringPointer& str) {
     }
 }
 
+std::ostream& Array::to_stream(std::ostream& stream) {
+    stream << "[" << std::endl;
+
+    bool first = true;
+    for (auto const& item : vector) {
+        if (first) {
+            first = false;
+        } else {
+            stream << ",\n";
+        }
+        item->to_stream(stream);
+    }
+    return stream << std::endl << "]";
+}
+
 String::String(StringPointer& str) { string_value = str.escaped_string(); }
 
+std::ostream& String::to_stream(std::ostream& stream) {
+    return stream << fmt::format("\"{}\"", string_value);
+}
+
 Number::Number(StringPointer& str) { string_value = str.number_str<long double>(); }
+
+std::ostream& Number::to_stream(std::ostream& stream) {
+    return stream << string_value;
+}
 
 Bool::Bool(StringPointer& str) {
     if(strncmp(str, "false", 5) == 0) {
@@ -96,12 +136,20 @@ Bool::Bool(StringPointer& str) {
     }
 }
 
+std::ostream& Bool::to_stream(std::ostream& stream) {
+    return stream << (b ? "true" : "false");
+}
+
 Null::Null(StringPointer& str) {
     if(strncmp(str, "null", 4) == 0) {
         str.skip(4);
     } else {
         throw std::string("Could not detect null: '") + std::string(str, 4) + "'.";
     }
+}
+
+std::ostream& Null::to_stream(std::ostream& stream) {
+    return stream << "null";
 }
 
 std::shared_ptr<Null> Null::static_null;

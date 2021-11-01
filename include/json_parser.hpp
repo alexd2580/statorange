@@ -17,6 +17,8 @@ class Value {
 
   public:
     virtual ~Value() = default;
+
+    virtual std::ostream& to_stream(std::ostream& stream) = 0;
 };
 
 class Node;
@@ -28,6 +30,9 @@ class Object final : public Value {
     std::map<std::string, std::shared_ptr<Value>> map;
     void parse_kv_pair(StringPointer& str); // NOLINT: Reference intended.
     explicit Object(StringPointer& str);    // NOLINT: Reference intended.
+
+  public:
+    virtual std::ostream& to_stream(std::ostream& stream) override;
 };
 
 class Array final : public Value {
@@ -36,6 +41,9 @@ class Array final : public Value {
   private:
     std::vector<std::shared_ptr<Value>> vector;
     explicit Array(StringPointer& str); // NOLINT: Reference intended.
+
+  public:
+    virtual std::ostream& to_stream(std::ostream& stream) override;
 };
 
 class String final : public Value {
@@ -44,6 +52,9 @@ class String final : public Value {
   private:
     std::string string_value;
     explicit String(StringPointer& str); // NOLINT: Reference intended.
+
+  public:
+    virtual std::ostream& to_stream(std::ostream& stream) override;
 };
 
 class Number final : public Value {
@@ -52,6 +63,9 @@ class Number final : public Value {
   private:
     std::string string_value;
     explicit Number(StringPointer& str); // NOLINT: Reference intended.
+
+  public:
+    virtual std::ostream& to_stream(std::ostream& stream) override;
 };
 
 class Bool final : public Value {
@@ -60,6 +74,9 @@ class Bool final : public Value {
   private:
     bool b;
     explicit Bool(StringPointer& str); // NOLINT: Reference intended.
+
+  public:
+    virtual std::ostream& to_stream(std::ostream& stream) override;
 };
 
 class Null final : public Value {
@@ -69,6 +86,9 @@ class Null final : public Value {
     static std::shared_ptr<Null> static_null;
     Null() = default;
     explicit Null(StringPointer& str); // NOLINT: Reference intended.
+
+  public:
+    virtual std::ostream& to_stream(std::ostream& stream) override;
 };
 
 class Node final {
@@ -234,7 +254,11 @@ class Node final {
         auto const* bool_ptr = as<Bool>();
         return bool_ptr != nullptr ? bool_ptr->b : default_value;
     }
-}; // namespace JSON
+
+    friend std::ostream& operator<<(std::ostream& stream, Node const& node) {
+        return node.value->to_stream(stream);
+    }
+};
 } // namespace JSON
 
 #endif

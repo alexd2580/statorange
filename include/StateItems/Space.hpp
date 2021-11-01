@@ -21,8 +21,6 @@ struct SpaceItem {
     }
 };
 
-std::ostream& operator<<(std::ostream&, SpaceItem const&);
-
 class Space final : public StateItem {
   private:
     std::vector<SpaceItem> items;

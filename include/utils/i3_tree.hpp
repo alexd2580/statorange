@@ -40,9 +40,12 @@ struct Workspace final {
 
     Output* output;
     Window* focused_window;
+    Window* last_urgent_window;
 
-    Workspace(uint8_t num_, std::string name_, bool urgent_, Output* output_, Window* focused_window_)
-        : num(num_), name(name_), urgent(urgent_), output(output_), focused_window(focused_window_) {}
+    Workspace(uint8_t num_, std::string name_, bool urgent_, Output* output_, Window* focused_window_,
+              Window* last_urgent_window_)
+        : num(num_), name(name_), urgent(urgent_), output(output_), focused_window(focused_window_),
+          last_urgent_window(last_urgent_window_) {}
 };
 
 class Workspaces final : public std::map<uint8_t, Workspace> {
@@ -56,10 +59,12 @@ class Workspaces final : public std::map<uint8_t, Workspace> {
 struct Window final {
     uint64_t const id;
     std::string name;
+    bool urgent;
 
     Workspace* workspace;
 
-    Window(uint64_t id_, std::string name_, Workspace* workspace_) : id(id_), name(name_), workspace(workspace_) {}
+    Window(uint64_t id_, std::string name_, bool urgent_, Workspace* workspace_)
+        : id(id_), name(name_), urgent(urgent_), workspace(workspace_) {}
 };
 
 class Windows : public std::map<uint64_t, Window> {
@@ -99,7 +104,8 @@ class I3Tree final {
 
     // Workspace events.
     Workspace& workspace_init(uint8_t num, std::string const& display_name, std::string const& name) {
-        return m_workspaces.try_emplace(num, num, name, false, &m_outputs.at(display_name), nullptr).first->second;
+        return m_workspaces.try_emplace(num, num, name, false, &m_outputs.at(display_name), nullptr, nullptr)
+            .first->second;
     }
 
     void workspace_focus(uint8_t num, std::string const& display_name) {
@@ -129,7 +135,7 @@ class I3Tree final {
     void window_open(uint64_t window_id, std::string const& display_name, std::string const& name) {
         auto& output = m_outputs.at(display_name);
         auto& workspace = output.visible_workspace;
-        m_windows.emplace(window_id, Window{window_id, name, workspace});
+        m_windows.emplace(window_id, Window{window_id, name, false, workspace});
     }
 
     void window_title(uint64_t id, std::string const& name) { m_windows.at(id).name = name; }
@@ -141,6 +147,18 @@ class I3Tree final {
         // windows[window_id].workspace = workspaces.focused;
         auto& window = m_windows.at(window_id);
         window.workspace->focused_window = &window;
+    }
+
+    void window_urgent(uint64_t window_id, bool urgent) {
+        auto& window = m_windows.at(window_id);
+        window.urgent = urgent;
+
+        auto& workspace = *window.workspace;
+        if(urgent) {
+            workspace.last_urgent_window = &window;
+        } else if(workspace.last_urgent_window == &window) {
+            workspace.last_urgent_window = nullptr;
+        }
     }
 
     void window_move(uint64_t window_id, std::string const& display_name) {
@@ -155,8 +173,12 @@ class I3Tree final {
     }
 
     void window_close(uint64_t window_id) {
-        auto& workspace = *m_windows.at(window_id).workspace;
+        auto& window = m_windows.at(window_id);
+        auto& workspace = *window.workspace;
         workspace.focused_window = nullptr;
+        if(workspace.last_urgent_window == &window) {
+            workspace.last_urgent_window = nullptr;
+        }
         m_windows.erase(window_id);
     }
 
