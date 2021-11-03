@@ -23,10 +23,10 @@ struct Output final {
     int x;
     int y;
 
-    Workspace* visible_workspace;
+    Workspace* focused_workspace;
 
-    Output(uint8_t rel_index_, std::string const name_, int x_, int y_, Workspace* visible_workspace_)
-        : rel_index(rel_index_), name(name_), x(x_), y(y_), visible_workspace(visible_workspace_) {}
+    Output(uint8_t rel_index_, std::string const name_, int x_, int y_, Workspace* focused_workspace_)
+        : rel_index(rel_index_), name(name_), x(x_), y(y_), focused_workspace(focused_workspace_) {}
 };
 
 class Outputs final : public Multimap<uint8_t, std::string, Output> {};
@@ -99,7 +99,7 @@ class I3Tree final {
             }
         }
         uint8_t index = (upper + lower) / 2;
-        return *m_outputs.emplace(index, name, index, name, x, y, m_workspaces.focused).first;
+        return *m_outputs.try_emplace(index, name, index, name, x, y, m_workspaces.focused).first;
     }
 
     // Workspace events.
@@ -108,10 +108,14 @@ class I3Tree final {
             .first->second;
     }
 
-    void workspace_focus(uint8_t num, std::string const& display_name) {
+    void workspace_visible(uint8_t num) {
+        auto& workspace = m_workspaces.at(num);
+        workspace.output->focused_workspace = &workspace;
+    }
+
+    void workspace_focus(uint8_t num) {
         auto& workspace = m_workspaces.at(num);
         m_workspaces.focused = &workspace;
-        m_outputs.at(display_name).visible_workspace = &workspace;
     }
 
     void workspace_urgent(uint8_t num, bool urgent) { m_workspaces.at(num).urgent = urgent; }
@@ -120,7 +124,7 @@ class I3Tree final {
 
     void workspace_empty(uint8_t num) {
         auto& output = *m_workspaces.at(num).output;
-        if(output.visible_workspace->num == num) {
+        if(output.focused_workspace->num == num) {
             LOG << "Unfocusing a workspace on a workspace which still has focus on it." << std::endl;
         }
         m_workspaces.erase(num);
@@ -132,15 +136,19 @@ class I3Tree final {
     }
 
     // TODO What's the difference to `window_new`?
-    void window_open(uint64_t window_id, std::string const& display_name, std::string const& name) {
+    Window& window_open(uint64_t window_id, Workspace& workspace, std::string const& name) {
+        return m_windows.try_emplace(window_id, window_id, name, false, &workspace).first->second;
+    }
+
+    Window& window_open(uint64_t window_id, std::string const& display_name, std::string const& name) {
         auto& output = m_outputs.at(display_name);
-        auto& workspace = output.visible_workspace;
-        m_windows.emplace(window_id, Window{window_id, name, false, workspace});
+        auto& workspace = output.focused_workspace;
+        return window_open(window_id, *workspace, name);
     }
 
     void window_title(uint64_t id, std::string const& name) { m_windows.at(id).name = name; }
 
-    void window_focus(uint64_t window_id) {
+    void window_visible(uint64_t window_id) {
         // Do i need this?
         // When the focus changes to a particular window, then the currently
         // focused workspace is the one the window is located on.
@@ -168,7 +176,7 @@ class I3Tree final {
         old_workspace.focused_window = nullptr;
 
         auto& new_output = m_outputs.at(display_name);
-        auto& new_workspace = new_output.visible_workspace;
+        auto& new_workspace = new_output.focused_workspace;
         window.workspace = new_workspace;
     }
 

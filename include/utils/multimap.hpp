@@ -70,7 +70,7 @@ class Multimap {
 
   public:
     template <class... Args>
-    decltype(auto) emplace(K1 k1, K2 k2, Args&&... args) {
+    decltype(auto) try_emplace(K1 k1, K2 k2, Args&&... args) {
         auto exists = values.try_emplace(next_free, args...).second;
         index1.emplace(k1, next_free);
         index2.emplace(k2, next_free);

@@ -1,5 +1,6 @@
 #include <algorithm> // find_if, for_each
 #include <cassert>   // assert
+#include <functional>
 #include <map>
 #include <optional>
 #include <ostream> // ostream
@@ -85,10 +86,10 @@ std::string I3::get_window_name(JSON::Node const& container) {
 
 void I3::query_tree() {
     tree.reset();
-    std::unique_ptr<char[]> response = i3_ipc::query(command_socket, i3_ipc::message_type::GET_TREE);
-    JSON::Node json(response.get());
+    std::unique_ptr<char[]> response_tree = i3_ipc::query(command_socket, i3_ipc::message_type::GET_TREE);
+    JSON::Node tree_json(response_tree.get());
 
-    auto const& output_nodes = json["nodes"].array();
+    auto const& output_nodes = tree_json["nodes"].array();
     for(auto const& output_node : output_nodes) {
         // Make all of these into displays except for `__i3`.
         auto const& output_name = output_node["name"].string();
@@ -103,7 +104,7 @@ void I3::query_tree() {
             continue;
         }
         auto const& rect = output_node["rect"];
-        auto& output = tree.display_add(rect["x"].number<int>(), rect["y"].number<int>(), output_name);
+        tree.display_add(rect["x"].number<int>(), rect["y"].number<int>(), output_name);
 
         auto const& area_nodes = output_node["nodes"].array();
         // Here we only care about the `content`-node hence the find.
@@ -113,6 +114,7 @@ void I3::query_tree() {
             log() << "  Can't find `content` node. Skipping." << std::endl;
             continue;
         }
+
         auto const& workspace_nodes = (*content_node_iter)["nodes"].array();
         for(auto const& workspace_node : workspace_nodes) {
             auto const workspace_name = workspace_node["name"].string();
@@ -121,18 +123,22 @@ void I3::query_tree() {
             log() << fmt::format("  Found workspace '{}' ({})", workspace_name, workspace_num) << std::endl;
             auto& workspace = tree.workspace_init(workspace_num, output_name, workspace_name);
 
-            // Temporarily setting focus to the new workspace.
-            output.visible_workspace = &workspace;
-
-            auto focused_container = std::optional(workspace_node["id"].number<uint64_t>());
+            auto visible_container = std::optional(workspace_node["id"].number<uint64_t>());
 
             std::function<void(JSON::Node const&)> parse_tree_container = [&, this](JSON::Node const& container) {
                 auto const id = container["id"].number<uint64_t>();
-                auto const is_focused = id == focused_container;
-                if(is_focused) {
+
+                if(container["focused"].boolean()) {
+                    log() << "      Container (and workspace) is focused" << std::endl;
+                    // Focus the workspace globally.
+                    tree.workspace_focus(workspace_num);
+                }
+
+                auto const is_visible = id == visible_container;
+                if(is_visible) {
                     auto const& focus = container["focus"].array();
                     if(focus.size() != 0) {
-                        focused_container = focus[0].number<uint64_t>();
+                        visible_container = focus[0].number<uint64_t>();
                     }
                 }
 
@@ -153,11 +159,13 @@ void I3::query_tree() {
                                      window_id, window_name)
                       << std::endl;
 
-                tree.window_open(window_id, output_name, window_name);
-                if(is_focused) {
-                    log() << "      Window is focused" << std::endl;
-                    tree.workspace_focus(workspace_num, output_name);
-                    tree.window_focus(window_id);
+                // Don't use the display-lookup `open` method, because this workspace might not be focused on a display.
+                // This is only useful for the `window new` event.
+                tree.window_open(window_id, workspace, window_name);
+                if(is_visible) {
+                    log() << "      Window is visible" << std::endl;
+                    // Focus the window within its workspace (locally).
+                    tree.window_visible(window_id);
                 }
             };
 
@@ -165,7 +173,21 @@ void I3::query_tree() {
         }
     }
 
-    // TODO set visibility properly.
+    // Find out which workspace is visible on a display.
+    std::unique_ptr<char[]> response_outputs = i3_ipc::query(command_socket, i3_ipc::message_type::GET_OUTPUTS);
+    JSON::Node outputs_json(response_outputs.get());
+
+    for(auto const& output_node : outputs_json.array()) {
+        // Focus workspace_num within output (locally).
+        auto const& workspace_num_node = output_node["current_workspace"];
+        if(workspace_num_node.exists()) {
+            auto const& workspace_num = workspace_num_node.string();
+            log() << fmt::format("Setting {} visible", workspace_num) << std::endl;
+            tree.workspace_visible((uint8_t)std::stoul(workspace_num));
+        }
+    }
+
+    // TODO Assert that after this all outputs have a focused workspace!
 }
 
 void I3::workspace_event(std::unique_ptr<char[]> response) {
@@ -185,9 +207,9 @@ void I3::workspace_event(std::unique_ptr<char[]> response) {
               << std::endl;
         tree.workspace_init(current_num, output_name, workspace_name);
     } else if(change == "focus") {
-        auto const output_name = current["output"].string();
-        log() << fmt::format("Focusing workspace {} on display {}", current_num, output_name) << std::endl;
-        tree.workspace_focus(current_num, output_name);
+        log() << fmt::format("Focusing workspace {}", current_num) << std::endl;
+        tree.workspace_visible(current_num);
+        tree.workspace_focus(current_num);
     } else if(change == "urgent") {
         log() << fmt::format("Urgent-ing workspace {}", current_num) << std::endl;
         tree.workspace_urgent(current_num, current["urgent"].boolean());
@@ -229,7 +251,7 @@ void I3::window_event(std::unique_ptr<char[]> response) {
         tree.window_title(window_id, window_name);
     } else if(change == "focus") {
         log() << fmt::format("Focusing window {}", window_id) << std::endl;
-        tree.window_focus(window_id);
+        tree.window_visible(window_id);
     } else if(change == "urgent") {
         log() << fmt::format("Urgent-int window {}", window_id) << std::endl;
         tree.window_urgent(window_id, container["urgent"].boolean());
