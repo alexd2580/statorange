@@ -211,7 +211,7 @@ class Statorange : Logger {
     }
 
     void print() {
-        const uint8_t num_output_displays = 2;
+        const uint8_t num_output_displays = 1;
         for(uint8_t i = 0; i < num_output_displays; i++) {
             bar.display_begin(i);
             print_section(Lemonbar::Alignment::left, left_items, i);
@@ -289,28 +289,22 @@ int main(int argc, char* argv[]) {
     }
 
     // The following comes from the `nerd-fonts-complete` AUR package, then taken from fc-list.
-
-    // I don't exactly understand why, and there's probably a good explanation for this, but here's the gist:
-    // lemonbar (xft/pango <- my lemonbar port) does not work with the new patched versions of nerd-fonts (2.1.0)
-    // the rendering breaks down and double-width characters get cut off.
-    // Therefore i need to install the old version of nerd fonts (2.0.0-1 through 2.0.0-5).
-    // These fonts get correctly displayed in `font-manager` and look fine in the bar, but beware.
-    // For some reason the old version of FiraCode is also broken. Therefore in case i actually wanted to use FiraCode
-    // with the bar i would have to use `FuraCode` (Yes, FUUUUUUU-RA code), which seems to be the old version
-    // (2.0.0-5) of what is now called FiraCode, although in the old version it was also caled `FiraCode`...
-    // I fucking hate font config.
+    //
+    // The required arch package is the following, in the exact same version!
+    // Oherwise something might be off by a pixel or a dozen.
+    // ```
+    // [sascha:~/code/statorange] master(+7/-2)+* ± yay -Qs fira
+    // local/nerd-fonts-fira-code 2.1.0-2 (nerd-fonts)
+    //     Patched font Fira (Fura) Code from the nerd-fonts library
+    //
+    // There's a lot of potential problems with the font configuration, but
+    // this seems to work out just fine. If you want a larger font, then you'll
+    // need to adjust the `-u -(minus)4` parameter, which gives the vertical
+    // pixel adjustment. It needs to be a multiple of two to have symmetrical
+    // powerline symbols.
 
     const std::string text_font = config_json["font"].string();
-        // (R"(-f "UbuntuMono Nerd Font:size=12")");
-    // const std::string text_font(R"(-f "FuraMono Nerd Font:size=15")"); // More or less ok
-    // const std::string text_font(R"(-f "FuraMono Nerd Font Mono:size=15")"); //Because mono - condensed icons
-    // const std::string text_font(R"(-f "FuraCode Nerd Font:size=10")"); // looks ok
-    // const std::string text_font(R"(-f "FuraCode Nerd Font Mono:size=15")"); // Because mono - condensed icons
-    // const std::string text_font(R"(-f "FiraMono Nerd Font:size=15")"); // Completely broken.
-    // const std::string text_font(R"(-f "FiraMono Nerd Font Mono:size=15")"); // Because mono - icons condensed.
-    // const std::string text_font(R"(-f "FiraCode Nerd Font:size=15")"); // Correct character size, but icons cut off.
-    // const std::string text_font(R"(-f "FiraCode Nerd Font Mono:size=15")"); // Because mono - icons condensed
-    const std::string lemonbar_cmd("lemonbar -f \"" + text_font + "\" -a 30 -u -2");
+    const std::string lemonbar_cmd("lemonbar -f \"" + text_font + "\" -a 30 -u -4");
     auto lemonbar_pipe = run_command(lemonbar_cmd, "w");
     FileStream<UniqueFile> lemonbar_streambuf(std::move(lemonbar_pipe));
     std::ostream lemonbar_stream(&lemonbar_streambuf);

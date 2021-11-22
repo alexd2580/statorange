@@ -1,4 +1,5 @@
 {
+    "font": "FuraCode Nerd Font:size=9",
     "show failed modules": true,
     "left": [{
         "item": "I3",
@@ -19,6 +20,10 @@
             "password": "<password>",
             "mailbox": "INBOX",
             "tag": "GMail"
+        },
+        {
+            "item": "Weather",
+            "cooldown": 1800
         },
         {
             "item": "Volume",
