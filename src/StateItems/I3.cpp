@@ -43,6 +43,7 @@ std::string I3::get_window_name(JSON::Node const& container) {
         {".*telegram.*", "\ue217"},
 
         // Vim (with filetype).
+        {".*(\\.html).*vim.*", "\ue62b\uf13b"},
         {".*(\\.hpp|\\.cpp).*vim.*", "\ue62b\ufb71"},
         {".*(\\.h|\\.c).*vim.*", "\ue62b\ufb70"},
         {".*(\\.ts|\\.tsx).*vim.*", "\ue62b\ufbe4"},
