@@ -69,22 +69,34 @@ void PulseAudio::handle_state_change() {
     }
 }
 
-void PulseAudio::handle_sink_info_response(pa_sink_info const& sink_info) {
-    pa_sink_port_info const& active_port = *sink_info.active_port;
+std::pair<bool, bool> PulseAudio::handle_sink_info_response(pa_sink_info const* sink_info_ptr) {
+    if(sink_info_ptr == nullptr) {
+        return {false, true};
+    }
+
+    auto const sink_info = *sink_info_ptr;
+    auto const active_port_ptr = sink_info.active_port;
+    if(active_port_ptr == nullptr) {
+        return {false, true};
+    }
+
+    bool changed = false;
+
+    pa_sink_port_info const& active_port = *active_port_ptr;
     std::string new_port_name(active_port.description);
-    sink_info_has_changed |= new_port_name != port_name;
+    changed |= new_port_name != port_name;
     port_name = new_port_name;
 
     auto const volume_average = pa_cvolume_avg(&(sink_info.volume));
     uint32_t const new_volume = 100 * volume_average / PA_VOLUME_NORM;
-    sink_info_has_changed |= new_volume != volume;
+    changed |= new_volume != volume;
     volume = new_volume;
 
     bool const new_is_mute = sink_info.mute != 0;
-    sink_info_has_changed |= new_is_mute != is_mute;
+    changed |= new_is_mute != is_mute;
     is_mute = new_is_mute;
 
-    has_handled_sink_info = true;
+    return {true, changed};
 }
 
 void PulseAudio::disconnect() {
@@ -97,26 +109,28 @@ void PulseAudio::disconnect() {
 }
 
 std::pair<bool, bool> PulseAudio::update_raw() {
-    auto get_sink_info_callback = [](struct pa_context* context, const pa_sink_info* sink_info, int eol,
-                                     void* userdata) {
+    auto get_sink_info_callback = [](struct pa_context* context, const pa_sink_info* sink_info,
+                                                           int eol, void* userdata) {
         (void)context;
         (void)eol;
-        if(sink_info != nullptr) {
-            static_cast<PulseAudio*>(userdata)->handle_sink_info_response(*sink_info);
-        }
+        auto data = *static_cast<std::pair<PulseAudio*, std::pair<bool, bool>*>*>(userdata);
+        *(data.second) = data.first->handle_sink_info_response(sink_info);
     };
-    pa_operation* a = pa_context_get_sink_info_list(pa_context, get_sink_info_callback, this);
+
+    // Pass data to the callback.
+    auto result = std::make_pair(false, false);
+    auto userdata = std::make_pair(this, &result);
+    pa_operation* a = pa_context_get_sink_info_list(pa_context, get_sink_info_callback, &userdata);
+
     if(a == nullptr) {
         return {false, true};
     }
 
-    has_handled_sink_info = false;
-    sink_info_has_changed = false;
-    while(!has_handled_sink_info) {
+    while(pa_operation_get_state(a) != PA_OPERATION_DONE) {
         pa_mainloop_iterate(pa_mainloop, 1, nullptr);
     }
 
-    return {true, sink_info_has_changed};
+    return result;
 }
 
 void PulseAudio::print_raw(Lemonbar& bar, uint8_t display_num) {
@@ -133,8 +147,6 @@ PulseAudio::PulseAudio(JSON::Node const& item) : StateItem(item) {
     pa_context = nullptr;
 
     is_connected = false;
-    has_handled_sink_info = false;
-    sink_info_has_changed = false;
 
     connect();
 

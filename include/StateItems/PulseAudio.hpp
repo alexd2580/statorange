@@ -16,8 +16,6 @@ class PulseAudio final : public StateItem {
     pa_context* pa_context;
 
     bool is_connected;
-    bool has_handled_sink_info;
-    bool sink_info_has_changed;
 
     std::string port_name;
     bool is_mute;
@@ -27,7 +25,7 @@ class PulseAudio final : public StateItem {
 
     void connect();
     void handle_state_change();
-    void handle_sink_info_response(pa_sink_info const& sink_info);
+    std::pair<bool, bool> handle_sink_info_response(pa_sink_info const* sink_info_ptr);
     void disconnect();
 
     std::pair<bool, bool> update_raw() override;
