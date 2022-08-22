@@ -120,7 +120,9 @@ class I3Tree final {
 
     void workspace_urgent(uint8_t num, bool urgent) { m_workspaces.at(num).urgent = urgent; }
 
-    void workspace_move() { LOG << "`workspace_move` not implemented!" << std::endl; }
+    void workspace_move(uint8_t num, std::string const& display_name) {
+        m_workspaces.at(num).output = &m_outputs.at(display_name);
+    }
 
     void workspace_empty(uint8_t num) {
         auto& output = *m_workspaces.at(num).output;

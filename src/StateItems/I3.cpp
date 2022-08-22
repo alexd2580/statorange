@@ -214,9 +214,9 @@ void I3::workspace_event(std::unique_ptr<char[]> response) {
         log() << fmt::format("Urgent-ing workspace {}", current_num) << std::endl;
         tree.workspace_urgent(current_num, current["urgent"].boolean());
     } else if(change == "move") {
-        // Requery tree until https://github.com/i3/i3/pull/3597#partial-pull-merging
-        // is merged.
-        query_tree();
+        auto const output_name = current["output"].string();
+        log() << fmt::format("Moving workspace {} to {}", current_num, output_name) << std::endl;
+        tree.workspace_move(current_num, output_name);
     } else if(change == "empty") {
         log() << fmt::format("Emptying workspace {}", current_num) << std::endl;
         tree.workspace_empty(current_num);
