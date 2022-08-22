@@ -17,12 +17,12 @@ Address::Address() : Address("0.0.0.0") {}
 
 Address::Address(std::string host_, unsigned int port_) : host(std::move(host_)), port(port_) {}
 
-Address::_UniqueAddrUn Address::as_sockaddr_un() const {
+Address::UniqueAddrUn Address::as_sockaddr_un() const {
     struct sockaddr_un address {};
     memset(&address, 0, sizeof(address));
     address.sun_family = AF_LOCAL;
     strncpy(static_cast<char*>(address.sun_path), host.c_str(), host.length());
-    return _UniqueAddrUn{address};
+    return UniqueAddrUn{address};
 }
 
 struct addrinfo* Address::get_addrinfo(int family, int socktype) const {
@@ -45,28 +45,28 @@ struct addrinfo* Address::get_addrinfo(int family, int socktype) const {
     return addresses;
 }
 
-Address::_UniqueAddrIn Address::as_sockaddr_in() const {
+Address::UniqueAddrIn Address::as_sockaddr_in() const {
     struct addrinfo* addresses = get_addrinfo(AF_INET);
     if(addresses == nullptr) {
-        return _UniqueAddrIn{};
+        return UniqueAddrIn{};
     }
     struct sockaddr_in address {};
     memset(&address, 0, sizeof(address));
     memcpy(&address, addresses->ai_addr, sizeof(address));
     freeaddrinfo(addresses);
-    return _UniqueAddrIn{address};
+    return UniqueAddrIn{address};
 }
 
-Address::_UniqueAddrIn6 Address::as_sockaddr_in6() const {
+Address::UniqueAddrIn6 Address::as_sockaddr_in6() const {
     struct addrinfo* addresses = get_addrinfo(AF_INET6);
     if(addresses == nullptr) {
-        return _UniqueAddrIn6{};
+        return UniqueAddrIn6{};
     }
     struct sockaddr_in6 address {};
     memset(&address, 0, sizeof(address));
     memcpy(&address, addresses->ai_addr, sizeof(address));
     freeaddrinfo(addresses);
-    return _UniqueAddrIn6{address};
+    return UniqueAddrIn6{address};
 }
 
 // bool Address::run_DNS_lookup(void)

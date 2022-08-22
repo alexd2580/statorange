@@ -145,13 +145,13 @@ class Node final {
     }
 
     // Object functions.
-    using _ObjectConstIterBase = std::map<std::string, std::shared_ptr<Value>>::const_iterator;
-    class ObjectConstIter : public _ObjectConstIterBase {
+    using ObjectConstIterBase = std::map<std::string, std::shared_ptr<Value>>::const_iterator;
+    class ObjectConstIter : public ObjectConstIterBase {
       public:
-        explicit ObjectConstIter(_ObjectConstIterBase iterator) : _ObjectConstIterBase(iterator) {}
+        explicit ObjectConstIter(ObjectConstIterBase iterator) : ObjectConstIterBase(iterator) {}
         // NOLINTNEXTLINE: `operator*` overload desired.
         std::pair<std::string const&, Node const> operator*() const {
-            auto const& base_deref = _ObjectConstIterBase::operator*();
+            auto const& base_deref = ObjectConstIterBase::operator*();
             return std::make_pair(base_deref.first, Node(base_deref.second));
         }
     };
@@ -191,12 +191,12 @@ class Node final {
     const Node operator[](char const* key) const { return object_at(std::string(key)); }
 
     // Array functions.
-    using _ArrayConstIterBase = std::vector<std::shared_ptr<Value>>::const_iterator;
-    class ArrayConstIter : public _ArrayConstIterBase {
+    using ArrayConstIterBase = std::vector<std::shared_ptr<Value>>::const_iterator;
+    class ArrayConstIter : public ArrayConstIterBase {
       public:
-        explicit ArrayConstIter(_ArrayConstIterBase&& iterator) : _ArrayConstIterBase(iterator) {}
+        explicit ArrayConstIter(ArrayConstIterBase&& iterator) : ArrayConstIterBase(iterator) {}
         // NOLINTNEXTLINE: `operator*` overload desired.
-        Node const operator*() const { return Node(_ArrayConstIterBase::operator*()); }
+        Node const operator*() const { return Node(ArrayConstIterBase::operator*()); }
     };
     class ArrayWrapper {
       private:

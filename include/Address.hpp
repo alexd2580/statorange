@@ -33,14 +33,14 @@ class Address final {
     // Unix addresses don't use port numbers.
     explicit Address(std::string host, unsigned int port = 0);
 
-    using _UniqueAddrUn = UniqueResource<struct sockaddr_un>;
-    _UniqueAddrUn as_sockaddr_un() const;
+    using UniqueAddrUn = UniqueResource<struct sockaddr_un>;
+    UniqueAddrUn as_sockaddr_un() const;
 
     struct addrinfo* get_addrinfo(int family = AF_UNSPEC, int socktype = SOCK_STREAM) const;
-    using _UniqueAddrIn = UniqueResource<struct sockaddr_in>;
-    _UniqueAddrIn as_sockaddr_in() const;
-    using _UniqueAddrIn6 = UniqueResource<struct sockaddr_in6>;
-    _UniqueAddrIn6 as_sockaddr_in6() const;
+    using UniqueAddrIn = UniqueResource<struct sockaddr_in>;
+    UniqueAddrIn as_sockaddr_in() const;
+    using UniqueAddrIn6 = UniqueResource<struct sockaddr_in6>;
+    UniqueAddrIn6 as_sockaddr_in6() const;
 
     // bool run_DNS_lookup();
     // int open_TCP_socket();
